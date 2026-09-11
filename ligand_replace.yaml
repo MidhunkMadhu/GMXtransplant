@@ -1,0 +1,118 @@
+# Replace one ligand while retaining an equilibrated receptor/membrane system
+# Run: gmxtransplant --mode lig -i ligand_replace.yaml
+#
+# EDITING GUIDE
+# 1. Edit paths only in this first block. YAML aliases reuse them below.
+# 2. Edit ligand names and fit settings in the next block.
+# 3. Run with --dry-run before processing coordinates.
+
+# -----------------------------------------------------------------------------
+# 1. PATHS: normally the only block that changes when moving to a new system
+# -----------------------------------------------------------------------------
+paths:
+  environment_coordinates: &environment_coordinates /mnt/f/Research/Works/TAAR1/mds/holo/system_setup/charmm-gui-8jlp_ro/step5_input.gro
+  new_ligand_coordinates: &new_ligand_coordinates /mnt/f/Research/Works/TAAR1/mds/holo/system_setup/charmm-gui-8jlp_ro_2/uju/UJU.mol2
+  new_ligand_itp: &new_ligand_itp /mnt/f/Research/Works/TAAR1/mds/holo/system_setup/charmm-gui-8jlp_ro_2/gromacs/toppar/UJU.itp
+  receptor_toppar: &receptor_toppar /mnt/f/Research/Works/TAAR1/mds/holo/system_setup/charmm-gui-8jlp_ro/toppar
+  receptor_topology: &receptor_topology /mnt/f/Research/Works/TAAR1/mds/holo/system_setup/charmm-gui-8jlp_ro/topol.top
+  environment_toppar: &environment_toppar /mnt/f/Research/Works/TAAR1/mds/holo/system_setup/charmm-gui-8jlp_ro/toppar
+  topology_output_dir: &topology_output_dir .
+  final_pdb: &final_pdb step5_input.pdb
+  final_gro: &final_gro step5_input.gro
+  report_prefix: &report_prefix ligand_replacement_report
+  inspection_pdb: &inspection_pdb aligned_ligand_inspection.pdb
+  index: &index index.ndx
+  reference_gro: &reference_gro null
+
+# -----------------------------------------------------------------------------
+# 2. SYSTEM, LIGANDS, AND PLACEMENT
+# -----------------------------------------------------------------------------
+ligand_replace:
+  # Complete receptor + membrane + solvent + ions + old ligand system.
+  structure_path: *environment_coordinates
+  format: auto  # Alternatives for the environment: gro or pdb.
+  # null uses the stored box. Alternative: [a,b,c,alpha,beta,gamma] in Å/degrees.
+  box_dimensions: null
+
+  original_ligand:
+    # Use UJU:N (for example UJU:2) if multiple UJU residues exist.
+    resname: UJU
+
+  new_ligand:
+    coord_path: *new_ligand_coordinates
+    format: auto  # Or any MDAnalysis-supported explicit format, e.g. mol2.
+    resname: UJU
+    itp_path: *new_ligand_itp
+
+  fit:
+    # Active: autofit matches all uniquely named heavy atoms by exact name.
+    # Alternative: pairfit uses the two ordered lists below (>=3 non-collinear).
+    # Alternative: nofit keeps an already positioned ligand exactly as supplied.
+    method: autofit
+    # old_ligand_fit_atoms: [C1, C2, N1]
+    # new_ligand_fit_atoms: [C1, C2, N1]
+
+# -----------------------------------------------------------------------------
+# 3. ENVIRONMENT AND CLASH SAFETY
+# -----------------------------------------------------------------------------
+box_validation:
+  mode: strict  # Alternatives: repair or off.
+  hard_clash_cutoff: 1.2  # Å, nonbonded pairs.
+  molecule_protrusion_allowance: 5.0  # Å, diagnostic only.
+  search_sample_size: 20000
+  random_seed: 42
+  wrap_after_validation: false  # Alternative: true when connectivity is complete.
+
+clash_detection:
+  threshold: 0.80
+  thresholds:
+    protein: 0.80
+    lipid: 0.80
+    water: 0.80
+    ion: 0.80
+    other: 0.80
+  use_pbc: true  # false requires box_validation.mode: off.
+  heavy_atoms_only: true  # Alternative: false includes hydrogen atoms.
+  flag_lipid_removal_fraction: 0.05
+  keep_classes: []  # Protein is always protected automatically in ligand mode.
+
+# -----------------------------------------------------------------------------
+# 4. CHARGE CORRECTION
+# -----------------------------------------------------------------------------
+charge:
+  target_net_charge: 0.0
+  neutralize: true  # Alternative: false reports charge without removing ions.
+  tolerance: 0.01
+  exclusion_distance_from_receptor: 10.0
+  exclusion_distance_from_ligand: 10.0
+  exclusion_distance_from_lipid: 5.0
+  exclude_membrane_interior: true
+  random_seed: 42
+  charge_table_overrides: {}
+
+# -----------------------------------------------------------------------------
+# 5. GROMACS AND OUTPUTS
+# -----------------------------------------------------------------------------
+topology:
+  enabled: true  # Alternative: false writes coordinates/reports without topology.
+  receptor_toppar_dir: *receptor_toppar
+  receptor_template_top: *receptor_topology
+  environment_toppar_dir: *environment_toppar
+  # new_ligand.itp_path is included automatically. List only extra cofactors.
+  ligand_itp_paths: []
+  moleculetype_overrides: {}
+  output_dir: *topology_output_dir
+
+ndx:
+  enabled: true
+  output_path: *index
+  style: both  # Alternatives: generic or charmm_gui.
+  extra_groups: {}
+
+refgro: *reference_gro  # null disables the optional comparison.
+
+output:
+  pdb_path: *final_pdb
+  gro_path: *final_gro
+  report_path: *report_prefix
+  inspection_pdb_path: *inspection_pdb

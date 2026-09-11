@@ -1,0 +1,5 @@
+include README.md
+include PORTABLE_USAGE.md
+include requirements.txt
+include *.yaml
+include test_*.py

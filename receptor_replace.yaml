@@ -1,0 +1,151 @@
+# Receptor/receptor-ligand insertion into an equilibrated environment
+# Run: gmxtransplant --mode receptor -i receptor_replace.yaml
+#
+# EDITING GUIDE
+# 1. Edit paths only in this first block. YAML aliases reuse them below.
+# 2. Edit masks, residue names, and scientific settings in the later blocks.
+# 3. Run with --dry-run before processing coordinates.
+
+# -----------------------------------------------------------------------------
+# 1. PATHS: normally the only block that changes when moving to a new system
+# -----------------------------------------------------------------------------
+paths:
+  target_coordinates: &target_coordinates /Users/midhunkmadhu/codex/envpdb/frames_100ns.pdb
+  replacement_coordinates: &replacement_coordinates /Users/midhunkmadhu/codex/charmfiles_noprot/step5_input.gro
+  reference_topology: &reference_topology /Users/midhunkmadhu/codex/charmfiles_noprot/topol.top
+  receptor_toppar: &receptor_toppar /Users/midhunkmadhu/codex/charmfiles_noprot/toppar
+  environment_toppar: &environment_toppar /Users/midhunkmadhu/codex/charmfiles_noprot/toppar
+  ligand_ldp_itp: &ligand_ldp_itp /Users/midhunkmadhu/codex/charmfiles_noprot/toppar/LDP.itp
+  ligand_g4c_itp: &ligand_g4c_itp /Users/midhunkmadhu/codex/charmfiles_noprot/toppar/G4C.itp
+  topology_output_dir: &topology_output_dir .
+  final_pdb: &final_pdb step5_input.pdb
+  final_gro: &final_gro step5_input.gro
+  report_prefix: &report_prefix receptor_replacement_report
+  inspection_pdb: &inspection_pdb aligned_receptor_inspection.pdb
+  index: &index index.ndx
+  reference_gro: &reference_gro null
+
+# -----------------------------------------------------------------------------
+# 2. STRUCTURES AND SELECTIONS
+# -----------------------------------------------------------------------------
+target_box:
+  # Complete equilibrated environment. The selected block is removed; all
+  # residues outside it provide the membrane, solvent, ions, and other solutes.
+  path: *target_coordinates
+  format: auto  # Alternatives: pdb or gro.
+  receptor_mask: ":1-963"
+  # null uses the box stored in the coordinate file. Alternative for a PDB
+  # without CRYST1: [a, b, c, alpha, beta, gamma] in Å/degrees.
+  box_dimensions: null
+
+replacement_structure:
+  # The complete selected block is aligned and inserted. Here it contains the
+  # receptor plus bound LDP and G4C residues.
+  path: *replacement_coordinates
+  format: auto  # Alternatives: pdb or gro.
+  receptor_mask: ":1-963"
+  box_dimensions: null
+
+# Metadata for ligands already included in replacement_structure.receptor_mask.
+# charge: from_itp is active; an alternative is an explicit value such as 1.0,
+# which is checked against the ITP charge sum within 0.01 e.
+replacement_ligands:
+  - resname: LDP
+    charge: from_itp
+    itp_path: *ligand_ldp_itp
+    moleculetype: LDP
+  - resname: G4C
+    charge: from_itp
+    itp_path: *ligand_g4c_itp
+    moleculetype: G4C
+
+# Restore PDB-truncated environment residue names before classification,
+# charge accounting, and topology generation.
+name_restoration:
+  enabled: true  # Alternative: false when target names already match the ITPs.
+  method: itp_atom_count  # Alternative: atom_signature.
+  reference_topol: *reference_topology
+  apply_to: target_box
+  pdb_to_full_resname:
+    CHL: [CHL1]
+    POP: [POPC, POPE]
+    TIP: [TIP3]
+
+# -----------------------------------------------------------------------------
+# 3. ALIGNMENT
+# -----------------------------------------------------------------------------
+alignment:
+  method: mask_fit  # Alternatives: pymol_align or pymol_cealign (need PyMOL).
+  region_mask_original: ":1-961@C,CA,N,O"
+  region_mask_replacement: ":1-961@C,CA,N,O"
+  # Used by pymol_align; retained here so switching methods needs fewer edits.
+  cycles: 5
+  cutoff: 2.0
+
+# -----------------------------------------------------------------------------
+# 4. ENVIRONMENT AND CLASH SAFETY
+# -----------------------------------------------------------------------------
+box_validation:
+  mode: repair  # Alternatives: strict (validate only) or off (unchecked).
+  hard_clash_cutoff: 1.2  # Å, nonbonded pairs.
+  molecule_protrusion_allowance: 5.0  # Å, diagnostic only.
+  search_sample_size: 20000
+  random_seed: 42
+  wrap_after_validation: false  # Alternative: true when connectivity is complete.
+
+clash_detection:
+  # A complete environment residue is removed when it crosses its class cutoff
+  # against the inserted block, unless the class is listed in keep_classes.
+  threshold: 1.2
+  thresholds:
+    lipid: 0.8
+    water: 1.2
+    ion: 1.2
+    other: 1.2
+  use_pbc: true  # false requires box_validation.mode: off.
+  heavy_atoms_only: false  # Alternative: true to test only heavy atoms.
+  flag_lipid_removal_fraction: 0.05
+  keep_classes: [lipid]  # Alternative: [] removes every clashing class.
+
+# -----------------------------------------------------------------------------
+# 5. CHARGE CORRECTION
+# -----------------------------------------------------------------------------
+charge:
+  target_net_charge: 0.0
+  neutralize: true  # Alternative: false reports charge without removing ions.
+  tolerance: 0.01
+  exclusion_distance_from_receptor: 10.0
+  exclusion_distance_from_ligand: 10.0
+  exclusion_distance_from_lipid: 5.0
+  exclude_membrane_interior: true
+  random_seed: 42
+  # Add RESNAME: charge only for a species without a usable ITP definition.
+  charge_table_overrides: {}
+
+# -----------------------------------------------------------------------------
+# 6. GROMACS AND OUTPUTS
+# -----------------------------------------------------------------------------
+topology:
+  enabled: true  # Alternative: false writes coordinates/reports without topology.
+  receptor_toppar_dir: *receptor_toppar
+  receptor_template_top: ""  # Empty means ../topol.top beside receptor_toppar.
+  environment_toppar_dir: *environment_toppar
+  # LDP/G4C ITPs are included from replacement_ligands automatically.
+  ligand_itp_paths: []
+  moleculetype_overrides: {}
+  output_dir: *topology_output_dir
+
+ndx:
+  enabled: true
+  output_path: *index
+  style: both  # Alternatives: generic or charmm_gui.
+  extra_groups: {}
+
+# Optional comparison-only GRO; null disables the check.
+refgro: *reference_gro
+
+output:
+  pdb_path: *final_pdb
+  gro_path: *final_gro
+  report_path: *report_prefix
+  inspection_pdb_path: *inspection_pdb

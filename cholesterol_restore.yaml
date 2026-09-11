@@ -1,0 +1,142 @@
+# Restore experimentally resolved cholesterol into an equilibrated membrane
+# Run: gmxtransplant --mode chl -i cholesterol_restore.yaml
+#
+# EDITING GUIDE
+# 1. Edit paths only in this first block. YAML aliases reuse them below.
+# 2. Edit receptor masks, cholesterol names, and target composition below.
+# 3. Run with --dry-run before processing coordinates.
+
+# -----------------------------------------------------------------------------
+# 1. PATHS: normally the only block that changes when moving to a new system
+# -----------------------------------------------------------------------------
+paths:
+  experimental_coordinates: &experimental_coordinates /mnt/f/Research/Works/D1R/mds/systemprep/charmm-gui_Asp120_noprot/gromacs/D1R_chl.pdb
+  environment_coordinates: &environment_coordinates /mnt/f/Research/Works/D1R/mds/systemprep/charmm-gui_Asp120_noprot/gromacs/step5_input.pdb
+  composition_reference_coordinates: &composition_reference_coordinates /mnt/f/Research/Works/D1R/mds/systemprep/charmm-gui_Asp120_noprot/gromacs/step5_input.pdb
+  receptor_toppar: &receptor_toppar /mnt/f/Research/Works/D1R/mds/systemprep/charmm-gui_Asp120_noprot/gromacs/toppar
+  receptor_topology: &receptor_topology /mnt/f/Research/Works/D1R/mds/systemprep/charmm-gui_Asp120_noprot/gromacs/topol.top
+  environment_toppar: &environment_toppar /mnt/f/Research/Works/D1R/mds/systemprep/charmm-gui_Asp120_noprot/gromacs/toppar
+  topology_output_dir: &topology_output_dir .
+  final_pdb: &final_pdb step5_input.pdb
+  final_gro: &final_gro step5_input.gro
+  report_prefix: &report_prefix cholesterol_restoration_report
+  inspection_pdb: &inspection_pdb aligned_cholesterol_inspection.pdb
+  index: &index index.ndx
+  reference_gro: &reference_gro null
+  diagnostic_raw_pdb: &diagnostic_raw_pdb cholesterol_protonated_raw.pdb
+  diagnostic_converted_pdb: &diagnostic_converted_pdb cholesterol_charmm36.pdb
+  diagnostic_aligned_reference_pdb: &diagnostic_aligned_reference_pdb cholesterol_reference_aligned.pdb
+  diagnostic_placed_reference_pdb: &diagnostic_placed_reference_pdb cholesterol_reference_placed.pdb
+  diagnostic_merged_pdb: &diagnostic_merged_pdb merged_system.pdb
+
+# -----------------------------------------------------------------------------
+# 2. STRUCTURES, CHOLESTEROL CONVERSION, AND COMPOSITION
+# -----------------------------------------------------------------------------
+cholesterol:
+  # Experimental receptor/cholesterol source. The receptor provides only the
+  # alignment transform; the target receptor itself is retained.
+  experimental_structure_path: *experimental_coordinates
+
+  # Complete equilibrated receptor/membrane/solvent/ion environment.
+  target_system_path: *environment_coordinates
+  target_system_format: auto  # Alternatives: pdb or gro.
+  # This PDB has no CRYST1. Values are from its matching CHARMM-GUI GRO
+  # (GRO nm converted to Å). Alternative: null when the selected file has a box.
+  box_dimensions: [118.107, 118.107, 170.435, 90.0, 90.0, 90.0]
+
+  # Masks use sequential residue positions in coordinate-file order.
+  target_receptor_mask: ":1-328"
+  experimental_receptor_mask: ":1-328"
+  cholesterol_resnames: [CHL1, CHL, CHOL, CLR]
+  charmm_resname: CHL1
+
+  convert_to_charmm36: true  # Alternative: false for already compatible CHL1.
+  reconstruct_missing_heavy_atoms: true  # Alternative: false to reject any gap.
+  max_missing_heavy_atoms: 2
+  max_heavy_atom_fit_rmsd: 1.5
+  write_diagnostics: false  # Alternative: true retains all files named below.
+  # Empty uses the embedded 74-atom reference; alternative: a reference PDB path.
+  charmm36_reference_path: ""
+  obabel_command: obabel
+  verify_tolerance: 0.40
+  raw_protonated_pdb_path: *diagnostic_raw_pdb
+  converted_pdb_path: *diagnostic_converted_pdb
+  aligned_reference_pdb_path: *diagnostic_aligned_reference_pdb
+  reference_placed_pdb_path: *diagnostic_placed_reference_pdb
+  merged_pdb_path: *diagnostic_merged_pdb
+
+  composition:
+    # Salt baseline and desired leaflet counts. Missing lipids are reported but
+    # not added; surplus molecules farther than distance_from_protein can be removed.
+    reference_system_path: *composition_reference_coordinates
+    distance_from_protein: 20.0
+    target_concentration: 0.15
+    concentration_tolerance_fraction: 0.05
+    salt_cation: SOD
+    salt_anion: CLA
+    random_seed: 42
+    lipid_targets:
+      CHL1: {upper: 40, lower: 40}
+      POPE: {upper: 60, lower: 59}
+      POPC: {upper: 100, lower: 98}
+
+# -----------------------------------------------------------------------------
+# 3. ALIGNMENT
+# -----------------------------------------------------------------------------
+alignment:
+  method: mask_fit  # Alternatives: pymol_align or pymol_cealign (need PyMOL).
+  region_mask_original: ":1-328@CA"
+  region_mask_replacement: ":1-328@CA"
+  cycles: 5  # Used by pymol_align; retained for easy method switching.
+  cutoff: 2.0
+
+# -----------------------------------------------------------------------------
+# 4. ENVIRONMENT AND CLASH SAFETY
+# -----------------------------------------------------------------------------
+box_validation:
+  mode: strict  # Alternatives: repair or off.
+  hard_clash_cutoff: 1.2  # Å, nonbonded pairs.
+  molecule_protrusion_allowance: 5.0  # Å, diagnostic only.
+  search_sample_size: 20000
+  random_seed: 42
+  wrap_after_validation: false  # Alternative: true when connectivity is complete.
+
+clash_detection:
+  # Complete lipid/water/ion residues within 3 Å of inserted cholesterol are
+  # removed. Protein and other solutes are protected by cholesterol mode.
+  threshold: 3.0
+  thresholds:
+    lipid: 3.0
+    water: 3.0
+    ion: 3.0
+    other: 3.0
+  use_pbc: true
+  heavy_atoms_only: false  # Alternative: true to test only heavy atoms.
+  flag_lipid_removal_fraction: 0.05
+  keep_classes: []
+
+# -----------------------------------------------------------------------------
+# 5. GROMACS AND OUTPUTS
+# -----------------------------------------------------------------------------
+topology:
+  enabled: true  # Alternative: false writes coordinates/reports without topology.
+  receptor_toppar_dir: *receptor_toppar
+  receptor_template_top: *receptor_topology
+  environment_toppar_dir: *environment_toppar
+  ligand_itp_paths: []
+  moleculetype_overrides: {}
+  output_dir: *topology_output_dir
+
+ndx:
+  enabled: true
+  output_path: *index
+  style: charmm_gui  # Alternatives: generic or both.
+  extra_groups: {}
+
+refgro: *reference_gro  # null disables the optional comparison.
+
+output:
+  pdb_path: *final_pdb
+  gro_path: *final_gro
+  report_path: *report_prefix
+  inspection_pdb_path: *inspection_pdb
