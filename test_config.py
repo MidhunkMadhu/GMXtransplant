@@ -1,6 +1,10 @@
 import tempfile
 import unittest
+import io
+from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
+
+import yaml
 
 from config import ConfigError, load_config, load_minimization_config
 
@@ -48,6 +52,65 @@ class ConfigurationSafetyTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ConfigError, "Duplicate YAML key.*structure_path"):
             load_config(str(self._write(text)), mode="lig", check_paths=False)
+
+    def test_plain_path_references_and_null(self):
+        text = MINIMAL_LIGAND_CONFIG.replace(
+            "&environment_coordinates ", ""
+        ).replace("&incoming_coordinates ", "").replace(
+            "*environment_coordinates", '"${environment_coordinates}"'
+        ).replace("*incoming_coordinates", '"${incoming_coordinates}"')
+        text = text.replace("paths:\n", "paths:\n  reference: null\n")
+        text += '\nrefgro: "${reference}"\n'
+        config = load_config(str(self._write(text)), mode="lig", check_paths=False)
+        self.assertEqual(config.ligand_replace.structure_path, "environment.gro")
+        self.assertEqual(config.ligand_replace.new_ligand.coord_path, "ligand.mol2")
+        self.assertIsNone(config.refgro)
+
+    def test_invalid_path_references_fail_clearly(self):
+        for reference, error in [
+            ("${missing}", "Unknown path reference"),
+            ("${environment_coordinates}/extra", "Invalid path reference"),
+        ]:
+            with self.subTest(reference=reference):
+                text = MINIMAL_LIGAND_CONFIG.replace(
+                    "*environment_coordinates", f'"{reference}"'
+                )
+                with self.assertRaisesRegex(ConfigError, error):
+                    load_config(str(self._write(text)), mode="lig", check_paths=False)
+
+    def test_examples_with_and_without_comments_are_equivalent(self):
+        from run_pipeline import cli
+
+        for mode in ("receptor", "lig", "chl", "minimize"):
+            with self.subTest(mode=mode):
+                versions = []
+                for option in ("--comments", "--no-comments"):
+                    output = io.StringIO()
+                    with redirect_stdout(output):
+                        self.assertEqual(cli(["--show-example", mode, option]), 0)
+                    text = output.getvalue()
+                    self.assertEqual("#" in text, option == "--comments")
+                    versions.append(yaml.safe_load(text))
+                    path = str(self._write(text))
+                    if mode == "minimize":
+                        config = load_minimization_config(path, check_paths=False)
+                        self.assertEqual(config.coordinates_path, "step5_input.gro")
+                    else:
+                        config = load_config(path, mode=mode, check_paths=False)
+                        if mode == "receptor":
+                            self.assertEqual(len(config.replacement_ligands), 2)
+                            self.assertEqual(config.replacement_structure.receptor_mask, ":1-963")
+                            self.assertEqual(config.replacement_ligands[1].itp_path,
+                                             "inputs/replacement/toppar/LIG2.itp")
+                self.assertEqual(*versions)
+
+    def test_comment_options_require_example_generation(self):
+        from run_pipeline import cli
+
+        for option in ("--comments", "--no-comments"):
+            with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+                cli(["--mode", "lig", "-i", "config.yaml", option])
+            self.assertEqual(error.exception.code, 2)
 
     def test_missing_config_is_reported_as_config_error(self):
         with self.assertRaisesRegex(ConfigError, "Cannot read config file"):

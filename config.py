@@ -50,6 +50,35 @@ _UniqueKeySafeLoader.add_constructor(
 )
 
 
+def _resolve_path_references(raw):
+    """Resolve whole-value ${name} references from the literal paths registry."""
+    paths = _require_mapping(raw.get("paths"), "paths")
+    for key, value in paths.items():
+        if not isinstance(key, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", key):
+            raise ConfigError("paths keys must use lower-case snake_case names")
+        if value is not None and not isinstance(value, str):
+            raise ConfigError(f"paths.{key} must be a path string or null")
+        if isinstance(value, str) and "${" in value:
+            raise ConfigError(f"paths.{key} must be a literal path, not a reference")
+
+    def resolve(value):
+        if isinstance(value, dict):
+            return {key: resolve(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [resolve(item) for item in value]
+        if isinstance(value, str) and "${" in value:
+            match = re.fullmatch(r"\$\{([a-z][a-z0-9_]*)\}", value)
+            if not match:
+                raise ConfigError(f"Invalid path reference {value!r}; use a whole value like '${{name}}'")
+            name = match.group(1)
+            if name not in paths:
+                raise ConfigError(f"Unknown path reference {value!r}: paths.{name} is missing")
+            return paths[name]
+        return value
+
+    return {key: value if key == "paths" else resolve(value) for key, value in raw.items()}
+
+
 def _is_finite_number(value) -> bool:
     return (
         not isinstance(value, bool)
@@ -1284,6 +1313,7 @@ def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> 
             + ", ".join(unexpected)
         )
 
+    raw = _resolve_path_references(raw)
     _validate_nested_keys(raw, mode)
 
     ob = raw.get("target_box", {})
@@ -1579,6 +1609,7 @@ def load_minimization_config(
             "Standalone minimization accepts only paths and minimization; found: "
             + ", ".join(unexpected)
         )
+    raw = _resolve_path_references(raw)
     paths = _require_mapping(raw.get("paths"), "paths")
     for key, value in paths.items():
         if not isinstance(key, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", key):

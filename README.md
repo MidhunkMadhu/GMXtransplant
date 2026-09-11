@@ -148,9 +148,29 @@ gmxtransplant --show-example receptor > receptor_replace.yaml
 ```
 
 Open the copied YAML. All file paths are grouped under `paths:` at the top.
-Change each anchor value there; the `*anchor_name` aliases below reuse it, so a
-path needs to be edited only once. Then adjust masks, residue names, and the
+Write each path once as `name: path`; use `"${name}"` in the settings below
+to reference it. GMXtransplant resolves these references from `paths:` (including
+`null` values). References must occupy the whole value; environment-variable
+expansion and references inside the paths block are not supported. Existing YAML
+anchors and aliases remain supported. Then adjust masks, residue names, and the
 scientific choices for the new system.
+
+Generate either version with these options (comments are included by default):
+
+```bash
+gmxtransplant --show-example receptor --comments > receptor_replace.yaml
+gmxtransplant --show-example receptor --no-comments > receptor_replace_simple.yaml
+```
+
+Both versions contain the same active settings. These options also work with
+`lig`, `chl`, and `minimize` examples.
+
+The receptor example includes two ligands: protein positions 1–961, LIG1 at 962,
+and LIG2 at 963. Replace these placeholders with your system's sequential residue
+positions. For one ligand, remove the LIG2 metadata and path and change the incoming
+mask to `":1-962"`. To add more, add one metadata entry and ITP path per ligand and
+extend the incoming mask. Set the target mask independently to the old protein and
+ligands you want removed; keep the alignment masks on corresponding protein atoms.
 
 Validate the YAML schema and values without opening large coordinate/topology
 files:
@@ -270,6 +290,17 @@ gmxtransplant --minimize
 # Inputs: step5_input.gro and topol.top
 # Outputs: minimized.gro and minimization_report.{txt,json}
 ```
+
+Atom identity is checked against the original, preprocessed GROMACS `[ atoms ]`
+names in `[ molecules ]` order. OpenMM's public topology normalizes some names
+(for example `SER:HN` becomes `SER:H`, and water names can also change). Comparing
+GRO names directly with that normalized topology caused false atom-order errors
+in earlier versions. No coordinate or ITP renaming is needed for this case;
+genuine source-name/count/order mismatches still stop minimization. The check
+uses OpenMM's parsed molecule records and reports an explicit compatibility
+error if a future OpenMM version no longer exposes them. After updating the
+package, an already assembled bundle can be retried with the standalone command
+above without repeating receptor replacement.
 
 OpenMM uses constrained L-BFGS. `tolerance_kj_mol_nm` is the RMS objective-force
 tolerance; `max_iterations: 0` asks OpenMM to continue until convergence. The

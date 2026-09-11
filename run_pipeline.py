@@ -95,7 +95,7 @@ _EXAMPLE_FILES = {
 }
 
 
-def _read_example(mode: str) -> str:
+def _read_example(mode: str, comments: bool = True) -> str:
     filename = _EXAMPLE_FILES[mode]
     candidates = (
         Path(__file__).resolve().parent / filename,
@@ -107,7 +107,12 @@ def _read_example(mode: str) -> str:
     )
     for path in candidates:
         if path.is_file():
-            return path.read_text(encoding="utf-8")
+            example = path.read_text(encoding="utf-8")
+            if comments:
+                return example
+            import yaml
+
+            return yaml.safe_dump(yaml.safe_load(example), sort_keys=False, allow_unicode=True)
     raise ConfigError(
         f"Bundled example '{filename}' was not found. Reinstall GMXtransplant."
     )
@@ -1212,6 +1217,15 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         metavar="MODE",
         help="print a bundled mode-specific YAML example and exit",
     )
+    comment_options = parser.add_mutually_exclusive_group()
+    comment_options.add_argument(
+        "--comments", dest="example_comments", action="store_true", default=None,
+        help="include explanatory comments with --show-example (default)",
+    )
+    comment_options.add_argument(
+        "--no-comments", dest="example_comments", action="store_false",
+        help="omit all comments with --show-example",
+    )
     return parser
 
 
@@ -1223,10 +1237,14 @@ def cli(argv=None) -> int:
         if cli_args.minimize or cli_args.mode or cli_args.input:
             parser.error("--show-example cannot be combined with --mode, --input, or --minimize")
         try:
-            sys.stdout.write(_read_example(cli_args.show_example))
+            sys.stdout.write(_read_example(
+                cli_args.show_example, comments=cli_args.example_comments is not False
+            ))
         except ConfigError as exc:
             parser.error(str(exc))
         return 0
+    if cli_args.example_comments is not None:
+        parser.error("--comments and --no-comments require --show-example")
     if cli_args.minimize and not cli_args.mode:
         return _run_standalone_minimization(cli_args.input, cli_args.dry_run)
     if not cli_args.mode or not cli_args.input:
