@@ -296,6 +296,153 @@ class OutputSpec:
 
 
 @dataclass
+class MinimizationSpec:
+    """OpenMM minimization inputs, physical settings, and output paths."""
+
+    enabled: bool = False
+    # Standalone minimization inputs.  For post-pipeline minimization these
+    # are deliberately replaced with the freshly written output.gro_path and
+    # topology.output_dir/topol.top, preventing an older system from being
+    # minimized by mistake.
+    coordinates_path: str = ""
+    topology_path: str = ""
+    include_dir: str = ""
+    output_gro_path: str = "minimized.gro"
+    report_path: str = "minimization_report"
+
+    # OpenMM's supported, constrained local minimizer is L-BFGS.
+    algorithm: str = "lbfgs"
+    tolerance_kj_mol_nm: float = 10.0
+    max_iterations: int = 5000
+    constraint_tolerance: float = 1.0e-5
+
+    # Force calculation choices that would otherwise live in a GROMACS MDP.
+    nonbonded_method: str = "PME"
+    nonbonded_cutoff_nm: float = 1.2
+    # null or 0 disables LJ switching.
+    switch_distance_nm: Optional[float] = 1.0
+    constraints: str = "h_bonds"  # none | h_bonds | all_bonds | h_angles
+    rigid_water: bool = True
+    ewald_error_tolerance: float = 5.0e-4
+    use_dispersion_correction: bool = False
+
+    platform: str = "auto"  # auto | CUDA | HIP | OpenCL | CPU | Reference
+    precision: str = "mixed"  # single | mixed | double (when supported)
+    device_index: str = ""
+    # GROMACS preprocessor definitions, for example {POSRES: 1}.
+    defines: Dict[str, Union[str, int, float]] = field(default_factory=dict)
+
+    def validate(self, check_paths: bool = True, require_inputs: bool = False):
+        errors = []
+        if type(self.enabled) is not bool:
+            errors.append("minimization.enabled must be boolean")
+        if self.algorithm != "lbfgs":
+            errors.append("minimization.algorithm must be lbfgs")
+        if not _is_finite_number(self.tolerance_kj_mol_nm) or self.tolerance_kj_mol_nm <= 0:
+            errors.append("minimization.tolerance_kj_mol_nm must be > 0")
+        if type(self.max_iterations) is not int or self.max_iterations < 0:
+            errors.append("minimization.max_iterations must be an integer >= 0")
+        if not _is_finite_number(self.constraint_tolerance) or not 0 < self.constraint_tolerance < 1:
+            errors.append("minimization.constraint_tolerance must be between 0 and 1")
+        methods = {"NoCutoff", "CutoffNonPeriodic", "CutoffPeriodic", "Ewald", "PME", "LJPME"}
+        if self.nonbonded_method not in methods:
+            errors.append(
+                "minimization.nonbonded_method must be one of: "
+                + ", ".join(sorted(methods))
+            )
+        if not _is_finite_number(self.nonbonded_cutoff_nm) or self.nonbonded_cutoff_nm <= 0:
+            errors.append("minimization.nonbonded_cutoff_nm must be > 0")
+        switch = self.switch_distance_nm
+        if switch is not None:
+            if not _is_finite_number(switch) or switch < 0:
+                errors.append("minimization.switch_distance_nm must be null or >= 0")
+            elif switch > 0 and _is_finite_number(self.nonbonded_cutoff_nm) and switch >= self.nonbonded_cutoff_nm:
+                errors.append(
+                    "minimization.switch_distance_nm must be smaller than "
+                    "minimization.nonbonded_cutoff_nm"
+                )
+        if self.constraints not in {"none", "h_bonds", "all_bonds", "h_angles"}:
+            errors.append(
+                "minimization.constraints must be one of: none, h_bonds, "
+                "all_bonds, h_angles"
+            )
+        for name in ("rigid_water", "use_dispersion_correction"):
+            if type(getattr(self, name)) is not bool:
+                errors.append(f"minimization.{name} must be boolean")
+        if (
+            not _is_finite_number(self.ewald_error_tolerance)
+            or not 0 < self.ewald_error_tolerance < 1
+        ):
+            errors.append("minimization.ewald_error_tolerance must be between 0 and 1")
+        if self.platform not in {"auto", "CUDA", "HIP", "OpenCL", "CPU", "Reference"}:
+            errors.append(
+                "minimization.platform must be one of: auto, CUDA, HIP, "
+                "OpenCL, CPU, Reference"
+            )
+        if self.precision not in {"single", "mixed", "double"}:
+            errors.append("minimization.precision must be single, mixed, or double")
+        if not isinstance(self.device_index, str):
+            errors.append("minimization.device_index must be a string")
+        if not isinstance(self.defines, dict):
+            errors.append("minimization.defines must be a mapping")
+        else:
+            for key, value in self.defines.items():
+                if not isinstance(key, str) or not key.strip():
+                    errors.append("minimization.defines keys must be non-empty strings")
+                if isinstance(value, (dict, list, tuple, set)) or value is None:
+                    errors.append(
+                        f"minimization.defines.{key} must be a scalar string or number"
+                    )
+        for name in ("output_gro_path", "report_path"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"minimization.{name} must be a non-empty path string")
+        for name in ("coordinates_path", "topology_path", "include_dir"):
+            if not isinstance(getattr(self, name), str):
+                errors.append(f"minimization.{name} must be a path string")
+        if require_inputs:
+            for name in ("coordinates_path", "topology_path"):
+                value = getattr(self, name)
+                if not isinstance(value, str) or not value.strip():
+                    errors.append(f"minimization.{name} is required")
+            if (
+                isinstance(self.coordinates_path, str)
+                and self.coordinates_path
+                and os.path.splitext(self.coordinates_path)[1].lower() != ".gro"
+            ):
+                errors.append("minimization.coordinates_path must be a .gro file")
+            if check_paths and self.coordinates_path and not os.path.isfile(self.coordinates_path):
+                errors.append(
+                    f"minimization.coordinates_path does not exist: {self.coordinates_path}"
+                )
+            if check_paths and self.topology_path and not os.path.isfile(self.topology_path):
+                errors.append(
+                    f"minimization.topology_path does not exist: {self.topology_path}"
+                )
+        if self.include_dir and check_paths and not os.path.isdir(self.include_dir):
+            errors.append(f"minimization.include_dir does not exist: {self.include_dir}")
+
+        paths = {
+            "coordinates_path": self.coordinates_path,
+            "topology_path": self.topology_path,
+            "output_gro_path": self.output_gro_path,
+            "report_path (.txt)": self.report_path + ".txt",
+            "report_path (.json)": self.report_path + ".json",
+        }
+        by_realpath = {}
+        for label, value in paths.items():
+            if isinstance(value, str) and value:
+                by_realpath.setdefault(os.path.realpath(value), []).append(label)
+        for labels in by_realpath.values():
+            if len(labels) > 1:
+                errors.append(
+                    "Minimization input/output paths collide: " + ", ".join(labels)
+                )
+        if errors:
+            raise ConfigError("Invalid configuration:\n  - " + "\n  - ".join(errors))
+
+
+@dataclass
 class TopologySpec:
     # Builds a full GROMACS input set (topol.top + a self-contained
     # toppar/ directory) describing the final system. Generation is
@@ -392,6 +539,7 @@ class Config:
     clash_detection: ClashDetectionSpec = field(default_factory=ClashDetectionSpec)
     charge: ChargeSpec = field(default_factory=ChargeSpec)
     output: OutputSpec = field(default_factory=OutputSpec)
+    minimization: MinimizationSpec = field(default_factory=MinimizationSpec)
     name_restoration: NameRestorationSpec = field(default_factory=NameRestorationSpec)
     topology: TopologySpec = field(default_factory=TopologySpec)
     ndx: NdxSpec = field(default_factory=NdxSpec)
@@ -411,6 +559,7 @@ class Config:
     def validate(self, check_paths: bool = True):
         errors: List[str] = []
         self.box_validation.validate()
+        self.minimization.validate(check_paths=check_paths, require_inputs=False)
         structure_boxes = ({"target_box": self.target_box,
                             "replacement_structure": self.replacement_structure}
                            if self.mode == "receptor" else
@@ -805,6 +954,11 @@ class Config:
                     "topology.receptor_template_top does not exist or is not a file: "
                     f"{self.topology.receptor_template_top}"
                 )
+        if self.minimization.enabled and not self.topology.enabled:
+            errors.append(
+                "minimization.enabled requires topology.enabled so the freshly "
+                "assembled coordinates have a matching topol.top"
+            )
         for index, path in enumerate(self.topology.ligand_itp_paths, 1):
             if not isinstance(path, str) or not path.strip():
                 errors.append(f"topology.ligand_itp_paths[{index}] must be a non-empty path string")
@@ -877,6 +1031,15 @@ class Config:
                 elif concrete_outputs:
                     concrete_outputs[label] = value
         if concrete_outputs:
+            concrete_outputs["minimization.output_gro_path"] = (
+                self.minimization.output_gro_path
+            )
+            concrete_outputs["minimization.report_path (.txt)"] = (
+                self.minimization.report_path + ".txt"
+            )
+            concrete_outputs["minimization.report_path (.json)"] = (
+                self.minimization.report_path + ".json"
+            )
             by_realpath = {}
             for label, value in concrete_outputs.items():
                 by_realpath.setdefault(os.path.realpath(value), []).append(label)
@@ -920,7 +1083,8 @@ def _get(d, key, default=None):
 
 
 _COMMON_SECTIONS = {
-    "paths", "alignment", "clash_detection", "topology", "ndx", "refgro", "output", "box_validation"
+    "paths", "alignment", "clash_detection", "topology", "ndx", "refgro",
+    "output", "box_validation", "minimization"
 }
 _MODE_SECTIONS = {
     "receptor": _COMMON_SECTIONS | {
@@ -952,6 +1116,7 @@ _SECTION_KEYS = {
         "exclude_membrane_interior", "membrane_z_override",
     },
     "output": {"pdb_path", "gro_path", "report_path", "inspection_pdb_path"},
+    "minimization": set(MinimizationSpec.__dataclass_fields__),
     "name_restoration": {
         "enabled", "method", "reference", "apply_to", "min_jaccard",
         "reference_topol", "pdb_to_full_resname",
@@ -1019,6 +1184,7 @@ def _validate_nested_keys(raw: dict, mode: str) -> None:
         ("charge", "charge_table_overrides"),
         ("topology", "moleculetype_overrides"),
         ("ndx", "extra_groups"),
+        ("minimization", "defines"),
     )
     for section, key in mapping_fields:
         value = (raw.get(section) or {}).get(key)
@@ -1188,6 +1354,7 @@ def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> 
     reference_topol = new_reference_topol or legacy_topology_path
     tp = raw.get("topology", {})
     ix = raw.get("ndx", {})
+    mn = raw.get("minimization", {})
     lr = raw.get("ligand_replace", {})
     lr_ol = _get(lr, "original_ligand", {}) or {}
     lr_nl = _get(lr, "new_ligand", {}) or {}
@@ -1265,6 +1432,29 @@ def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> 
             gro_path=_get(out, "gro_path", "step5_input.gro"),
             report_path=_get(out, "report_path", "replacement_report"),
             inspection_pdb_path=_get(out, "inspection_pdb_path", "aligned_replacement_inspection.pdb"),
+        ),
+        minimization=MinimizationSpec(
+            enabled=_get(mn, "enabled", False),
+            coordinates_path=_get(mn, "coordinates_path", ""),
+            topology_path=_get(mn, "topology_path", ""),
+            include_dir=_get(mn, "include_dir", ""),
+            output_gro_path=_get(mn, "output_gro_path", "minimized.gro"),
+            report_path=_get(mn, "report_path", "minimization_report"),
+            algorithm=_get(mn, "algorithm", "lbfgs"),
+            tolerance_kj_mol_nm=_get(mn, "tolerance_kj_mol_nm", 10.0),
+            max_iterations=_get(mn, "max_iterations", 5000),
+            constraint_tolerance=_get(mn, "constraint_tolerance", 1.0e-5),
+            nonbonded_method=_get(mn, "nonbonded_method", "PME"),
+            nonbonded_cutoff_nm=_get(mn, "nonbonded_cutoff_nm", 1.2),
+            switch_distance_nm=_get(mn, "switch_distance_nm", 1.0),
+            constraints=_get(mn, "constraints", "h_bonds"),
+            rigid_water=_get(mn, "rigid_water", True),
+            ewald_error_tolerance=_get(mn, "ewald_error_tolerance", 5.0e-4),
+            use_dispersion_correction=_get(mn, "use_dispersion_correction", False),
+            platform=_get(mn, "platform", "auto"),
+            precision=_get(mn, "precision", "mixed"),
+            device_index=str(_get(mn, "device_index", "")),
+            defines=_get(mn, "defines", {}) or {},
         ),
         name_restoration=NameRestorationSpec(
             enabled=_get(nr, "enabled", False),
@@ -1364,3 +1554,44 @@ def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> 
     )
     cfg.validate(check_paths=check_paths)
     return cfg
+
+
+def load_minimization_config(
+    path: str, check_paths: bool = True
+) -> MinimizationSpec:
+    """Load a standalone minimization-only YAML file."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            raw = yaml.load(fh, Loader=_UniqueKeySafeLoader)
+    except ConfigError:
+        raise
+    except yaml.YAMLError as exc:
+        raise ConfigError(f"Cannot parse YAML config '{path}': {exc}") from exc
+    except OSError as exc:
+        raise ConfigError(f"Cannot read config file '{path}': {exc}") from exc
+    if not raw:
+        raise ConfigError(f"Config file '{path}' is empty")
+    if not isinstance(raw, dict):
+        raise ConfigError(f"Config file '{path}' must contain a top-level mapping")
+    unexpected = sorted(set(raw) - {"paths", "minimization"})
+    if unexpected:
+        raise ConfigError(
+            "Standalone minimization accepts only paths and minimization; found: "
+            + ", ".join(unexpected)
+        )
+    paths = _require_mapping(raw.get("paths"), "paths")
+    for key, value in paths.items():
+        if not isinstance(key, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", key):
+            raise ConfigError("paths keys must use lower-case snake_case names")
+        if value is not None and not isinstance(value, str):
+            raise ConfigError(f"paths.{key} must be a path string or null")
+    values = _require_mapping(raw.get("minimization"), "minimization")
+    _reject_unknown_keys(values, "minimization", _SECTION_KEYS["minimization"])
+    if "defines" in values and not isinstance(values["defines"], dict):
+        raise ConfigError("minimization.defines must be a mapping")
+    try:
+        spec = MinimizationSpec(**values)
+    except TypeError as exc:
+        raise ConfigError(f"Invalid minimization configuration: {exc}") from exc
+    spec.validate(check_paths=check_paths, require_inputs=True)
+    return spec

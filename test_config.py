@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from config import ConfigError, load_config
+from config import ConfigError, load_config, load_minimization_config
 
 
 MINIMAL_LIGAND_CONFIG = """
@@ -70,6 +70,47 @@ output:
   inspection_pdb_path: environment.gro
 """
         with self.assertRaisesRegex(ConfigError, "must not overwrite an input"):
+            load_config(str(self._write(text)), mode="lig", check_paths=False)
+
+    def test_standalone_minimization_config(self):
+        text = """
+paths:
+  coordinates: &coordinates assembled.gro
+  topology: &topology topol.top
+minimization:
+  enabled: true
+  coordinates_path: *coordinates
+  topology_path: *topology
+  output_gro_path: minimized.gro
+  report_path: minimization_report
+  algorithm: lbfgs
+  nonbonded_method: PME
+"""
+        spec = load_minimization_config(
+            str(self._write(text)), check_paths=False
+        )
+        self.assertEqual(spec.coordinates_path, "assembled.gro")
+        self.assertEqual(spec.topology_path, "topol.top")
+        self.assertEqual(spec.algorithm, "lbfgs")
+
+    def test_minimization_refuses_to_overwrite_coordinates(self):
+        text = """
+minimization:
+  enabled: true
+  coordinates_path: assembled.gro
+  topology_path: topol.top
+  output_gro_path: assembled.gro
+  report_path: minimization_report
+"""
+        with self.assertRaisesRegex(ConfigError, "paths collide"):
+            load_minimization_config(str(self._write(text)), check_paths=False)
+
+    def test_integrated_minimization_requires_generated_topology(self):
+        text = MINIMAL_LIGAND_CONFIG + """
+minimization:
+  enabled: true
+"""
+        with self.assertRaisesRegex(ConfigError, "requires topology.enabled"):
             load_config(str(self._write(text)), mode="lig", check_paths=False)
 
 

@@ -1,0 +1,47 @@
+# Standalone OpenMM minimization of an existing GROMACS GRO/topology bundle
+# Run: gmxtransplant --minimize -i minimization.yaml
+# Dry-run: gmxtransplant --minimize -i minimization.yaml --dry-run
+
+# -----------------------------------------------------------------------------
+# 1. PATHS: edit these values for the system being minimized
+# -----------------------------------------------------------------------------
+paths:
+  input_coordinates: &input_coordinates step5_input.gro
+  input_topology: &input_topology topol.top
+  topology_include_dir: &topology_include_dir ""
+  minimized_gro: &minimized_gro minimized.gro
+  minimization_report: &minimization_report minimization_report
+
+# -----------------------------------------------------------------------------
+# 2. MINIMIZATION SETTINGS
+# -----------------------------------------------------------------------------
+minimization:
+  enabled: true
+  coordinates_path: *input_coordinates
+  topology_path: *input_topology
+  # Empty uses the directory containing topol.top. Set this only when includes
+  # must be found elsewhere.
+  include_dir: *topology_include_dir
+  output_gro_path: *minimized_gro
+  report_path: *minimization_report
+
+  algorithm: lbfgs  # OpenMM's supported constrained local minimizer.
+  tolerance_kj_mol_nm: 10.0
+  max_iterations: 5000  # Alternative: 0 continues until convergence.
+  constraint_tolerance: 1.0e-5
+
+  # These choices replace the corresponding settings normally supplied by an
+  # MDP file. Match them to the force field and protocol that produced topol.top.
+  nonbonded_method: PME  # Alternatives: LJPME, Ewald, CutoffPeriodic.
+  nonbonded_cutoff_nm: 1.2
+  switch_distance_nm: 1.0  # Alternative: null disables LJ switching.
+  constraints: h_bonds  # Alternatives: none, all_bonds, h_angles.
+  rigid_water: true  # Alternative: false.
+  ewald_error_tolerance: 5.0e-4
+  use_dispersion_correction: false  # Alternative: true.
+
+  platform: auto  # Alternatives: CUDA, HIP, OpenCL, CPU, Reference.
+  precision: mixed  # Alternatives: single or double (platform permitting).
+  device_index: ""  # Example for a selected GPU: "0".
+  # GROMACS preprocessor definitions. Activating restraints must be deliberate.
+  defines: {}  # Alternative: {POSRES: 1}.

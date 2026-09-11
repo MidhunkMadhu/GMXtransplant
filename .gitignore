@@ -23,5 +23,8 @@ venv/
 /cholesterol_reference_aligned.pdb
 /cholesterol_reference_placed.pdb
 /merged_system.pdb
+/minimized.gro
+/minimization_report.txt
+/minimization_report.json
 /.gmxtransplant-*
 /*.backup.*

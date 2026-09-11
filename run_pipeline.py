@@ -33,6 +33,7 @@ silently producing a system with an unintended composition or net charge.
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 import sys
 import sysconfig
@@ -42,7 +43,9 @@ from dataclasses import replace as dc_replace
 import numpy as np
 import MDAnalysis as mda
 
-from config import load_config, ConfigError
+from config import (
+    load_config, load_minimization_config, ConfigError, MinimizationSpec,
+)
 from align import align_replacement_to_box, AlignmentError
 from replace import assemble_replacement, build_environment, ReplaceError
 from replacement_ligands import resolve_replacement_ligands, ReplacementLigandError
@@ -80,13 +83,15 @@ from cholesterol_report import (
     build_report as build_cholesterol_report,
     write_report as write_cholesterol_report,
 )
+from minimization import run_minimization, MinimizationError
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 _EXAMPLE_FILES = {
     "receptor": "receptor_replace.yaml",
     "lig": "ligand_replace.yaml",
     "chl": "cholesterol_restore.yaml",
+    "minimize": "minimization.yaml",
 }
 
 
@@ -669,7 +674,7 @@ def _run_cholesterol(cfg) -> int:
     return 6 if partial_failure else 0
 
 
-def main(config_path: str, mode: str, dry_run: bool = False) -> int:
+def _run_pipeline_mode(config_path: str, mode: str, dry_run: bool = False) -> int:
     try:
         cfg = load_config(config_path, mode=mode, check_paths=not dry_run)
     except ConfigError as e:
@@ -1075,6 +1080,107 @@ def main(config_path: str, mode: str, dry_run: bool = False) -> int:
     return 0
 
 
+def _post_pipeline_minimization_spec(cfg) -> MinimizationSpec:
+    if not cfg.topology.enabled:
+        raise MinimizationError(
+            "Post-pipeline minimization requires topology.enabled: true so the "
+            "newly generated GRO has a matching generated topol.top"
+        )
+    return dc_replace(
+        cfg.minimization,
+        enabled=True,
+        coordinates_path=cfg.output.gro_path,
+        topology_path=os.path.join(cfg.topology.output_dir, "topol.top"),
+    )
+
+
+def _print_minimization_result(report: dict) -> None:
+    print("\n" + "=" * 78)
+    print("OPENMM ENERGY MINIMIZATION")
+    print("=" * 78)
+    print(f"  Status:       {report['status']}")
+    print(f"  Platform:     {report['openmm']['platform']}")
+    print(
+        "  Energy:       "
+        f"{report['before']['potential_energy_kj_mol']:.8g} -> "
+        f"{report['after']['potential_energy_kj_mol']:.8g} kJ/mol"
+    )
+    print(
+        "  RMS force:    "
+        f"{report['before']['rms_force_kj_mol_nm']:.8g} -> "
+        f"{report['after']['rms_force_kj_mol_nm']:.8g} kJ mol^-1 nm^-1"
+    )
+    print(f"  Minimized GRO: {report['outputs']['gro']}")
+    print(f"  Text report:   {report['outputs']['text_report']}")
+    print(f"  JSON report:   {report['outputs']['json_report']}")
+    for warning in report.get("warnings", []):
+        print(f"  WARNING: {warning}")
+
+
+def main(
+    config_path: str,
+    mode: str,
+    dry_run: bool = False,
+    force_minimize: bool = False,
+) -> int:
+    """Run one assembly mode and optionally minimize its validated outputs."""
+    try:
+        cfg = load_config(config_path, mode=mode, check_paths=not dry_run)
+        minimize_requested = force_minimize or cfg.minimization.enabled
+        if minimize_requested:
+            spec = _post_pipeline_minimization_spec(cfg)
+            spec.validate(check_paths=False, require_inputs=True)
+    except (ConfigError, MinimizationError) as exc:
+        print(f"[CONFIG ERROR] {exc}", file=sys.stderr)
+        return 2
+
+    result = _run_pipeline_mode(config_path, mode, dry_run=dry_run)
+    if result != 0 or not minimize_requested:
+        return result
+    if dry_run:
+        print("  minimization: OpenMM L-BFGS requested after successful assembly")
+        print(f"  minimized GRO: {spec.output_gro_path}")
+        print(f"  minimization reports: {spec.report_path}.txt / {spec.report_path}.json")
+        return 0
+    try:
+        report = run_minimization(spec)
+    except MinimizationError as exc:
+        print(f"[MINIMIZATION ERROR] {exc}", file=sys.stderr)
+        return 7
+    _print_minimization_result(report)
+    return 0 if report["converged"] else 7
+
+
+def _run_standalone_minimization(config_path: str | None, dry_run: bool) -> int:
+    try:
+        if config_path:
+            spec = load_minimization_config(config_path, check_paths=not dry_run)
+        else:
+            spec = MinimizationSpec(
+                enabled=True,
+                coordinates_path="step5_input.gro",
+                topology_path="topol.top",
+            )
+            spec.validate(check_paths=not dry_run, require_inputs=True)
+    except ConfigError as exc:
+        print(f"[CONFIG ERROR] {exc}", file=sys.stderr)
+        return 2
+    if dry_run:
+        print("Standalone minimization dry-run passed (schema and values only).")
+        print(f"  coordinates: {spec.coordinates_path}")
+        print(f"  topology: {spec.topology_path}")
+        print(f"  minimized GRO: {spec.output_gro_path}")
+        print(f"  reports: {spec.report_path}.txt / {spec.report_path}.json")
+        return 0
+    try:
+        report = run_minimization(spec)
+    except MinimizationError as exc:
+        print(f"[MINIMIZATION ERROR] {exc}", file=sys.stderr)
+        return 7
+    _print_minimization_result(report)
+    return 0 if report["converged"] else 7
+
+
 def _build_cli_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gmxtransplant",
@@ -1092,10 +1198,17 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true",
         help="validate configuration schema/values without opening configured input paths",
     )
+    parser.add_argument(
+        "--minimize", action="store_true",
+        help=(
+            "with --mode, minimize the newly assembled system; without --mode, "
+            "minimize an existing GRO/topol.top pair"
+        ),
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
         "--show-example",
-        choices=("receptor", "lig", "chl"),
+        choices=("receptor", "lig", "chl", "minimize"),
         metavar="MODE",
         help="print a bundled mode-specific YAML example and exit",
     )
@@ -1107,15 +1220,24 @@ def cli(argv=None) -> int:
     parser = _build_cli_parser()
     cli_args = parser.parse_args(argv)
     if cli_args.show_example:
+        if cli_args.minimize or cli_args.mode or cli_args.input:
+            parser.error("--show-example cannot be combined with --mode, --input, or --minimize")
         try:
             sys.stdout.write(_read_example(cli_args.show_example))
         except ConfigError as exc:
             parser.error(str(exc))
         return 0
+    if cli_args.minimize and not cli_args.mode:
+        return _run_standalone_minimization(cli_args.input, cli_args.dry_run)
     if not cli_args.mode or not cli_args.input:
         parser.error("--mode and --input are required unless --show-example is used")
     try:
-        return main(cli_args.input, cli_args.mode, dry_run=cli_args.dry_run)
+        return main(
+            cli_args.input,
+            cli_args.mode,
+            dry_run=cli_args.dry_run,
+            force_minimize=cli_args.minimize,
+        )
     except Exception:
         traceback.print_exc()
         return 1

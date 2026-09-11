@@ -24,6 +24,8 @@ paths:
   inspection_pdb: &inspection_pdb aligned_receptor_inspection.pdb
   index: &index index.ndx
   reference_gro: &reference_gro null
+  minimized_gro: &minimized_gro minimized.gro
+  minimization_report: &minimization_report minimization_report
 
 # -----------------------------------------------------------------------------
 # 2. STRUCTURES AND SELECTIONS
@@ -149,3 +151,31 @@ output:
   gro_path: *final_gro
   report_path: *report_prefix
   inspection_pdb_path: *inspection_pdb
+
+# -----------------------------------------------------------------------------
+# 7. OPTIONAL OPENMM ENERGY MINIMIZATION
+# -----------------------------------------------------------------------------
+# Set enabled: true or add --minimize to the run command. In either case the
+# freshly generated final_gro and topology_output_dir/topol.top are used.
+minimization:
+  enabled: false  # Alternative: true runs minimization after assembly.
+  coordinates_path: ""  # Standalone-only; ignored after an assembly mode.
+  topology_path: ""  # Standalone-only; ignored after an assembly mode.
+  include_dir: ""  # Empty uses the directory containing topol.top.
+  output_gro_path: *minimized_gro
+  report_path: *minimization_report
+  algorithm: lbfgs  # OpenMM's supported constrained local minimizer.
+  tolerance_kj_mol_nm: 10.0
+  max_iterations: 5000  # Alternative: 0 continues until convergence.
+  constraint_tolerance: 1.0e-5
+  nonbonded_method: PME  # Alternatives: LJPME, Ewald, CutoffPeriodic.
+  nonbonded_cutoff_nm: 1.2
+  switch_distance_nm: 1.0  # Alternative: null disables LJ switching.
+  constraints: h_bonds  # Alternatives: none, all_bonds, h_angles.
+  rigid_water: true  # Alternative: false.
+  ewald_error_tolerance: 5.0e-4
+  use_dispersion_correction: false  # Alternative: true.
+  platform: auto  # Alternatives: CUDA, HIP, OpenCL, CPU, Reference.
+  precision: mixed  # Alternatives: single or double (platform permitting).
+  device_index: ""  # Example for a selected GPU: "0".
+  defines: {}  # Alternative: {POSRES: 1} activates topology position restraints.
