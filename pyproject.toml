@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "GMXtransplant"
-version = "0.2.0"
+version = "0.3.0"
 description = "Insert receptor-ligand systems or experimental cholesterol into prepared GROMACS membrane environments"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -52,6 +52,7 @@ py-modules = [
   "ligand_replace",
   "masks",
   "minimization",
+  "minimization_bundle",
   "namefix",
   "ndx",
   "output",

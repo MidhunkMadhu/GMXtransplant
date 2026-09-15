@@ -28,8 +28,6 @@ paths:
   inspection_pdb: aligned_ligand_inspection.pdb
   index: index.ndx
   reference_gro: null
-  minimized_gro: minimized.gro
-  minimization_report: minimization_report
 
 # -----------------------------------------------------------------------------
 # 2. SYSTEM, LIGANDS, AND PLACEMENT
@@ -152,37 +150,53 @@ output:
   inspection_pdb_path: "${inspection_pdb}"
 
 # -----------------------------------------------------------------------------
-# 6. OPTIONAL OPENMM ENERGY MINIMIZATION
+# OPTIONAL MINIMIZATION INPUT PREPARATION
 # -----------------------------------------------------------------------------
-# Set enabled: true or add --minimize to the run command. The freshly generated
-# final_gro and topology_output_dir/topol.top are always used after assembly.
-# Requires OpenMM and topology.enabled: true. These settings control forces like
-# an MDP would; no MDP is read. Review them against your force field/protocol.
-# Minimization relaxes coordinates; it does not replace equilibration.
+# Preparation only: no minimizer is launched by GMXtransplant.
+# Requires topology.enabled: true after assembly. Both folders are portable.
 minimization:
-  enabled: false  # Alternative: true runs minimization after assembly.
-  coordinates_path: ""  # Standalone-only; ignored after an assembly mode.
-  topology_path: ""  # Standalone-only; ignored after an assembly mode.
-  include_dir: ""  # Empty uses the directory containing topol.top.
-  output_gro_path: "${minimized_gro}"
-  report_path: "${minimization_report}"
-  algorithm: lbfgs  # Only supported algorithm (OpenMM constrained minimizer).
-  tolerance_kj_mol_nm: 10.0  # RMS objective-gradient tolerance; smaller is tighter.
-  max_iterations: 5000  # Alternative: 0 continues until convergence.
-  constraint_tolerance: 1.0e-5  # Relative constraint error, between 0 and 1.
-  nonbonded_method: PME  # Periodic alternatives: LJPME, Ewald, CutoffPeriodic.
-  # Also accepted: CutoffNonPeriodic or NoCutoff, for deliberately nonperiodic
-  # calculations; these do not represent the usual periodic membrane system.
-  nonbonded_cutoff_nm: 1.2  # nm, not Å; must fit the periodic cell.
-  switch_distance_nm: 1.0  # nm, below cutoff; null or 0 disables LJ switching.
-  constraints: h_bonds  # Alternatives: none, all_bonds, h_angles.
-  rigid_water: true  # false allows flexibility unless topology constrains it.
-  ewald_error_tolerance: 5.0e-4  # PME/Ewald accuracy; smaller is more expensive.
-  use_dispersion_correction: false  # Alternative: true.
-  # auto tries CUDA, HIP, OpenCL, CPU, then Reference among installed platforms.
-  platform: auto  # Explicit alternative: CUDA, HIP, OpenCL, CPU, Reference.
-  precision: mixed  # Alternatives: single or double.
-  device_index: ""  # Example: "0".
-  # Preprocessor symbols, only effective if the topology contains matching guards.
-  # Parser support for active directives still applies; this is not an MDP.
-  defines: {}  # Example: {CUSTOM_PARAMETER_SET: 1}.
+  enabled: false  # true prepares folders after successful assembly.
+  output_dir: minimization_inputs
+  engines: [gromacs, openmm]
+  coordinates_path: ""  # Standalone-only; assembly uses its freshly written GRO.
+  topology_path: ""     # Standalone-only; assembly uses its generated topol.top.
+  include_dir: ""
+  resources:
+    cpus_per_task: 8
+    gromacs_mpi_tasks: 1
+    time: "00:30:00"
+    memory: 8G
+  # GROMACS settings are independent of the OpenMM fields below.
+  # Review these defaults against your source force-field protocol.
+  gromacs:
+    integrator: steep
+    emtol: 100.0  # Maximum force, kJ/mol/nm; not an RMS tolerance.
+    emstep: 0.01
+    nsteps: 5000
+    constraints: h-bonds
+    coulombtype: PME
+    rcoulomb: 1.2
+    vdwtype: Cut-off
+    vdw_modifier: Force-switch  # Also Potential-switch, Potential-shift, None.
+    rvdw_switch: 1.0
+    rvdw: 1.2
+    disp_corr: "no"
+    ewald_rtol: 5.0e-4
+    defines: {}
+    restrained_defines: {}  # Optional {POSRES: 1}; requires existing restraint ITPs.
+  # OpenMM settings. No OpenMM installation is needed to prepare this folder.
+  algorithm: lbfgs
+  tolerance_kj_mol_nm: 10.0  # RMS minimizer objective gradient, not GROMACS Fmax.
+  max_iterations: 5000
+  constraint_tolerance: 1.0e-5
+  nonbonded_method: PME  # Alternative: CutoffPeriodic.
+  nonbonded_cutoff_nm: 1.2
+  switch_distance_nm: 1.0  # Potential switch, not GROMACS force switching.
+  constraints: h_bonds
+  rigid_water: true
+  ewald_error_tolerance: 5.0e-4
+  use_dispersion_correction: false
+  platform: CPU  # GPU submission overrides this explicitly; no silent fallback.
+  precision: mixed
+  device_index: ""  # Scheduler controls visible devices by default.
+  defines: {}  # Active position_restraints are unsupported for OpenMM export.
