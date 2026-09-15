@@ -68,9 +68,9 @@ def build_report_dict(
     else:
         inputs = {
             "target_box": config.target_box.path,
-            "target_box_receptor_mask": config.target_box.receptor_mask,
+            "target_box_protein_mask": config.target_box.protein_mask,
             "replacement_structure": config.replacement_structure.path,
-            "replacement_structure_receptor_mask": config.replacement_structure.receptor_mask,
+            "replacement_structure_protein_mask": config.replacement_structure.protein_mask,
         }
         alignment = {
             "method": config.alignment.method,
@@ -84,14 +84,14 @@ def build_report_dict(
             "rmsd_before_angstrom": align_res.rmsd_before,
             "rmsd_after_angstrom": align_res.rmsd_after,
             "n_residues_in_replacement_block": len(align_res.mobile_block_global_resnums),
-            "n_residues_in_original_receptor_block": len(align_res.target_block_global_resnums),
+            "n_residues_in_original_protein_block": len(align_res.target_block_global_resnums),
             "notes": align_res.notes,
         }
         replacement = {
             "selection_policy": (
-                "insert every residue selected by replacement_structure.receptor_mask"
+                "insert every residue selected by replacement_structure.protein_mask"
             ),
-            "n_original_receptor_atoms_removed": rep_res.n_original_receptor_atoms_removed,
+            "n_original_protein_atoms_removed": rep_res.n_original_protein_atoms_removed,
             "n_replacement_atoms_inserted": rep_res.n_replacement_atoms_inserted,
             "inserted_residue_counts": rep_res.inserted_residue_counts,
             "replacement_ligands": [
@@ -114,7 +114,7 @@ def build_report_dict(
     return {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "box_validation": getattr(original_universe, "box_preflight", None),
-        "mode": "ligand_replace" if ligand_replace_result is not None else "receptor_replace",
+        "mode": "ligand_replace" if ligand_replace_result is not None else "protein_replace",
         "inputs": inputs,
         "name_restoration": None if not namefix_summary else {
             label: {
@@ -187,8 +187,8 @@ def build_report_dict(
         },
         "charge": {
             "unknown_resnames": charge_report.unknown_resnames,
-            "charge_original_receptor": charge_report.charge_original_receptor,
-            "charge_replacement_receptor": charge_report.charge_replacement_receptor,
+            "charge_original_protein": charge_report.charge_original_protein,
+            "charge_replacement_protein": charge_report.charge_replacement_protein,
             "charge_diff_from_replacement": charge_report.charge_diff_from_replacement,
             "charge_removed_by_clashes": charge_report.charge_removed_by_clashes,
             "charge_removed_by_class": charge_report.charge_removed_by_class,
@@ -241,7 +241,7 @@ def render_text_report(d: Dict[str, Any]) -> str:
     A(
         "LIGAND REPLACEMENT WORKFLOW - VALIDATION REPORT"
         if lr_mode else
-        "RECEPTOR REPLACEMENT WORKFLOW - VALIDATION REPORT"
+        "PROTEIN REPLACEMENT WORKFLOW - VALIDATION REPORT"
     )
     A(f"Generated: {d['generated_at_utc']}")
     A("=" * 78)
@@ -254,9 +254,9 @@ def render_text_report(d: Dict[str, Any]) -> str:
         A(f"  inserted as resname:   {d['inputs']['new_ligand_resname']}")
     else:
         A(f"Target box:            {d['inputs']['target_box']}")
-        A(f"  receptor mask removed: {d['inputs']['target_box_receptor_mask']}")
+        A(f"  protein mask removed: {d['inputs']['target_box_protein_mask']}")
         A(f"Replacement structure:   {d['inputs']['replacement_structure']}")
-        A(f"  receptor mask used:    {d['inputs']['replacement_structure_receptor_mask']}")
+        A(f"  protein mask used:    {d['inputs']['replacement_structure_protein_mask']}")
 
     nrfix = d.get("name_restoration")
     if nrfix:
@@ -295,7 +295,7 @@ def render_text_report(d: Dict[str, Any]) -> str:
 
     if lr_mode:
         lrp = d["ligand_replacement"]
-        A("\n--- 1. LIGAND REPLACEMENT (receptor/membrane/solvent/ions untouched) ---")
+        A("\n--- 1. LIGAND REPLACEMENT (protein/membrane/solvent/ions untouched) ---")
         A(f"Fit method:                    {lrp['fit_method']}")
         A(f"Original ligand resname:       {lrp['old_ligand_resname']}")
         A(f"New ligand resname:            {lrp['new_ligand_resname']}")
@@ -314,19 +314,19 @@ def render_text_report(d: Dict[str, Any]) -> str:
             # PyMOL-flavored one below (which would otherwise print
             # "RMSD after outlier rejection" for a fit that never rejected
             # any outliers, and a meaningless "Refinement cycles executed: 0").
-            A("\n--- 1. RECEPTOR ALIGNMENT (mask_fit: direct Kabsch/SVD fit, no outlier rejection) ---")
+            A("\n--- 1. PROTEIN ALIGNMENT (mask_fit: direct Kabsch/SVD fit, no outlier rejection) ---")
             A(f"Method:                        {al['method']}")
             A(f"Fit selection:                 {al['fit_selection']}")
             A(f"Residues in replacement block: {al['n_residues_in_replacement_block']}")
-            A(f"Residues in box receptor block:{al['n_residues_in_original_receptor_block']}")
+            A(f"Residues in box protein block:{al['n_residues_in_original_protein_block']}")
             A(f"Atom pairs fit (positional):   {al['n_atom_pairs_after_refinement']}")
             A(f"RMSD (positionally-matched fit, no outlier rejection): {_f(al['rmsd_after_angstrom'])} A")
         else:
-            A("\n--- 1. RECEPTOR ALIGNMENT (PyMOL automatic align) ---")
+            A("\n--- 1. PROTEIN ALIGNMENT (PyMOL automatic align) ---")
             A(f"Method:                        {al['method']}")
             A(f"Fit selection:                 {al['fit_selection']}")
             A(f"Residues in replacement block: {al['n_residues_in_replacement_block']}")
-            A(f"Residues in box receptor block:{al['n_residues_in_original_receptor_block']}")
+            A(f"Residues in box protein block:{al['n_residues_in_original_protein_block']}")
             A(f"Atom pairs used (initial fit): {al['n_atom_pairs_before_refinement']}")
             A(f"Atom pairs used (final fit):   {al['n_atom_pairs_after_refinement']}")
             A(f"Excluded as outliers:          {al['excluded_as_outliers']}")
@@ -337,9 +337,9 @@ def render_text_report(d: Dict[str, Any]) -> str:
             A(f"NOTE: {n}")
 
         rp = d["replacement"]
-        A("\n--- 2. RECEPTOR BLOCK REPLACEMENT ---")
+        A("\n--- 2. PROTEIN BLOCK REPLACEMENT ---")
         A(f"Selection policy:                  {rp['selection_policy']}")
-        A(f"Original receptor atoms removed:   {rp['n_original_receptor_atoms_removed']}")
+        A(f"Original protein atoms removed:   {rp['n_original_protein_atoms_removed']}")
         A(f"Replacement atoms inserted:        {rp['n_replacement_atoms_inserted']}")
         A(f"Inserted residue counts:           {rp['inserted_residue_counts']}")
         if rp["replacement_ligands"]:
@@ -390,10 +390,10 @@ def render_text_report(d: Dict[str, Any]) -> str:
         A(f"UNKNOWN RESIDUE CHARGES (must be supplied in config): {ch['unknown_resnames']}")
         A(f"STOPPED: {ch['stopped_reason']}")
     else:
-        label_orig = "original ligand" if lr_mode else "original receptor block"
-        label_new = "new ligand" if lr_mode else "replacement receptor block"
-        A(f"Charge of {label_orig}:".ljust(41) + f"{_f(ch['charge_original_receptor'])} e")
-        A(f"Charge of {label_new}:".ljust(41) + f"{_f(ch['charge_replacement_receptor'])} e")
+        label_orig = "original ligand" if lr_mode else "original protein block"
+        label_new = "new ligand" if lr_mode else "replacement protein block"
+        A(f"Charge of {label_orig}:".ljust(41) + f"{_f(ch['charge_original_protein'])} e")
+        A(f"Charge of {label_new}:".ljust(41) + f"{_f(ch['charge_replacement_protein'])} e")
         A("Charge diff (new - original):".ljust(41) + f"{_f(ch['charge_diff_from_replacement'])} e")
         A(f"Charge removed by clash deletion:        {_f(ch['charge_removed_by_clashes'])} e "
           f"{ch['charge_removed_by_class']}")

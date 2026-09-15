@@ -14,6 +14,7 @@ import numpy as np
 
 from config import MinimizationSpec
 from output import _promote_staged_outputs
+from minimization_restraints import add_heavy_atom_restraints
 
 
 class MinimizationError(RuntimeError):
@@ -227,6 +228,8 @@ def _render_text_report(report: dict) -> str:
         f"OpenMM version: {report['openmm']['version']}",
         f"Platform: {report['openmm']['platform']}",
         f"Platform properties: {report['openmm']['properties']}",
+        f"Positional restraints: {report['positional_restraints']}",
+        f"Energy definition: {report['energy_definition']}",
         f"Algorithm: {settings['algorithm']}",
         f"Nonbonded method: {settings['nonbonded_method']}",
         f"Cutoff / switch (nm): {settings['nonbonded_cutoff_nm']} / "
@@ -317,6 +320,8 @@ def run_minimization(spec: MinimizationSpec) -> dict:
             switchDistance=switch_distance,
             useDispersionCorrection=spec.use_dispersion_correction,
         )
+        restraints, restrained_indices = add_heavy_atom_restraints(
+            openmm, unit, top, system, gro.getPositions(), spec)
         simulation, integrator, platform_name, properties, platform_failures = (
             _create_simulation(openmm, app, unit, top.topology, system, spec)
         )
@@ -342,6 +347,14 @@ def run_minimization(spec: MinimizationSpec) -> dict:
         final_energy = _energy_kj_mol(final_state, unit)
         final_rms, final_max = _force_statistics(final_state, unit)
         positions = final_state.getPositions(asNumpy=True).value_in_unit(unit.angstrom)
+        displacement = (positions - np.asarray(gro.getPositions().value_in_unit(unit.angstrom)))[restrained_indices]
+        if restraints["periodic"]:
+            box = np.asarray(box_vectors.value_in_unit(unit.angstrom))
+            fractional = displacement @ np.linalg.inv(box)
+            displacement = (fractional - np.round(fractional)) @ box
+        distances = np.linalg.norm(displacement, axis=1)
+        restraints["rms_displacement_angstrom"] = float(np.sqrt(np.mean(distances ** 2)))
+        restraints["max_displacement_angstrom"] = float(np.max(distances))
     except MinimizationError:
         raise
     except Exception as exc:
@@ -374,6 +387,8 @@ def run_minimization(spec: MinimizationSpec) -> dict:
             "json_report": report_json,
         },
         "system": {"particles": topology_count},
+        "positional_restraints": restraints,
+        "energy_definition": "force-field potential plus protein/ligand positional restraints",
         "minimizer_progress": {
             "reporter_callbacks": progress.callback_count,
             "constraint_restraint_stages": progress.restraint_stages,
@@ -419,7 +434,7 @@ def run_minimization(spec: MinimizationSpec) -> dict:
     }
     if final_energy > initial_energy:
         report["warnings"].append(
-            "The physical potential energy increased. OpenMM minimizes a combined "
+            "The potential energy including positional restraints increased. OpenMM minimizes a combined "
             "potential-plus-constraint-restraint objective while satisfying constraints."
         )
     if not converged:

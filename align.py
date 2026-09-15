@@ -4,7 +4,7 @@ PyMOL-based automatic structural alignment.
 Uses PyMOL's built-in ``align`` (sequence alignment via Needleman-Wunsch +
 iterative outlier-rejection superposition) or ``cealign`` (structure-based,
 sequence-independent) to compute the rotation/translation that best
-superposes the replacement receptor block onto the receptor already
+superposes the replacement protein block onto the protein already
 present in the original simulation box, and applies that transform to
 every atom of the replacement block (not just the atoms used for the fit).
 """
@@ -124,21 +124,21 @@ def _write_block_pdb(universe: "mda.Universe", block_ag, global_nums: List[int],
 def align_replacement_to_box(
     original_universe: "mda.Universe",
     replacement_universe: "mda.Universe",
-    original_receptor_mask: str,
-    replacement_receptor_mask: str,
+    original_protein_mask: str,
+    replacement_protein_mask: str,
     alignment: AlignmentSpec,
     workdir: str,
 ) -> AlignmentResult:
     os.makedirs(workdir, exist_ok=True)
 
-    target_full_ag = resolve_mask(original_universe, original_receptor_mask)
-    mobile_full_ag = resolve_mask(replacement_universe, replacement_receptor_mask)
+    target_full_ag = resolve_mask(original_universe, original_protein_mask)
+    mobile_full_ag = resolve_mask(replacement_universe, replacement_protein_mask)
 
     target_global_nums = residue_cpptraj_numbers(target_full_ag, original_universe).tolist()
     mobile_global_nums = residue_cpptraj_numbers(mobile_full_ag, replacement_universe).tolist()
 
-    region_orig_mask = alignment.region_mask_original or original_receptor_mask
-    region_repl_mask = alignment.region_mask_replacement or replacement_receptor_mask
+    region_orig_mask = alignment.region_mask_original or original_protein_mask
+    region_repl_mask = alignment.region_mask_replacement or replacement_protein_mask
 
     region_orig_ag = resolve_mask(original_universe, region_orig_mask)
     region_repl_ag = resolve_mask(replacement_universe, region_repl_mask)
@@ -172,19 +172,19 @@ def align_replacement_to_box(
     if missing_orig:
         notes.append(
             f"alignment.region_mask_original selects {len(missing_orig)} residue(s) outside "
-            f"target_box.receptor_mask; they will be ignored for the fit."
+            f"target_box.protein_mask; they will be ignored for the fit."
         )
     if missing_repl:
         notes.append(
             f"alignment.region_mask_replacement selects {len(missing_repl)} residue(s) outside "
-            f"replacement_structure.receptor_mask; they will be ignored for the fit."
+            f"replacement_structure.protein_mask; they will be ignored for the fit."
         )
     region_orig_global &= set(target_global_nums)
     region_repl_global &= set(mobile_global_nums)
     if not region_orig_global or not region_repl_global:
         raise AlignmentError("Alignment region resolved to zero residues on one side; check masks.")
 
-    # Atoms outside the receptor_mask block are dropped from the fit
+    # Atoms outside the protein_mask block are dropped from the fit
     # selection (same policy the pymol_* methods below apply via their own
     # local-resi intersection; the notes above already warn if this
     # happened).
@@ -219,7 +219,7 @@ def align_replacement_to_box(
         # iterative outlier rejection. A plain Kabsch/SVD best fit is
         # computed over the atom selections encoded directly in the masks and
         # applied rigidly to every atom of the WHOLE replacement
-        # receptor_mask block -- same "fit on a subset, move the whole
+        # protein_mask block -- same "fit on a subset, move the whole
         # block" behavior as the pymol_* methods, just without PyMOL.
         fit_target_ag = region_orig_ag
         fit_mobile_ag = region_repl_ag
@@ -230,10 +230,10 @@ def align_replacement_to_box(
                 f"the same number of atoms -- they are matched positionally (cpptraj-style: no "
                 f"sequence alignment, no outlier rejection), so a count mismatch means the "
                 f"pairing would be wrong even if it didn't error. Got {len(fit_target_ag)} "
-                f"atom(s) from target_box (region_mask_original, or target_box.receptor_mask if "
+                f"atom(s) from target_box (region_mask_original, or target_box.protein_mask if "
                 "unset) vs "
                 f"{len(fit_mobile_ag)} atom(s) from replacement_structure (region_mask_replacement, "
-                "or replacement_structure.receptor_mask if unset). Adjust the masks "
+                "or replacement_structure.protein_mask if unset). Adjust the masks "
                 f"so both sides select the same residues, in the same order."
             )
         if len(fit_target_ag) == 0:
@@ -294,7 +294,7 @@ def align_replacement_to_box(
             f"atom pair(s) selected directly by the region masks, RMSD {rmsd_after:.3f} A; no "
             f"sequence alignment, no outlier rejection (equivalent to cpptraj's "
             f"'rms <ref_mask> <mask>' given two explicit masks). Applied rigidly to all "
-            f"{len(mobile_full_ag)} atoms of the replacement receptor_mask block."
+            f"{len(mobile_full_ag)} atoms of the replacement protein_mask block."
         )
         return AlignmentResult(
             rmsd_before=float("nan"),  # not meaningful here: the two files' raw coordinate

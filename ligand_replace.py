@@ -1,7 +1,7 @@
 """
 Ligand-only replacement mode.
 
-A special case of the whole workflow: the receptor, membrane, water, and
+A special case of the whole workflow: the protein, membrane, water, and
 ions do NOT change at all. Only one ligand inside an existing, otherwise
 untouched structure is swapped for a different one, supplied as its own
 separate coordinate file (optionally with its own topology .itp).
@@ -13,7 +13,7 @@ Three ways to position the incoming ligand:
                   is a plain Kabsch/SVD best-fit rotation+translation over
                   just those atoms, then applied to every atom of the new
                   ligand -- no sequence alignment, no PyMOL involved (that
-                  machinery in align.py is for the receptor's much larger,
+                  machinery in align.py is for the protein's much larger,
                   sequence-based alignment problem; a handful of named atom
                   pairs on a small molecule doesn't need it).
   - "autofit"  -- automatically match every heavy atom by its unique atom
@@ -24,8 +24,8 @@ Three ways to position the incoming ligand:
                   transformation at all. For when you've already positioned
                   it yourself (e.g. docked directly into this structure).
 
-After the swap, the SAME downstream steps as the receptor-replacement flow
-apply unchanged: PBC-aware clash detection (with the untouched receptor
+After the swap, the SAME downstream steps as the protein-replacement flow
+apply unchanged: PBC-aware clash detection (with the untouched protein
 itself automatically protected -- see run_pipeline.py), charge accounting
 and neutralization, PDB/GRO output, and (if enabled) topology/index
 generation.

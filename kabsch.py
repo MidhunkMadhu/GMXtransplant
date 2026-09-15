@@ -27,7 +27,7 @@ def kabsch_fit(mobile_coords: np.ndarray, ref_coords: np.ndarray):
 
     Returns (R, mobile_centroid, ref_centroid, rmsd). To apply the same
     transform to any other point set X (e.g. every atom of a ligand/
-    receptor, not just the fit subset):
+    protein, not just the fit subset):
         X_fitted = (R @ (X - mobile_centroid).T).T + ref_centroid
     """
     if mobile_coords.shape != ref_coords.shape:

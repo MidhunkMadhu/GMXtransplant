@@ -81,7 +81,7 @@ class ConfigurationSafetyTests(unittest.TestCase):
     def test_examples_with_and_without_comments_are_equivalent(self):
         from run_pipeline import cli
 
-        for mode in ("receptor", "lig", "chl", "minimize"):
+        for mode in ("protein", "lig", "chl", "minimize"):
             with self.subTest(mode=mode):
                 versions = []
                 for option in ("--comments", "--no-comments"):
@@ -97,9 +97,9 @@ class ConfigurationSafetyTests(unittest.TestCase):
                         self.assertEqual(config.coordinates_path, "step5_input.gro")
                     else:
                         config = load_config(path, mode=mode, check_paths=False)
-                        if mode == "receptor":
+                        if mode == "protein":
                             self.assertEqual(len(config.replacement_ligands), 2)
-                            self.assertEqual(config.replacement_structure.receptor_mask, ":1-963")
+                            self.assertEqual(config.replacement_structure.protein_mask, ":1-963")
                             self.assertEqual(config.replacement_ligands[1].itp_path,
                                              "inputs/replacement/toppar/LIG2.itp")
                 self.assertEqual(*versions)

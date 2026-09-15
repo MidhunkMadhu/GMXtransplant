@@ -3,7 +3,7 @@ PBC-aware steric clash detection and whole-molecule removal.
 
 Flags any environment residue (lipid / water / ion / other) that has at
 least one atom within a configurable, per-class distance threshold of the
-inserted receptor+ligand block, then removes that residue in its
+inserted protein+ligand block, then removes that residue in its
 entirety -- never a partial residue -- using minimum-image-convention
 distances so clashes across periodic boundaries are not missed.
 """
@@ -51,7 +51,7 @@ class RemovedMolecule:
     n_atoms: int
     cutoff_used: float = 0.0
     # The specific atom pair that produced min_distance -- env side (e.g.
-    # the lipid atom) and the inserted-block side (e.g. the receptor/ligand
+    # the lipid atom) and the inserted-block side (e.g. the protein/ligand
     # atom), so a flagged contact is actually actionable, not just "some
     # atom of this residue is close." Empty string if unavailable.
     contact_env_atom: str = ""
@@ -163,7 +163,7 @@ def detect_and_remove_clashes(
     resindex_to_resid = dict(zip(environment_ag.resindices, environment_ag.resids))
 
     # Preserve the exact closest atom pair. Every removal candidate comes only
-    # from a contact with the newly inserted receptor/ligand block. Contacts
+    # from a contact with the newly inserted protein/ligand block. Contacts
     # among molecules already present in the equilibrated environment are not
     # clash-removal candidates.
     closest_contact = {}

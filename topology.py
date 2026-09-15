@@ -10,8 +10,8 @@ How this works, and the assumptions it makes
 You point it at two existing, already-correct CHARMM-GUI GROMACS
 directories:
 
-  receptor_toppar_dir     -- the toppar/ folder belonging to whichever
-                              structure the NEW receptor (and, usually,
+  protein_toppar_dir     -- the toppar/ folder belonging to whichever
+                              structure the NEW protein (and, usually,
                               its ligand) came from. Its OWN sibling
                               topol.top (one directory up) is read
                               automatically -- not configured separately
@@ -36,14 +36,14 @@ final assembled Universe, never from either template's own counts.
 
 Moleculetype-name resolution:
   - A protein chain's moleculetype name is read positionally from
-    receptor_toppar_dir's sibling topol.top's own [ molecules ] section
+    protein_toppar_dir's sibling topol.top's own [ molecules ] section
     (filtered to entries whose ITP contains at least one standard amino
     acid). This includes protein moleculetypes with caps, patched termini,
     or nonstandard covalent residues. Each molecule instance is one chain.
   - A ligand/cofactor resname's moleculetype name is found by scanning
-    every .itp under receptor_toppar_dir, `ligand_itp_paths`, AND
+    every .itp under protein_toppar_dir, `ligand_itp_paths`, AND
     environment_toppar_dir for a moleculetype whose atoms use that
-    resname. In receptor mode, each `replacement_ligands[].itp_path` is
+    resname. In protein mode, each `replacement_ligands[].itp_path` is
     added to `ligand_itp_paths` automatically, so it need not be repeated.
   - A lipid/ion resname is matched to the ITP whose [ atoms ] rows use that
     resname. Zero matches or multiple matches are errors unless an explicit
@@ -215,7 +215,7 @@ def _parse_replacement_itp_definitions(replacement_ligand_itp_paths):
 
     Replacement ITPs are authoritative for every moleculetype they define.
     They are parsed as a separate pool so that an old ligand definition found
-    while scanning the receptor/environment templates cannot win merely due to
+    while scanning the protein/environment templates cannot win merely due to
     traversal order. Conflicts between replacement ITPs remain errors.
     """
     definitions: Dict[str, ITPMoleculeType] = {}
@@ -275,7 +275,7 @@ def collect_topology_definitions(
 
     seen_dirs = set()
     for directory in (
-        topology_cfg.receptor_toppar_dir,
+        topology_cfg.protein_toppar_dir,
         topology_cfg.environment_toppar_dir,
     ):
         normalized = os.path.realpath(directory)
@@ -300,7 +300,7 @@ def collect_topology_definitions(
 
 @dataclass
 class TopologyChargeModel:
-    layout: "ReceptorChainLayout"
+    layout: "ProteinChainLayout"
     definitions: Dict[str, ITPMoleculeType]
     files: Dict[str, str]
     resname_to_mtype: Dict[str, str]
@@ -318,7 +318,7 @@ def build_topology_charge_model(
     topology_cfg, nonprotein_resnames, replacement_ligand_itp_paths=()
 ) -> TopologyChargeModel:
     """Resolve exact ITP charge sources for every requested nonprotein name."""
-    layout = build_receptor_chain_layout(topology_cfg)
+    layout = build_protein_chain_layout(topology_cfg)
     definitions, files = collect_topology_definitions(
         topology_cfg, replacement_ligand_itp_paths
     )
@@ -388,8 +388,8 @@ class MoleculeEntry:
 
 
 @dataclass
-class ReceptorChainLayout:
-    """Protein molecule instances from the receptor reference topology."""
+class ProteinChainLayout:
+    """Protein molecule instances from the protein reference topology."""
 
     template_top: str
     moleculetypes: List[str]
@@ -402,26 +402,26 @@ class ReceptorChainLayout:
         return sum(self.atom_counts)
 
 
-def receptor_template_top_path(topology_cfg) -> str:
-    if topology_cfg.receptor_template_top:
-        return topology_cfg.receptor_template_top
+def protein_template_top_path(topology_cfg) -> str:
+    if topology_cfg.protein_template_top:
+        return topology_cfg.protein_template_top
     return os.path.join(
-        os.path.dirname(os.path.normpath(topology_cfg.receptor_toppar_dir)),
+        os.path.dirname(os.path.normpath(topology_cfg.protein_toppar_dir)),
         "topol.top",
     )
 
 
-def build_receptor_chain_layout(topology_cfg) -> ReceptorChainLayout:
-    """Read protein molecule boundaries from topol.top and receptor ITPs.
+def build_protein_chain_layout(topology_cfg) -> ProteinChainLayout:
+    """Read protein molecule boundaries from topol.top and protein ITPs.
 
-    A moleculetype is receptor protein when its ITP contains at least one
+    A moleculetype is a protein when its ITP contains at least one
     recognized amino-acid residue. This deliberately allows the same molecule
     to contain caps, patched termini, or non-standard covalent residues.
     """
-    top_path = receptor_template_top_path(topology_cfg)
+    top_path = protein_template_top_path(topology_cfg)
     if not os.path.isfile(top_path):
-        raise TopologyError(f"Receptor reference topology does not exist: '{top_path}'")
-    definitions, _files = scan_toppar_definitions(topology_cfg.receptor_toppar_dir)
+        raise TopologyError(f"Protein reference topology does not exist: '{top_path}'")
+    definitions, _files = scan_toppar_definitions(topology_cfg.protein_toppar_dir)
     moleculetypes: List[str] = []
     atom_counts: List[int] = []
     charges: List[float] = []
@@ -437,10 +437,10 @@ def build_receptor_chain_layout(topology_cfg) -> ReceptorChainLayout:
             chain_definitions.append(definition)
     if not moleculetypes:
         raise TopologyError(
-            f"No receptor protein moleculetype was found by comparing '{top_path}' "
-            f"with ITP files under '{topology_cfg.receptor_toppar_dir}'."
+            f"No protein moleculetype was found by comparing '{top_path}' "
+            f"with ITP files under '{topology_cfg.protein_toppar_dir}'."
         )
-    return ReceptorChainLayout(
+    return ProteinChainLayout(
         template_top=top_path,
         moleculetypes=moleculetypes,
         atom_counts=atom_counts,
@@ -449,12 +449,12 @@ def build_receptor_chain_layout(topology_cfg) -> ReceptorChainLayout:
     )
 
 
-def _validate_protein_prefix(final_universe, layout: ReceptorChainLayout) -> int:
+def _validate_protein_prefix(final_universe, layout: ProteinChainLayout) -> int:
     """Validate topology-derived protein chains and return residue count used."""
     if len(final_universe.atoms) < layout.total_atoms:
         raise TopologyError(
             f"Final coordinates contain {len(final_universe.atoms)} atoms, fewer than "
-            f"the {layout.total_atoms} receptor atoms described by "
+            f"the {layout.total_atoms} protein atoms described by "
             f"{layout.moleculetypes}."
         )
     atom_offset = 0
@@ -471,7 +471,7 @@ def _validate_protein_prefix(final_universe, layout: ReceptorChainLayout) -> int
                 if got != expected
             )
             raise TopologyError(
-                f"Receptor chain {chain_index} ({mtype}) does not match its ITP atom "
+                f"Protein chain {chain_index} ({mtype}) does not match its ITP atom "
                 f"order at molecule atom {mismatch + 1}: coordinates have "
                 f"'{actual_names[mismatch]}', ITP expects '{expected_names[mismatch]}'. "
                 "The final protein cannot be assigned topology-derived chain boundaries."
@@ -479,7 +479,7 @@ def _validate_protein_prefix(final_universe, layout: ReceptorChainLayout) -> int
         if stop < len(final_universe.atoms):
             if final_universe.atoms[stop - 1].resindex == final_universe.atoms[stop].resindex:
                 raise TopologyError(
-                    f"Topology-derived boundary after receptor chain {chain_index} "
+                    f"Topology-derived boundary after protein chain {chain_index} "
                     f"({mtype}, atom {stop}) falls inside coordinate residue "
                     f"{final_universe.atoms[stop].resname} "
                     f"{final_universe.atoms[stop].resid}."
@@ -493,7 +493,7 @@ def _validate_protein_prefix(final_universe, layout: ReceptorChainLayout) -> int
 
 
 def determine_final_molecule_sequence(
-    final_universe, layout: ReceptorChainLayout
+    final_universe, layout: ProteinChainLayout
 ) -> Tuple[List[MoleculeEntry], int]:
     """Walk final_universe's residues in file order and group them into
     molecule instances: one instance per contiguous protein chain, one
@@ -517,7 +517,7 @@ def determine_final_molecule_sequence(
             current = final_universe.residues[i]
             raise TopologyError(
                 "A protein-classified residue occurs outside the topology-derived "
-                f"receptor prefix at final residue position {i + 1}: "
+                f"protein prefix at final residue position {i + 1}: "
                 f"{current.resname}{current.resid}. The preceding boundary is "
                 + (f"after {previous.resname}{previous.resid}." if previous else "at atom 0.")
             )
@@ -551,24 +551,24 @@ class ResolvedTopology:
 
 
 def resolve_topology(
-    receptor_toppar_dir: str,
+    protein_toppar_dir: str,
     environment_toppar_dir: str,
     ligand_itp_paths: List[str],
     final_ligand_resnames: Set[str],
     n_protein_chains_final: int,
     moleculetype_overrides: Dict[str, str],
-    receptor_template_top: Optional[str] = None,
+    protein_template_top: Optional[str] = None,
     replacement_ligand_itp_paths=(),
 ) -> ResolvedTopology:
-    if not receptor_template_top:
-        parent = os.path.dirname(os.path.normpath(receptor_toppar_dir))
-        receptor_template_top = os.path.join(parent, "topol.top")
-    if not os.path.isfile(receptor_template_top):
+    if not protein_template_top:
+        parent = os.path.dirname(os.path.normpath(protein_toppar_dir))
+        protein_template_top = os.path.join(parent, "topol.top")
+    if not os.path.isfile(protein_template_top):
         raise TopologyError(
-            f"Could not find a topol.top next to receptor_toppar_dir "
-            f"(looked for '{receptor_template_top}'). Standard CHARMM-GUI layout puts "
+            f"Could not find a topol.top next to protein_toppar_dir "
+            f"(looked for '{protein_template_top}'). Standard CHARMM-GUI layout puts "
             f"topol.top one directory above its own toppar/ folder -- if yours differs, "
-            f"set topology.receptor_template_top explicitly."
+            f"set topology.protein_template_top explicitly."
         )
 
     replacement_defs, replacement_files, replacement_realpaths = (
@@ -576,7 +576,7 @@ def resolve_topology(
     )
     replaced_mtypes = set(replacement_defs)
 
-    recv_defs, recv_file_by_mtype = scan_toppar_definitions(receptor_toppar_dir)
+    recv_defs, recv_file_by_mtype = scan_toppar_definitions(protein_toppar_dir)
     for itp_path in ligand_itp_paths:
         if os.path.realpath(itp_path) in replacement_realpaths:
             continue
@@ -602,9 +602,9 @@ def resolve_topology(
     env_defs, env_file_by_mtype = scan_toppar_definitions(environment_toppar_dir)
     notes: List[str] = []
     for mtype in sorted(replaced_mtypes):
-        old_receptor_definition = recv_defs.get(mtype)
-        if old_receptor_definition is not None and (
-            old_receptor_definition.resnames & AMINO_ACID_RESNAMES
+        old_protein_definition = recv_defs.get(mtype)
+        if old_protein_definition is not None and (
+            old_protein_definition.resnames & AMINO_ACID_RESNAMES
         ):
             raise TopologyError(
                 f"Replacement ligand ITP '{replacement_files[mtype]}' attempts to "
@@ -639,7 +639,7 @@ def resolve_topology(
     for mtype in sorted(set(recv_defs) & set(env_defs)):
         if recv_defs[mtype].content_signature() != env_defs[mtype].content_signature():
             raise TopologyError(
-                f"Moleculetype '{mtype}' conflicts between receptor ITP "
+                f"Moleculetype '{mtype}' conflicts between protein ITP "
                 f"'{recv_file_by_mtype[mtype]}' and environment ITP "
                 f"'{env_file_by_mtype[mtype]}'."
             )
@@ -650,11 +650,11 @@ def resolve_topology(
         name: definition.resnames for name, definition in env_defs.items()
     }
 
-    # --- protein chain moleculetypes, positional, from the receptor's own
+    # --- protein chain moleculetypes, positional, from the protein's own
     #     topol.top [ molecules ] section -----------------------------------
-    receptor_molecules = parse_top_molecules(receptor_template_top)
+    protein_molecules = parse_top_molecules(protein_template_top)
     protein_chain_mtypes: List[str] = []
-    for mtype, count in receptor_molecules:
+    for mtype, count in protein_molecules:
         resnames_here = recv_resnames_by_mtype.get(mtype)
         if resnames_here and (resnames_here & AMINO_ACID_RESNAMES):
             protein_chain_mtypes.extend([mtype] * count)
@@ -662,10 +662,10 @@ def resolve_topology(
         raise TopologyError(
             f"Protein chain count mismatch: the final assembled system has "
             f"{n_protein_chains_final} contiguous protein chain(s), but "
-            f"'{receptor_template_top}' [ molecules ] lists {len(protein_chain_mtypes)} "
+            f"'{protein_template_top}' [ molecules ] lists {len(protein_chain_mtypes)} "
             f"protein moleculetype instance(s) ({protein_chain_mtypes}) found in "
-            f"'{receptor_toppar_dir}'. This usually means receptor_toppar_dir doesn't "
-            "belong to the receptor in the final system. Detected topology boundaries: "
+            f"'{protein_toppar_dir}'. This usually means protein_toppar_dir doesn't "
+            "belong to the protein in the final system. Detected topology boundaries: "
             + "; ".join(
                 f"chain {i + 1} {mtype} ({recv_defs[mtype].atom_count} atoms)"
                 for i, mtype in enumerate(protein_chain_mtypes)
@@ -707,8 +707,8 @@ def resolve_topology(
         if not candidates:
             raise TopologyError(
                 f"Could not find a moleculetype for ligand/cofactor resname '{rn}' in "
-                f"receptor_toppar_dir, topology.ligand_itp_paths, or environment_toppar_dir. "
-                f"Declare it under replacement_ligands (receptor mode), add its .itp file "
+                f"protein_toppar_dir, topology.ligand_itp_paths, or environment_toppar_dir. "
+                f"Declare it under replacement_ligands (protein mode), add its .itp file "
                 f"to topology.ligand_itp_paths, or add an explicit "
                 f"topology.moleculetype_overrides: {{{rn}: <moleculetype_name>}}."
             )
@@ -766,23 +766,23 @@ def resolve_topology(
         )
 
     # --- forcefield entry point ---------------------------------------------
-    ff_include = find_forcefield_include(receptor_template_top)
-    ff_abs = os.path.normpath(os.path.join(os.path.dirname(receptor_template_top), ff_include))
+    ff_include = find_forcefield_include(protein_template_top)
+    ff_abs = os.path.normpath(os.path.join(os.path.dirname(protein_template_top), ff_include))
     if not os.path.isfile(ff_abs):
         raise TopologyError(
-            f"'{receptor_template_top}' references forcefield '{ff_include}' but "
+            f"'{protein_template_top}' references forcefield '{ff_include}' but "
             f"'{ff_abs}' does not exist on disk."
         )
     forcefield_is_flat = (
         os.path.realpath(os.path.dirname(ff_abs))
-        == os.path.realpath(receptor_toppar_dir)
+        == os.path.realpath(protein_toppar_dir)
     )
 
     # CHARMM-GUI folds ligand-specific atom and bonded parameters into the
     # toppar/forcefield.itp file rather than the ligand molecule ITP. When a
     # replacement ITP has a sibling forcefield.itp, the two files are one
     # parameter set and must be selected together. Standalone replacement
-    # ITPs without such a sibling continue to use the receptor force field.
+    # ITPs without such a sibling continue to use the protein force field.
     replacement_forcefields: Dict[str, str] = {}
     for replacement_path in sorted(set(replacement_files.values())):
         candidate = os.path.join(os.path.dirname(replacement_path), "forcefield.itp")
@@ -1029,18 +1029,18 @@ def _stage_topology_files(resolved, used_mtypes, molecules, notes, staging_root)
 def assemble_topology(
     final_universe, topology_cfg, replacement_ligand_itp_paths=()
 ) -> TopologyResult:
-    layout = build_receptor_chain_layout(topology_cfg)
+    layout = build_protein_chain_layout(topology_cfg)
     entries, n_chains = determine_final_molecule_sequence(final_universe, layout)
     final_ligand_resnames = {e.resname for e in entries if e.kind == "ligand"}
 
     resolved = resolve_topology(
-        receptor_toppar_dir=topology_cfg.receptor_toppar_dir,
+        protein_toppar_dir=topology_cfg.protein_toppar_dir,
         environment_toppar_dir=topology_cfg.environment_toppar_dir,
         ligand_itp_paths=topology_cfg.ligand_itp_paths,
         final_ligand_resnames=final_ligand_resnames,
         n_protein_chains_final=n_chains,
         moleculetype_overrides=topology_cfg.moleculetype_overrides,
-        receptor_template_top=topology_cfg.receptor_template_top or None,
+        protein_template_top=topology_cfg.protein_template_top or None,
         replacement_ligand_itp_paths=replacement_ligand_itp_paths,
     )
     notes = list(resolved.notes)
@@ -1079,7 +1079,7 @@ def assemble_topology(
     final_top = os.path.join(output_dir, "topol.top")
     toppar_out_real = os.path.realpath(final_toppar)
     input_toppar_dirs = {
-        os.path.realpath(topology_cfg.receptor_toppar_dir),
+        os.path.realpath(topology_cfg.protein_toppar_dir),
         os.path.realpath(topology_cfg.environment_toppar_dir),
     }
     if toppar_out_real in input_toppar_dirs:
@@ -1088,10 +1088,10 @@ def assemble_topology(
             "it is also configured as an input topology directory. Choose a "
             "different topology.output_dir."
         )
-    template_top = receptor_template_top_path(topology_cfg)
+    template_top = protein_template_top_path(topology_cfg)
     if os.path.realpath(final_top) == os.path.realpath(template_top):
         raise TopologyError(
-            f"Refusing to overwrite receptor template topology '{template_top}'. "
+            f"Refusing to overwrite protein template topology '{template_top}'. "
             "Choose a different topology.output_dir."
         )
     os.makedirs(output_dir, exist_ok=True)

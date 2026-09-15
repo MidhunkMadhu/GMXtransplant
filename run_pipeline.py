@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Entry point for receptor, ligand, and cholesterol modification modes.
+"""Entry point for protein, ligand, and cholesterol modification modes.
 
 Usage:
-    python3 run_pipeline.py --mode receptor -i receptor_replace.yaml
+    python3 run_pipeline.py --mode protein -i protein_replace.yaml
     python3 run_pipeline.py --mode lig -i ligand_replace.yaml
     python3 run_pipeline.py --mode chl -i cholesterol_restore.yaml
 
-RECEPTOR MODE:
+PROTEIN MODE:
 implements the project's core workflow:
-  1-3.  read target box, identify its receptor, read replacement structure
+  1-3.  read target box, identify its protein, read replacement structure
   4-6.  identify shared atoms, align (PyMOL), apply transform to full block
   7-9.  remove target box's selected block, insert the full aligned replacement block
 
 LIGAND MODE:
-the receptor/membrane/solvent/ions do NOT change at all and only a bound
+the protein/membrane/solvent/ions do NOT change at all and only a bound
 ligand is swapped for a different one (see ligand_replace.py's module
 docstring):
   1-3.  read the one structure, remove the named old ligand, load + position
@@ -68,7 +68,7 @@ from namefix import (
 from classify import AMINO_ACID_RESNAMES
 from topology import (
     assemble_topology,
-    build_receptor_chain_layout,
+    build_protein_chain_layout,
     build_topology_charge_model,
     audit_final_topology,
     TopologyError,
@@ -90,7 +90,7 @@ from minimization_bundle import (
 __version__ = "0.3.0"
 
 _EXAMPLE_FILES = {
-    "receptor": "receptor_replace.yaml",
+    "protein": "protein_replace.yaml",
     "lig": "ligand_replace.yaml",
     "chl": "cholesterol_restore.yaml",
     "minimize": "minimization.yaml",
@@ -167,8 +167,8 @@ def _read_box_with_override(
     return u
 
 
-def _prepare_receptor_replace(cfg, resolved_replacement_ligands):
-    """Front half of receptor-replace mode. Returns a dict of everything
+def _prepare_protein_replace(cfg, resolved_replacement_ligands):
+    """Front half of protein-replace mode. Returns a dict of everything
     the shared downstream tail needs."""
     print(f"[1-3] Reading target box ({cfg.target_box.path}) and "
           f"replacement structure ({cfg.replacement_structure.path}) ...")
@@ -189,14 +189,14 @@ def _prepare_receptor_replace(cfg, resolved_replacement_ligands):
           f"box (lengths Å, angles degrees)={None if u_orig.dimensions is None else list(u_orig.dimensions)}")
     print(f"      replacement:  {len(u_repl.atoms)} atoms, {len(u_repl.residues)} residues, "
           f"box (lengths Å, angles degrees)={None if u_repl.dimensions is None else list(u_repl.dimensions)}")
-    _target_receptor_ag = resolve_mask(u_orig, cfg.target_box.receptor_mask)
-    _mobile_receptor_ag = resolve_mask(u_repl, cfg.replacement_structure.receptor_mask)
-    print(f"      target_box.receptor_mask '{cfg.target_box.receptor_mask}' resolves to "
-          f"{len(_target_receptor_ag)} atoms / {len(_target_receptor_ag.residues)} residues")
-    print(f"      replacement_structure.receptor_mask '{cfg.replacement_structure.receptor_mask}' resolves to "
-          f"{len(_mobile_receptor_ag)} atoms / {len(_mobile_receptor_ag.residues)} residues")
+    _target_protein_ag = resolve_mask(u_orig, cfg.target_box.protein_mask)
+    _mobile_protein_ag = resolve_mask(u_repl, cfg.replacement_structure.protein_mask)
+    print(f"      target_box.protein_mask '{cfg.target_box.protein_mask}' resolves to "
+          f"{len(_target_protein_ag)} atoms / {len(_target_protein_ag.residues)} residues")
+    print(f"      replacement_structure.protein_mask '{cfg.replacement_structure.protein_mask}' resolves to "
+          f"{len(_mobile_protein_ag)} atoms / {len(_mobile_protein_ag.residues)} residues")
 
-    selected_resindices = set(int(i) for i in _mobile_receptor_ag.residues.resindices)
+    selected_resindices = set(int(i) for i in _mobile_protein_ag.residues.resindices)
     for ligand in resolved_replacement_ligands:
         matches = [
             residue for residue in u_repl.residues
@@ -229,7 +229,7 @@ def _prepare_receptor_replace(cfg, resolved_replacement_ligands):
             print(
                 f"[CONFIG ERROR] replacement_ligands declares {ligand.selector}, but that "
                 "specific residue is not selected by "
-                f"replacement_structure.receptor_mask '{cfg.replacement_structure.receptor_mask}'.",
+                f"replacement_structure.protein_mask '{cfg.replacement_structure.protein_mask}'.",
                 file=sys.stderr,
             )
             raise _StageFailure(2)
@@ -255,7 +255,7 @@ def _prepare_receptor_replace(cfg, resolved_replacement_ligands):
                     nr.pdb_to_full_resname,
                 )
                 target_environment_ag, _ = build_environment(
-                    u_orig, cfg.target_box.receptor_mask
+                    u_orig, cfg.target_box.protein_mask
                 )
                 res = restore_full_resnames_from_itp_atom_counts(
                     target_environment_ag,
@@ -298,9 +298,9 @@ def _prepare_receptor_replace(cfg, resolved_replacement_ligands):
                     "signatures from the reference structure ..."
                 )
                 ref_u, ref_mask = (
-                    (u_orig, cfg.target_box.receptor_mask)
+                    (u_orig, cfg.target_box.protein_mask)
                     if nr.reference == "target_box"
-                    else (u_repl, cfg.replacement_structure.receptor_mask)
+                    else (u_repl, cfg.replacement_structure.protein_mask)
                 )
                 ref_env_ag, _ = build_environment(ref_u, ref_mask)
                 templates = build_resname_templates(ref_env_ag)
@@ -332,11 +332,11 @@ def _prepare_receptor_replace(cfg, resolved_replacement_ligands):
             print(f"[NAME RESTORATION ERROR] {exc}", file=sys.stderr)
             raise _StageFailure(2)
 
-    print(f"[4-6] Aligning replacement receptor onto box receptor (alignment.method: {cfg.alignment.method}) ...")
+    print(f"[4-6] Aligning replacement protein onto box protein (alignment.method: {cfg.alignment.method}) ...")
     try:
         align_res = align_replacement_to_box(
             u_orig, u_repl,
-            cfg.target_box.receptor_mask, cfg.replacement_structure.receptor_mask,
+            cfg.target_box.protein_mask, cfg.replacement_structure.protein_mask,
             cfg.alignment, workdir=".",
         )
     except AlignmentError as e:
@@ -350,10 +350,10 @@ def _prepare_receptor_replace(cfg, resolved_replacement_ligands):
               f"{align_res.rmsd_before:.3f} / {align_res.rmsd_after:.3f} A "
               f"({align_res.n_atom_pairs_after}/{align_res.n_atom_pairs_before} atom pairs kept)")
 
-    # Inspection file: box's original receptor overlaid with the newly
-    # aligned replacement receptor, written BEFORE the original is removed.
-    target_full_ag = resolve_mask(u_orig, cfg.target_box.receptor_mask)
-    mobile_full_ag = resolve_mask(u_repl, cfg.replacement_structure.receptor_mask)
+    # Inspection file: box's original protein overlaid with the newly
+    # aligned replacement protein, written BEFORE the original is removed.
+    target_full_ag = resolve_mask(u_orig, cfg.target_box.protein_mask)
+    mobile_full_ag = resolve_mask(u_repl, cfg.replacement_structure.protein_mask)
     mobile_full_ag.positions = align_res.new_positions
     write_inspection_pdb(target_full_ag, mobile_full_ag, cfg.output.inspection_pdb_path)
     print(f"      Inspection structure written: {cfg.output.inspection_pdb_path}")
@@ -362,20 +362,20 @@ def _prepare_receptor_replace(cfg, resolved_replacement_ligands):
     try:
         rep_res = assemble_replacement(
             u_orig, u_repl,
-            cfg.target_box.receptor_mask, cfg.replacement_structure.receptor_mask,
+            cfg.target_box.protein_mask, cfg.replacement_structure.protein_mask,
             align_res,
         )
     except ReplaceError as e:
         print(f"[REPLACEMENT ERROR] {e}", file=sys.stderr)
         raise _StageFailure(4)
-    print(f"      Removed {rep_res.n_original_receptor_atoms_removed} atoms, "
+    print(f"      Removed {rep_res.n_original_protein_atoms_removed} atoms, "
           f"inserted {rep_res.n_replacement_atoms_inserted} atoms")
 
     merged = rep_res.merged_universe
     env_ag = merged.atoms[: rep_res.environment_ag_size]
     ins_ag = merged.atoms[rep_res.environment_ag_size:]
-    _, removed_ag_orig = build_environment(u_orig, cfg.target_box.receptor_mask)
-    environment_ag_orig, _ = build_environment(u_orig, cfg.target_box.receptor_mask)
+    _, removed_ag_orig = build_environment(u_orig, cfg.target_box.protein_mask)
+    environment_ag_orig, _ = build_environment(u_orig, cfg.target_box.protein_mask)
 
     return {
         "merged": merged,
@@ -396,7 +396,7 @@ def _prepare_receptor_replace(cfg, resolved_replacement_ligands):
 
 def _prepare_ligand_replace(cfg):
     """Front half of ligand-only replace mode. Returns the same shape of
-    dict as _prepare_receptor_replace so the downstream tail is identical."""
+    dict as _prepare_protein_replace so the downstream tail is identical."""
     lr = cfg.ligand_replace
     print(f"[1-3] Reading structure ({lr.structure_path}) ...")
     try:
@@ -423,7 +423,7 @@ def _prepare_ligand_replace(cfg):
 
     # Inspection file: old ligand pose (chain X) overlaid with the new
     # ligand's final positioned pose (chain Y) -- same visual-QC idea as
-    # the receptor-mode alignment overlay, reusing the same writer.
+    # the protein-mode alignment overlay, reusing the same writer.
     write_inspection_pdb(lrr.old_ligand_ag, lrr.new_ligand_ag_positioned, cfg.output.inspection_pdb_path)
     print(f"      Inspection structure written: {cfg.output.inspection_pdb_path}")
 
@@ -431,16 +431,16 @@ def _prepare_ligand_replace(cfg):
     env_ag = merged.atoms[: lrr.environment_ag_size]
     ins_ag = merged.atoms[lrr.environment_ag_size:]
 
-    # The environment here still contains the (untouched) receptor protein
-    # -- unlike receptor-replace mode, where build_environment() already
+    # The environment here still contains the retained protein
+    # -- unlike protein-replace mode, where build_environment() already
     # stripped it out. Force "protein" into keep_classes for clash
     # detection so any protein/new-ligand contact is measured and reported
-    # (useful QC on the fit/placement) but the receptor itself is never a
+    # (useful QC on the fit/placement) but the protein itself is never a
     # candidate for removal.
     keep_classes = sorted(set(cfg.clash_detection.keep_classes) | {"protein"})
     clash_cfg = dc_replace(cfg.clash_detection, keep_classes=keep_classes)
     print(f"      (ligand_replace mode: 'protein' added to clash_detection.keep_classes automatically "
-          f"-- the untouched receptor is checked/reported for contacts with the new ligand, never removed)")
+          f"-- the untouched protein is checked/reported for contacts with the new ligand, never removed)")
 
     return {
         "merged": merged,
@@ -484,16 +484,16 @@ def _run_cholesterol(cfg) -> int:
     print(f"[config] output.pdb_path / gro_path               = {cfg.output.pdb_path} / {cfg.output.gro_path}")
     print("-" * 78)
 
-    receptor_layout = None
+    protein_layout = None
     try:
-        if cfg.topology.receptor_toppar_dir:
-            receptor_layout = build_receptor_chain_layout(cfg.topology)
+        if cfg.topology.protein_toppar_dir:
+            protein_layout = build_protein_chain_layout(cfg.topology)
         print("[1] Preparing CHARMM36 cholesterol coordinates ...")
-        print("[2] Aligning the experimental receptor to the target receptor ...")
+        print("[2] Aligning the experimental protein to the target protein ...")
         print("[3] Inserting cholesterols and removing clashing molecules ...")
         print("[4] Correcting leaflet lipids and comparing salt with the reference ...")
         target_universe, final_universe, result = restore_cholesterols(
-            cfg, workdir=".", receptor_layout=receptor_layout
+            cfg, workdir=".", protein_layout=protein_layout
         )
     except (CholesterolError, AlignmentError, MaskError, TopologyError) as exc:
         print(f"[CHOLESTEROL ERROR] {exc}", file=sys.stderr)
@@ -604,7 +604,7 @@ def _run_cholesterol(cfg) -> int:
             cfg.output.pdb_path,
             cfg.output.gro_path,
             protein_chain_atom_counts=(
-                receptor_layout.atom_counts if receptor_layout else None
+                protein_layout.atom_counts if protein_layout else None
             ),
             protected_input_paths=[
                 cs.experimental_structure_path,
@@ -711,7 +711,7 @@ def _run_pipeline_mode(config_path: str, mode: str, dry_run: bool = False) -> in
             return 2
 
     print("=" * 78)
-    print("LIGAND-ONLY REPLACEMENT WORKFLOW" if lr_mode else "RECEPTOR REPLACEMENT WORKFLOW")
+    print("LIGAND-ONLY REPLACEMENT WORKFLOW" if lr_mode else "PROTEIN REPLACEMENT WORKFLOW")
     print("=" * 78)
     if lr_mode:
         print(f"[config] ligand_replace.structure_path      = {cfg.ligand_replace.structure_path}")
@@ -726,9 +726,9 @@ def _run_pipeline_mode(config_path: str, mode: str, dry_run: bool = False) -> in
             print("[config] ligand_replace.fit atoms             = all uniquely named heavy atoms (matched by name)")
     else:
         print(f"[config] target_box.path              = {cfg.target_box.path}")
-        print(f"[config] target_box.receptor_mask      = {cfg.target_box.receptor_mask}")
+        print(f"[config] target_box.protein_mask      = {cfg.target_box.protein_mask}")
         print(f"[config] replacement_structure.path    = {cfg.replacement_structure.path}")
-        print(f"[config] replacement_structure.mask    = {cfg.replacement_structure.receptor_mask}")
+        print(f"[config] replacement_structure.mask    = {cfg.replacement_structure.protein_mask}")
         print(f"[config] alignment.method              = {cfg.alignment.method}")
         print(
             f"[config] alignment region masks         = "
@@ -802,7 +802,7 @@ def _run_pipeline_mode(config_path: str, mode: str, dry_run: bool = False) -> in
         if lr_mode:
             prep = _prepare_ligand_replace(cfg)
         else:
-            prep = _prepare_receptor_replace(cfg, resolved_replacement_ligands)
+            prep = _prepare_protein_replace(cfg, resolved_replacement_ligands)
     except _StageFailure as sf:
         return sf.exit_code
 
@@ -832,21 +832,21 @@ def _run_pipeline_mode(config_path: str, mode: str, dry_run: bool = False) -> in
 
     print("[12-13] Computing net charge and correcting via counterion removal ...")
     topology_charge_model = None
-    receptor_layout = None
-    if cfg.topology.receptor_toppar_dir and cfg.topology.environment_toppar_dir:
+    protein_layout = None
+    if cfg.topology.protein_toppar_dir and cfg.topology.environment_toppar_dir:
         try:
-            receptor_layout = build_receptor_chain_layout(cfg.topology)
+            protein_layout = build_protein_chain_layout(cfg.topology)
             if lr_mode:
-                env_nonprotein = environment_ag_orig[receptor_layout.total_atoms:]
+                env_nonprotein = environment_ag_orig[protein_layout.total_atoms:]
                 ins_nonprotein = ins_ag
             else:
                 env_nonprotein = environment_ag_orig
-                if len(ins_ag) < receptor_layout.total_atoms:
+                if len(ins_ag) < protein_layout.total_atoms:
                     raise TopologyError(
-                        "The inserted receptor block is shorter than the receptor "
+                        "The inserted protein block is shorter than the protein "
                         "described by the reference topology."
                     )
-                ins_nonprotein = ins_ag[receptor_layout.total_atoms:]
+                ins_nonprotein = ins_ag[protein_layout.total_atoms:]
             nonprotein_resnames = set(env_nonprotein.residues.resnames) | set(
                 ins_nonprotein.residues.resnames
             )
@@ -856,11 +856,11 @@ def _run_pipeline_mode(config_path: str, mode: str, dry_run: bool = False) -> in
                 replacement_ligand_itp_paths=replacement_ligand_itp_paths,
             )
             print(
-                "      ITP receptor chains: "
+                "      ITP protein chains: "
                 + ", ".join(
                     f"{mtype}={charge:+.3f} e"
                     for mtype, charge in zip(
-                        receptor_layout.moleculetypes, receptor_layout.charges
+                        protein_layout.moleculetypes, protein_layout.charges
                     )
                 )
             )
@@ -875,8 +875,8 @@ def _run_pipeline_mode(config_path: str, mode: str, dry_run: bool = False) -> in
             clash_res.removed_ag,
             cfg.charge,
             topology_charge_model=topology_charge_model,
-            inserted_has_receptor=not lr_mode,
-            environment_has_receptor=lr_mode,
+            inserted_has_protein=not lr_mode,
+            environment_has_protein=lr_mode,
             original_charge_from_itp=lr_mode,
             resolve_original_charge=not lr_mode,
         )
@@ -919,9 +919,9 @@ def _run_pipeline_mode(config_path: str, mode: str, dry_run: bool = False) -> in
             merged.dimensions,
             charge_report.ions_removed,
             protein_chain_atom_counts=(
-                receptor_layout.atom_counts if receptor_layout else None
+                protein_layout.atom_counts if protein_layout else None
             ),
-            inserted_contains_receptor=not lr_mode,
+            inserted_contains_protein=not lr_mode,
         )
         if cfg.topology.enabled:
             print("[15] Assembling and auditing GROMACS topol.top + toppar/ ...")
@@ -1000,7 +1000,7 @@ def _run_pipeline_mode(config_path: str, mode: str, dry_run: bool = False) -> in
                     cfg.output.pdb_path,
                     cfg.output.gro_path,
                     protein_chain_atom_counts=(
-                        receptor_layout.atom_counts if receptor_layout else None
+                        protein_layout.atom_counts if protein_layout else None
                     ),
                     protected_input_paths=protected_inputs,
                     staged_validator=validate_staged_coordinates,
@@ -1102,7 +1102,7 @@ def _post_pipeline_minimization_spec(cfg) -> MinimizationSpec:
 
 def _print_bundle(result):
     print(f"Minimization inputs prepared: {result['output_dir']}")
-    print(f"Engines: {', '.join(result['engines'])}. Nothing was run or submitted.")
+    print("OpenMM inputs only. Nothing was run or submitted.")
 
 
 def main(config_path: str, mode: str, dry_run: bool = False,
@@ -1140,7 +1140,6 @@ def _prepare_existing(argv):
     parser.add_argument("--topology", help="Matching GROMACS topology")
     parser.add_argument("--include-dir")
     parser.add_argument("--output", help="New output directory; never overwritten")
-    parser.add_argument("--engines", nargs="+", choices=["gromacs", "openmm"])
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
     try:
@@ -1148,7 +1147,7 @@ def _prepare_existing(argv):
                 else MinimizationSpec(coordinates_path="step5_input.gro", topology_path="topol.top"))
         changes = {}
         for option, field in (("coordinates", "coordinates_path"), ("topology", "topology_path"),
-                              ("include_dir", "include_dir"), ("output", "output_dir"), ("engines", "engines")):
+                              ("include_dir", "include_dir"), ("output", "output_dir")):
             if getattr(args, option) is not None:
                 changes[field] = getattr(args, option)
         spec = dc_replace(spec, **changes)
@@ -1169,8 +1168,8 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         description="Modify a prepared molecular-simulation system."
     )
     parser.add_argument(
-        "--mode", choices=("receptor", "lig", "chl"),
-        help="receptor replacement, ligand replacement, or cholesterol restoration",
+        "--mode", choices=("protein", "lig", "chl"),
+        help="protein replacement, ligand replacement, or cholesterol restoration",
     )
     parser.add_argument(
         "-i", "--input", metavar="CONFIG.yaml",
@@ -1183,13 +1182,13 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--prepare-minimization", action="store_true",
         help=(
-            "export independent GROMACS/OpenMM input folders after assembly; never run engines"
+            "prepare one portable OpenMM minimization folder after assembly; do not run it"
         ),
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
         "--show-example",
-        choices=("receptor", "lig", "chl", "minimize"),
+        choices=("protein", "lig", "chl", "minimize"),
         metavar="MODE",
         help="print a bundled mode-specific YAML example and exit",
     )
@@ -1211,8 +1210,6 @@ def cli(argv=None) -> int:
     if argv and argv[0] == "prepare-minimization":
         return _prepare_existing(argv[1:])
     parser = _build_cli_parser()
-    if "--minimize" in argv:
-        parser.error("--minimize was removed. Use --prepare-minimization after assembly, or prepare-minimization for existing inputs. Nothing is run automatically.")
     cli_args = parser.parse_args(argv)
     if cli_args.show_example:
         if cli_args.prepare_minimization or cli_args.mode or cli_args.input:

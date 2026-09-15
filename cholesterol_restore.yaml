@@ -3,7 +3,7 @@
 #
 # EDITING GUIDE
 # 1. Edit paths only in this first block. ${name} references reuse them below.
-# 2. Edit receptor masks, cholesterol names, and target composition below.
+# 2. Edit protein masks, cholesterol names, and target composition below.
 # 3. Run with --dry-run before processing coordinates (checks configuration and
 #    paths, not a full geometric trial). Inspect the assembled reports afterward.
 # Paths below are placeholders. Relative paths resolve from the working directory.
@@ -15,11 +15,11 @@
 # 1. PATHS: normally the only block that changes when moving to a new system
 # -----------------------------------------------------------------------------
 paths:
-  experimental_coordinates: inputs/experimental/receptor_cholesterol.pdb
+  experimental_coordinates: inputs/experimental/protein_cholesterol.pdb
   environment_coordinates: inputs/environment/equilibrated.gro
   composition_reference_coordinates: inputs/environment/equilibrated.gro
-  receptor_toppar: inputs/environment/toppar
-  receptor_topology: inputs/environment/topol.top
+  protein_toppar: inputs/environment/toppar
+  protein_topology: inputs/environment/topol.top
   environment_toppar: inputs/environment/toppar
   topology_output_dir: .
   final_pdb: step5_input.pdb
@@ -38,12 +38,12 @@ paths:
 # 2. STRUCTURES, CHOLESTEROL CONVERSION, AND COMPOSITION
 # -----------------------------------------------------------------------------
 cholesterol:
-  # Experimental receptor/cholesterol source. The receptor provides only the
-  # alignment transform; the target receptor itself is retained.
+  # Experimental protein/cholesterol source. The protein provides only the
+  # alignment transform; the target protein itself is retained.
   experimental_structure_path: "${experimental_coordinates}"
 
-  # Complete equilibrated receptor/membrane/solvent/ion environment.
-  # Prefer GRO with full lipid names. Cholesterol mode does not run receptor-
+  # Complete equilibrated protein/membrane/solvent/ion environment.
+  # Prefer GRO with full lipid names. Cholesterol mode does not run protein-
   # mode name_restoration; ambiguous PDB names must be resolved beforehand.
   target_system_path: "${environment_coordinates}"
   target_system_format: auto  # Alternatives: pdb or gro.
@@ -53,10 +53,10 @@ cholesterol:
 
   # Masks use 1-based sequential residue positions, NOT file residue IDs.
   # 1-328 is a placeholder for the corresponding protein in each structure.
-  # Exclude cholesterol from receptor masks: only protein defines placement.
+  # Exclude cholesterol from protein masks: only protein defines placement.
   # Include corresponding G-protein residues if desired; edit both fit masks too.
-  target_receptor_mask: ":1-328"
-  experimental_receptor_mask: ":1-328"
+  target_protein_mask: ":1-328"
+  experimental_protein_mask: ":1-328"
   cholesterol_resnames: [CHL1, CHL, CHOL, CLR]
   charmm_resname: CHL1
 
@@ -146,14 +146,14 @@ clash_detection:
 # -----------------------------------------------------------------------------
 # 5. GROMACS AND OUTPUTS
 # -----------------------------------------------------------------------------
-# Receptor ITPs/template define protein molecules and their order. Environment
+# Protein ITPs/template define protein molecules and their order. Environment
 # ITPs define retained lipids/water/ions. They may share a directory/topology when
 # derived from the same compatible system. Use consistent force-field parameters.
 # Output molecule counts are rebuilt from the assembled coordinates.
 topology:
   enabled: true  # Alternative: false writes coordinates/reports without topology.
-  receptor_toppar_dir: "${receptor_toppar}"
-  receptor_template_top: "${receptor_topology}"
+  protein_toppar_dir: "${protein_toppar}"
+  protein_template_top: "${protein_topology}"
   environment_toppar_dir: "${environment_toppar}"
   ligand_itp_paths: []
   moleculetype_overrides: {}  # Example: {LIG1: LigandType}; resname -> ITP type.
@@ -175,54 +175,26 @@ output:
   report_path: "${report_prefix}"  # Prefix for .txt and .json reports.
   inspection_pdb_path: "${inspection_pdb}"
 
-# -----------------------------------------------------------------------------
-# OPTIONAL MINIMIZATION INPUT PREPARATION
-# -----------------------------------------------------------------------------
-# Preparation only: no minimizer is launched by GMXtransplant.
-# Requires topology.enabled: true after assembly. Both folders are portable.
+# Prepare portable OpenMM inputs. Run the generated script separately.
 minimization:
-  enabled: false  # true prepares folders after successful assembly.
-  output_dir: minimization_inputs
-  engines: [gromacs, openmm]
-  coordinates_path: ""  # Standalone-only; assembly uses its freshly written GRO.
-  topology_path: ""     # Standalone-only; assembly uses its generated topol.top.
-  include_dir: ""
-  resources:
-    cpus_per_task: 8
-    gromacs_mpi_tasks: 1
-    time: "00:30:00"
-    memory: 8G
-  # GROMACS settings are independent of the OpenMM fields below.
-  # Review these defaults against your source force-field protocol.
-  gromacs:
-    integrator: steep
-    emtol: 100.0  # Maximum force, kJ/mol/nm; not an RMS tolerance.
-    emstep: 0.01
-    nsteps: 5000
-    constraints: h-bonds
-    coulombtype: PME
-    rcoulomb: 1.2
-    vdwtype: Cut-off
-    vdw_modifier: Force-switch  # Also Potential-switch, Potential-shift, None.
-    rvdw_switch: 1.0
-    rvdw: 1.2
-    disp_corr: "no"
-    ewald_rtol: 5.0e-4
-    defines: {}
-    restrained_defines: {}  # Optional {POSRES: 1}; requires existing restraint ITPs.
-  # OpenMM settings. No OpenMM installation is needed to prepare this folder.
-  algorithm: lbfgs
-  tolerance_kj_mol_nm: 10.0  # RMS minimizer objective gradient, not GROMACS Fmax.
+  enabled: false  # Or add --prepare-minimization to the assembly command.
+  output_dir: openmm_minimization
+  restraint_force_constant_kj_mol_nm2: 1000.0
+  # Unknown molecules are treated as ligands. Classify custom lipids here.
+  restraint_residue_classes: {}  # Example: {MYLIP: lipid}
+  tolerance_kj_mol_nm: 10.0  # RMS minimizer objective gradient.
   max_iterations: 5000
-  constraint_tolerance: 1.0e-5
-  nonbonded_method: PME  # Alternative: CutoffPeriodic.
+  # Review nonbonded settings for your force field.
+  nonbonded_method: PME
   nonbonded_cutoff_nm: 1.2
-  switch_distance_nm: 1.0  # Potential switch, not GROMACS force switching.
+  switch_distance_nm: 1.0  # OpenMM potential switching.
   constraints: h_bonds
   rigid_water: true
   ewald_error_tolerance: 5.0e-4
   use_dispersion_correction: false
-  platform: CPU  # GPU submission overrides this explicitly; no silent fallback.
-  precision: mixed
-  device_index: ""  # Scheduler controls visible devices by default.
-  defines: {}  # Active position_restraints are unsupported for OpenMM export.
+  platform: CPU
+  defines: {}  # Topology position_restraints must be inactive.
+  resources:
+    cpus_per_task: 8
+    time: "00:30:00"
+    memory: 8G

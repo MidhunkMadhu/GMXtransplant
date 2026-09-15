@@ -2,7 +2,7 @@
 Topology-aware net-charge accounting and counterion-based neutralization.
 
 When topology inputs are configured, exact molecule charges are summed from
-each ITP ``[ atoms ]`` section, including receptor chains, lipids, ligands,
+each ITP ``[ atoms ]`` section, including protein chains, lipids, ligands,
 water, and ions. The residue-level table is only a fallback. Lipids are not
 assumed neutral because the lipid registry includes anionic species. Any
 unresolved final-system residue stops the workflow before neutralization.
@@ -106,17 +106,17 @@ def charge_of_atomgroup(ag, charge_table: Dict[str, float], default_unknown_is_z
     return total, sorted(unknown)
 
 
-def charge_of_atomgroup_from_itp(ag, model, include_receptor_prefix: bool = False):
+def charge_of_atomgroup_from_itp(ag, model, include_protein_prefix: bool = False):
     """Sum exact ITP molecule charges for a complete-molecule AtomGroup."""
     total = 0.0
     unknown = set()
     atom_offset = 0
-    if include_receptor_prefix:
+    if include_protein_prefix:
         layout = model.layout
         if len(ag) < layout.total_atoms:
             raise ChargeError(
                 f"Coordinate block has {len(ag)} atoms, fewer than the "
-                f"{layout.total_atoms} receptor atoms defined by "
+                f"{layout.total_atoms} protein atoms defined by "
                 f"{layout.moleculetypes}."
             )
         for mtype, definition in zip(layout.moleculetypes, layout.definitions):
@@ -129,7 +129,7 @@ def charge_of_atomgroup_from_itp(ag, model, include_receptor_prefix: bool = Fals
                     if got != expected
                 )
                 raise ChargeError(
-                    f"Receptor moleculetype {mtype} does not match coordinate atom "
+                    f"Protein moleculetype {mtype} does not match coordinate atom "
                     f"order at molecule atom {mismatch + 1}: coordinates have "
                     f"'{actual_names[mismatch]}', ITP expects '{expected_names[mismatch]}'."
                 )
@@ -137,7 +137,7 @@ def charge_of_atomgroup_from_itp(ag, model, include_receptor_prefix: bool = Fals
             atom_offset = stop
         if atom_offset < len(ag) and ag[atom_offset - 1].resindex == ag[atom_offset].resindex:
             raise ChargeError(
-                "Topology-derived receptor boundary falls inside a coordinate residue."
+                "Topology-derived protein boundary falls inside a coordinate residue."
             )
 
     remaining = ag[atom_offset:]
@@ -177,8 +177,8 @@ def charge_of_atomgroup_from_itp(ag, model, include_receptor_prefix: bool = Fals
 class ChargeReport:
     charge_table_used: Dict[str, float]
     unknown_resnames: List[str]
-    charge_original_receptor: float
-    charge_replacement_receptor: float
+    charge_original_protein: float
+    charge_replacement_protein: float
     charge_diff_from_replacement: float
     charge_environment_untouched: float
     net_charge_before_clash_removal: float
@@ -203,8 +203,8 @@ def compute_pre_neutralization_report(
     clash_removed_ag,
     charge_cfg: ChargeSpec,
     topology_charge_model=None,
-    inserted_has_receptor: bool = False,
-    environment_has_receptor: bool = False,
+    inserted_has_protein: bool = False,
+    environment_has_protein: bool = False,
     original_charge_from_itp: bool = True,
     resolve_original_charge: bool = True,
 ) -> ChargeReport:
@@ -222,12 +222,12 @@ def compute_pre_neutralization_report(
                 )
             table[resname] = itp_charge
         charge_repl, unk_repl = charge_of_atomgroup_from_itp(
-            inserted_ag, topology_charge_model, inserted_has_receptor
+            inserted_ag, topology_charge_model, inserted_has_protein
         )
         charge_env, unk_env = charge_of_atomgroup_from_itp(
             environment_untouched_ag,
             topology_charge_model,
-            environment_has_receptor,
+            environment_has_protein,
         )
         charge_clash_removed, unk_clash = charge_of_atomgroup_from_itp(
             clash_removed_ag, topology_charge_model, False
@@ -292,8 +292,8 @@ def compute_pre_neutralization_report(
     return ChargeReport(
         charge_table_used=table,
         unknown_resnames=unknown_all,
-        charge_original_receptor=charge_orig,
-        charge_replacement_receptor=charge_repl,
+        charge_original_protein=charge_orig,
+        charge_replacement_protein=charge_repl,
         charge_diff_from_replacement=(charge_repl - charge_orig) if not (np.isnan(charge_repl) or np.isnan(charge_orig)) else float("nan"),
         charge_environment_untouched=charge_env,
         net_charge_before_clash_removal=net_before,
@@ -319,7 +319,7 @@ def neutralize(
 ) -> ChargeReport:
     """Select and remove bulk counterions to bring the system to
     charge_cfg.target_net_charge, respecting exclusion distances from the
-    receptor, ligand, and lipid heavy atoms. Returns an updated
+    protein, ligand, and lipid heavy atoms. Returns an updated
     ChargeReport; the caller is responsible for actually deleting the
     chosen ions from the working AtomGroup (this function reports the
     residue indices to remove via charge_report.ions_removed, keyed by
@@ -356,20 +356,20 @@ def neutralize(
         )
         return charge_report
 
-    receptor_atom_mask = np.isin(inserted_ag.resnames, list(AMINO_ACID_RESNAMES))
-    receptor_only_ag = inserted_ag[receptor_atom_mask]
-    ligand_only_ag = inserted_ag[~receptor_atom_mask]
+    protein_atom_mask = np.isin(inserted_ag.resnames, list(AMINO_ACID_RESNAMES))
+    protein_only_ag = inserted_ag[protein_atom_mask]
+    ligand_only_ag = inserted_ag[~protein_atom_mask]
     # Any protein atoms already present in the KEPT environment (this
-    # happens in ligand_replace mode, where the receptor itself is
+    # happens in ligand_replace mode, where the protein itself is
     # untouched and therefore lives in the environment rather than the
-    # inserted block) get the same receptor exclusion-distance protection.
-    # In the normal receptor-swap flow the environment never contains
-    # protein atoms (they were stripped via receptor_mask), so this is a
+    # inserted block) get the same protein exclusion-distance protection.
+    # In the normal protein-swap flow the environment never contains
+    # protein atoms (they were stripped via protein_mask), so this is a
     # no-op there.
-    env_receptor_mask = np.isin(kept_environment_ag.resnames, list(AMINO_ACID_RESNAMES))
-    env_receptor_ag = kept_environment_ag[env_receptor_mask]
-    if len(env_receptor_ag) > 0:
-        receptor_only_ag = (receptor_only_ag + env_receptor_ag) if len(receptor_only_ag) > 0 else env_receptor_ag
+    env_protein_mask = np.isin(kept_environment_ag.resnames, list(AMINO_ACID_RESNAMES))
+    env_protein_ag = kept_environment_ag[env_protein_mask]
+    if len(env_protein_ag) > 0:
+        protein_only_ag = (protein_only_ag + env_protein_ag) if len(protein_only_ag) > 0 else env_protein_ag
 
     ion_pos = ion_ag.positions
     box = universe_for_write.dimensions
@@ -377,9 +377,9 @@ def neutralize(
         raise ChargeError(
             "PBC-aware ion exclusion requires six valid box dimensions."
         )
-    d_to_receptor = distance_array(
-        ion_pos, receptor_only_ag.positions, box=box
-    ).min(axis=1) if len(receptor_only_ag) else np.full(len(ion_ag), np.inf)
+    d_to_protein = distance_array(
+        ion_pos, protein_only_ag.positions, box=box
+    ).min(axis=1) if len(protein_only_ag) else np.full(len(ion_ag), np.inf)
     d_to_ligand = distance_array(
         ion_pos, ligand_only_ag.positions, box=box
     ).min(axis=1) if len(ligand_only_ag) else np.full(len(ion_ag), np.inf)
@@ -417,7 +417,7 @@ def neutralize(
         )
     elif not charge_cfg.exclude_membrane_interior:
         charge_report.notes.append(
-            "Lipid-proximity exclusion disabled; receptor and ligand distance "
+            "Lipid-proximity exclusion disabled; protein and ligand distance "
             "protections remain active."
         )
 
@@ -427,14 +427,14 @@ def neutralize(
         excluded = np.unique(ion_ag.resindices[np.asarray(atom_mask, dtype=bool)])
         return np.isin(ion_ag.resindices, excluded)
 
-    near_receptor = _expand_to_residues(
-        d_to_receptor < charge_cfg.exclusion_distance_from_receptor
+    near_protein = _expand_to_residues(
+        d_to_protein < charge_cfg.exclusion_distance_from_protein
     )
     near_ligand = _expand_to_residues(
         d_to_ligand < charge_cfg.exclusion_distance_from_ligand
     )
     near_lipid = _expand_to_residues(near_lipid)
-    eligible_mask = ~(near_receptor | near_ligand | near_lipid)
+    eligible_mask = ~(near_protein | near_ligand | near_lipid)
     eligible_ion_ag = ion_ag[eligible_mask]
 
     table = charge_report.charge_table_used
@@ -454,7 +454,7 @@ def neutralize(
     charge_report.ion_selection_summary = {
         "remaining_ions_total": len(ion_ag.residues),
         "remaining_ions_by_resname": _counts(ion_ag),
-        "excluded_near_receptor": int(len(np.unique(ion_ag.resindices[near_receptor]))),
+        "excluded_near_protein": int(len(np.unique(ion_ag.resindices[near_protein]))),
         "excluded_near_ligand": int(len(np.unique(ion_ag.resindices[near_ligand]))),
         "excluded_near_lipid": int(len(np.unique(ion_ag.resindices[near_lipid]))),
         "eligible_ions_total": len(eligible_ion_ag.residues),

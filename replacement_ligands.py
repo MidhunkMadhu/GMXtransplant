@@ -1,4 +1,4 @@
-"""Resolve charges and topology files for ligands inside a receptor-replacement mask."""
+"""Resolve charges and topology files for ligands inside a protein-replacement mask."""
 
 from __future__ import annotations
 

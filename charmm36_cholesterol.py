@@ -167,7 +167,7 @@ OUTPUTS
 
 EXAMPLES
   Use the built-in CHARMM36 cholesterol reference:
-    python3 charmm36_cholesterol.py -f receptor_with_cholesterol.pdb
+    python3 charmm36_cholesterol.py -f protein_with_cholesterol.pdb
 
   Use an external reference:
     python3 charmm36_cholesterol.py -f system.pdb -d chl.pdb

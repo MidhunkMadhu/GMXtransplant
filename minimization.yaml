@@ -1,51 +1,27 @@
-# Prepare an existing bundle; nothing is executed or submitted.
+# Prepare inputs for an existing assembled system:
 # gmxtransplant prepare-minimization -i minimization.yaml
-# Add --dry-run to validate only schema and settings.
-# Preparation only: no minimizer is launched by GMXtransplant.
-# Requires topology.enabled: true after assembly. Both folders are portable.
+# Prepare portable OpenMM inputs. Run the generated script separately.
 minimization:
-  enabled: true  # true prepares folders after successful assembly.
-  output_dir: minimization_inputs
-  engines: [gromacs, openmm]
-  coordinates_path: step5_input.gro  # Standalone-only; assembly uses its freshly written GRO.
-  topology_path: topol.top     # Standalone-only; assembly uses its generated topol.top.
+  coordinates_path: step5_input.gro
+  topology_path: topol.top
   include_dir: ""
-  resources:
-    cpus_per_task: 8
-    gromacs_mpi_tasks: 1
-    time: "00:30:00"
-    memory: 8G
-  # GROMACS settings are independent of the OpenMM fields below.
-  # Review these defaults against your source force-field protocol.
-  gromacs:
-    integrator: steep
-    emtol: 100.0  # Maximum force, kJ/mol/nm; not an RMS tolerance.
-    emstep: 0.01
-    nsteps: 5000
-    constraints: h-bonds
-    coulombtype: PME
-    rcoulomb: 1.2
-    vdwtype: Cut-off
-    vdw_modifier: Force-switch  # Also Potential-switch, Potential-shift, None.
-    rvdw_switch: 1.0
-    rvdw: 1.2
-    disp_corr: "no"
-    ewald_rtol: 5.0e-4
-    defines: {}
-    restrained_defines: {}  # Optional {POSRES: 1}; requires existing restraint ITPs.
-  # OpenMM settings. No OpenMM installation is needed to prepare this folder.
-  algorithm: lbfgs
-  tolerance_kj_mol_nm: 10.0  # RMS minimizer objective gradient, not GROMACS Fmax.
+  output_dir: openmm_minimization
+  restraint_force_constant_kj_mol_nm2: 1000.0
+  # Unknown molecules are treated as ligands. Classify custom lipids here.
+  restraint_residue_classes: {}  # Example: {MYLIP: lipid}
+  tolerance_kj_mol_nm: 10.0  # RMS minimizer objective gradient.
   max_iterations: 5000
-  constraint_tolerance: 1.0e-5
-  nonbonded_method: PME  # Alternative: CutoffPeriodic.
+  # Review nonbonded settings for your force field.
+  nonbonded_method: PME
   nonbonded_cutoff_nm: 1.2
-  switch_distance_nm: 1.0  # Potential switch, not GROMACS force switching.
+  switch_distance_nm: 1.0  # OpenMM potential switching.
   constraints: h_bonds
   rigid_water: true
   ewald_error_tolerance: 5.0e-4
   use_dispersion_correction: false
-  platform: CPU  # GPU submission overrides this explicitly; no silent fallback.
-  precision: mixed
-  device_index: ""  # Scheduler controls visible devices by default.
-  defines: {}  # Active position_restraints are unsupported for OpenMM export.
+  platform: CPU
+  defines: {}  # Topology position_restraints must be inactive.
+  resources:
+    cpus_per_task: 8
+    time: "00:30:00"
+    memory: 8G

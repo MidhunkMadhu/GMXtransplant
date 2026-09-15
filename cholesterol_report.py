@@ -35,8 +35,8 @@ def build_report(
                 cfg.cholesterol.composition.reference_system_path
                 or cfg.cholesterol.target_system_path
             ),
-            "target_receptor_mask": cfg.cholesterol.target_receptor_mask,
-            "experimental_receptor_mask": cfg.cholesterol.experimental_receptor_mask,
+            "target_protein_mask": cfg.cholesterol.target_protein_mask,
+            "experimental_protein_mask": cfg.cholesterol.experimental_protein_mask,
         },
         "conversion": {
             "enabled": cfg.cholesterol.convert_to_charmm36,
@@ -201,7 +201,7 @@ def render_text(data) -> str:
         )
 
     alignment = data["alignment"]
-    add("\n2. RECEPTOR-BASED ALIGNMENT")
+    add("\n2. PROTEIN-BASED ALIGNMENT")
     add(f"Method: {alignment['method']}")
     add(f"Fit selection:    {alignment['fit_selection']}")
     add(f"Final RMSD:       {alignment['rmsd_after_angstrom']:.3f} A")

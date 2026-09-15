@@ -56,7 +56,7 @@ COMMON_LIPID_RESNAMES = {
     # Cardiolipins
     "TOCL", "TLCL2", "CDL2",
     # Cholesterol names
-    "CHL1", "CHOL", "CHL",
+    "CHL1", "CHOL", "CHL", "CLR",
 }
 
 DEFAULT_LIPID_RESNAMES = COMMON_LIPID_RESNAMES

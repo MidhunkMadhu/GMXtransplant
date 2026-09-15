@@ -93,8 +93,8 @@ class LigandReplacementTopologyTests(unittest.TestCase):
         )
         self.topology = TopologySpec(
             enabled=True,
-            receptor_toppar_dir=str(self.toppar),
-            receptor_template_top=str(self.template / "topol.top"),
+            protein_toppar_dir=str(self.toppar),
+            protein_template_top=str(self.template / "topol.top"),
             environment_toppar_dir=str(self.toppar),
             ligand_itp_paths=[str(self.new_ligand_itp)],
             output_dir=str(self.output),
@@ -188,8 +188,8 @@ class LigandReplacementTopologyTests(unittest.TestCase):
             resolve_original_charge=False,
         )
 
-        self.assertTrue(np.isnan(report.charge_original_receptor))
-        self.assertAlmostEqual(report.charge_replacement_receptor, 1.0)
+        self.assertTrue(np.isnan(report.charge_original_protein))
+        self.assertAlmostEqual(report.charge_replacement_protein, 1.0)
         self.assertAlmostEqual(report.net_charge_after_clash_removal, 1.0)
 
 

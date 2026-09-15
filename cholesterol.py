@@ -147,12 +147,12 @@ def _load_target_with_box(spec: CholesterolSpec, validation_spec=None):
     return u, list(u.box_preflight["notes"])
 
 
-def _write_alignment_inspection(target_receptor, aligned_receptor, cholesterols, path: str) -> None:
+def _write_alignment_inspection(target_protein, aligned_protein, cholesterols, path: str) -> None:
     _ensure_parent(path)
-    inspection = mda.Merge(target_receptor, aligned_receptor, cholesterols)
+    inspection = mda.Merge(target_protein, aligned_protein, cholesterols)
     chain_ids = (
-        ["X"] * len(target_receptor)
-        + ["Y"] * len(aligned_receptor)
+        ["X"] * len(target_protein)
+        + ["Y"] * len(aligned_protein)
         + ["Z"] * len(cholesterols)
     )
     inspection.add_TopologyAttr("chainIDs", chain_ids)
@@ -396,7 +396,7 @@ def adjust_composition(
     return final_universe, result
 
 
-def restore_cholesterols(cfg, workdir: str = ".", receptor_layout=None):
+def restore_cholesterols(cfg, workdir: str = ".", protein_layout=None):
     """Run cholesterol preparation through final composition correction."""
     spec = cfg.cholesterol
     # Audit/repair and map cholesterol before touching the target environment.
@@ -410,8 +410,8 @@ def restore_cholesterols(cfg, workdir: str = ".", receptor_layout=None):
     align_res = align_replacement_to_box(
         target,
         experimental,
-        spec.target_receptor_mask,
-        spec.experimental_receptor_mask,
+        spec.target_protein_mask,
+        spec.experimental_protein_mask,
         cfg.alignment,
         workdir=workdir,
     )
@@ -420,8 +420,8 @@ def restore_cholesterols(cfg, workdir: str = ".", receptor_layout=None):
     experimental.atoms.positions = (
         (align_res.rotation @ original_positions.T).T + align_res.translation
     )
-    aligned_receptor = resolve_mask(experimental, spec.experimental_receptor_mask)
-    aligned_receptor.positions = align_res.new_positions
+    aligned_protein = resolve_mask(experimental, spec.experimental_protein_mask)
+    aligned_protein.positions = align_res.new_positions
 
     recognized = set(spec.cholesterol_resnames) | {spec.charmm_resname}
     chol_residues = experimental.residues[
@@ -438,10 +438,10 @@ def restore_cholesterols(cfg, workdir: str = ".", receptor_layout=None):
     chol_u = mda.Merge(chol_residues.atoms)
     chol_u.residues.resnames = [spec.charmm_resname] * len(chol_u.residues)
 
-    target_receptor = resolve_mask(target, spec.target_receptor_mask)
+    target_protein = resolve_mask(target, spec.target_protein_mask)
     if spec.write_diagnostics:
         _write_alignment_inspection(
-            target_receptor, aligned_receptor, chol_u.atoms,
+            target_protein, aligned_protein, chol_u.atoms,
             cfg.output.inspection_pdb_path,
         )
 
@@ -455,7 +455,7 @@ def restore_cholesterols(cfg, workdir: str = ".", receptor_layout=None):
     )
 
     merged = mda.Merge(clash_res.kept_ag, chol_u.atoms)
-    chain_counts = receptor_layout.atom_counts if receptor_layout else None
+    chain_counts = protein_layout.atom_counts if protein_layout else None
     merged = canonicalize_system(merged, target.dimensions, chain_counts)
     if spec.write_diagnostics:
         write_pdb(merged, spec.merged_pdb_path, chain_counts)

@@ -7,12 +7,12 @@ without this step MDAnalysis's PDB writer would fall back to stamping
 every single atom with the same placeholder chain 'X' -- technically
 harmless (residue/atom order is what actually matters for re-simulation,
 and the GRO output is unaffected since GRO has no chain column), but
-unhelpful for visual inspection in PyMOL/VMD. When a receptor topology is
+unhelpful for visual inspection in PyMOL/VMD. When a protein topology is
 available, protein chains come from the ordered protein moleculetypes and
 their exact ITP atom counts. Each ligand residue gets its own chain, all
 lipids share one membrane chain, and ions and water share one solvent chain.
 A residue-gap heuristic remains only as a compatibility fallback when no
-receptor topology was configured.
+protein topology was configured.
 """
 
 from __future__ import annotations
@@ -130,7 +130,7 @@ def _topology_atom_chain_ids(universe, protein_chain_atom_counts) -> np.ndarray:
         cls = classes[residue.resname]
         if cls == "protein":
             raise RuntimeError(
-                "Protein residue outside topology-derived receptor chains: "
+                "Protein residue outside topology-derived protein chains: "
                 f"{residue.resname}{residue.resid} at residue index "
                 f"{residue.resindex + 1}."
             )

@@ -91,7 +91,7 @@ def _is_finite_number(value) -> bool:
 class StructureSpec:
     path: str = ""
     format: str = "auto"          # auto | gro | pdb
-    receptor_mask: str = ""       # cpptraj-style mask, sequential numbering
+    protein_mask: str = ""       # cpptraj-style mask, sequential numbering
     # Explicit [a, b, c, alpha, beta, gamma] in Å/degrees when the input
     # has no usable box. A different file's box is never inferred implicitly.
     # Leave null to use the frame's own dimensions.
@@ -115,7 +115,7 @@ class AlignmentSpec:
     # pymol_cealign -- PyMOL cmd.cealign(): structure-based (no sequence
     #                  needed), also its own internal correspondence-finding.
     # mask_fit      -- cpptraj-'rms'-style: region_mask_original/
-    #                  region_mask_replacement (or the full receptor_mask on
+    #                  region_mask_replacement (or the full protein_mask on
     #                  either side if left unset) are matched POSITIONALLY,
     #                  one atom to the next in mask/file order -- no
     #                  sequence alignment, no outlier rejection. Plain
@@ -157,7 +157,7 @@ class ClashDetectionSpec:
     heavy_atoms_only: bool = True
     flag_lipid_removal_fraction: float = 0.05
     # Classes to check and REPORT but never remove (e.g. ["lipid"] to keep
-    # the membrane fully intact regardless of receptor overlap, while still
+    # the membrane fully intact regardless of protein overlap, while still
     # surfacing exactly which contacts exceeded the threshold -- see the
     # report's "flagged_but_kept" list, which names the specific contacting
     # atom on each side, not just the residue).
@@ -172,7 +172,7 @@ class ChargeSpec:
     target_net_charge: float = 0.0
     neutralize: bool = True
     tolerance: float = 0.01
-    exclusion_distance_from_receptor: float = 10.0
+    exclusion_distance_from_protein: float = 10.0
     exclusion_distance_from_ligand: float = 10.0
     # Minimum PBC distance from any lipid heavy atom required for an ion to
     # be eligible for neutralization. This replaces the unsafe global lipid
@@ -245,10 +245,10 @@ class LigandFitSpec:
 
 @dataclass
 class LigandReplaceSpec:
-    # In lig mode, the receptor, membrane, solvent, and ions stay in place.
+    # In lig mode, the protein, membrane, solvent, and ions stay in place.
     # Only one ligand is swapped inside the supplied complete structure.
     enabled: bool = False
-    structure_path: str = ""   # the ONE file: receptor+membrane+solvent+ions+old ligand, all kept except the old ligand
+    structure_path: str = ""   # the ONE file: protein+membrane+solvent+ions+old ligand, all kept except the old ligand
     format: str = "auto"
     # Same purpose as StructureSpec.box_dimensions above -- only needed if
     # structure_path's own box info can't be read.
@@ -284,8 +284,8 @@ class CholesterolSpec:
     target_system_path: str = ""
     target_system_format: str = "auto"
     box_dimensions: Optional[List[float]] = None
-    target_receptor_mask: str = ""
-    experimental_receptor_mask: str = ""
+    target_protein_mask: str = ""
+    experimental_protein_mask: str = ""
     cholesterol_resnames: List[str] = field(
         default_factory=lambda: ["CHL1", "CHL", "CHOL", "CLR"]
     )
@@ -329,10 +329,10 @@ class MinimizationSpec:
     """Preparation settings plus physical settings for the exported OpenMM runner."""
 
     enabled: bool = False
-    output_dir: str = "minimization_inputs"
-    engines: List[str] = field(default_factory=lambda: ["gromacs", "openmm"])
-    gromacs: dict = field(default_factory=dict)
+    output_dir: str = "openmm_minimization"
     resources: dict = field(default_factory=dict)
+    restraint_force_constant_kj_mol_nm2: float = 1000.0
+    restraint_residue_classes: dict = field(default_factory=dict)
     # Standalone preparation inputs. For post-pipeline preparation these
     # are deliberately replaced with the freshly written output.gro_path and
     # topology.output_dir/topol.top, preventing an older system from being
@@ -362,19 +362,25 @@ class MinimizationSpec:
     platform: str = "auto"  # auto | CUDA | HIP | OpenCL | CPU | Reference
     precision: str = "mixed"  # single | mixed | double (when supported)
     device_index: str = ""
-    # GROMACS preprocessor definitions, for example {POSRES: 1}.
+    # Topology preprocessor definitions; positional restraints must be inactive.
     defines: Dict[str, Union[str, int, float]] = field(default_factory=dict)
 
     def validate(self, check_paths: bool = True, require_inputs: bool = False):
         errors = []
         if not isinstance(self.output_dir, str) or not self.output_dir.strip():
             errors.append("minimization.output_dir must be a non-empty path")
-        if (not isinstance(self.engines, list) or not self.engines
-                or any(x not in ("gromacs", "openmm") for x in self.engines)
-                or len(set(self.engines)) != len(self.engines)):
-            errors.append("minimization.engines must be a unique list of gromacs/openmm")
-        if not isinstance(self.gromacs, dict) or not isinstance(self.resources, dict):
-            errors.append("minimization.gromacs and resources must be mappings")
+        if not isinstance(self.resources, dict):
+            errors.append("minimization.resources must be a mapping")
+        if (not _is_finite_number(self.restraint_force_constant_kj_mol_nm2)
+                or self.restraint_force_constant_kj_mol_nm2 <= 0):
+            errors.append("minimization.restraint_force_constant_kj_mol_nm2 must be positive")
+        if not isinstance(self.restraint_residue_classes, dict):
+            errors.append("minimization.restraint_residue_classes must be a mapping")
+        else:
+            for name, role in self.restraint_residue_classes.items():
+                if (not isinstance(name, str) or not name.strip()
+                        or role not in ("protein", "ligand", "lipid", "water", "ion")):
+                    errors.append("restraint_residue_classes must map residue names to protein, ligand, lipid, water or ion")
         if type(self.enabled) is not bool:
             errors.append("minimization.enabled must be boolean")
         if self.algorithm != "lbfgs":
@@ -490,24 +496,24 @@ class TopologySpec:
     # disabled by default. See topology.py's
     # module docstring for the full explanation of how moleculetype names
     # get resolved; this is a system-agnostic mechanism, not tied to any
-    # particular receptor/ligand -- every name below is a path you supply.
+    # particular protein/ligand -- every name below is a path you supply.
     enabled: bool = False
-    # toppar/ folder belonging to whichever structure the NEW receptor (and
+    # toppar/ folder belonging to whichever structure the NEW protein (and
     # usually its ligand) came from -- e.g. replacement_structure's own
     # ".../gromacs/toppar/". Must sit next to that structure's own
     # topol.top (standard CHARMM-GUI layout), unless you override that via
-    # receptor_template_top below.
-    receptor_toppar_dir: str = ""
-    # Optional override if receptor_toppar_dir's sibling topol.top isn't
+    # protein_template_top below.
+    protein_toppar_dir: str = ""
+    # Optional override if protein_toppar_dir's sibling topol.top isn't
     # at the standard "<parent of toppar_dir>/topol.top" location.
-    receptor_template_top: str = ""
+    protein_template_top: str = ""
     # toppar/ folder with correct parameters for the kept environment's
     # lipid/water/ion species -- can be from any CHARMM-GUI system with a
     # matching composition (its own topol.top is not read, only its .itp
     # files).
     environment_toppar_dir: str = ""
     # Extra standalone ligand .itp file(s), only needed if the ligand's
-    # parameters aren't already inside receptor_toppar_dir.
+    # parameters aren't already inside protein_toppar_dir.
     ligand_itp_paths: List[str] = field(default_factory=list)
     # resname -> moleculetype name overrides for anything that doesn't
     # follow the "moleculetype name == resname" convention (water's
@@ -571,7 +577,7 @@ class BoxValidationSpec:
 
 @dataclass
 class Config:
-    mode: str = "receptor"
+    mode: str = "protein"
     box_validation: BoxValidationSpec = field(default_factory=BoxValidationSpec)
     target_box: StructureSpec = field(default_factory=StructureSpec)
     replacement_structure: StructureSpec = field(default_factory=StructureSpec)
@@ -603,7 +609,7 @@ class Config:
         self.minimization.validate(check_paths=check_paths, require_inputs=False)
         structure_boxes = ({"target_box": self.target_box,
                             "replacement_structure": self.replacement_structure}
-                           if self.mode == "receptor" else
+                           if self.mode == "protein" else
                            {"ligand_replace": self.ligand_replace}
                            if self.mode == "lig" else {"cholesterol": self.cholesterol})
         for label, structure in structure_boxes.items():
@@ -622,8 +628,8 @@ class Config:
             errors.append("clash_detection.use_pbc must be boolean")
         elif not self.clash_detection.use_pbc and self.box_validation.mode != "off":
             errors.append("clash_detection.use_pbc: false requires explicit box_validation.mode: off")
-        if self.mode not in ("receptor", "lig", "chl"):
-            errors.append("mode must be one of: receptor, lig, chl")
+        if self.mode not in ("protein", "lig", "chl"):
+            errors.append("mode must be one of: protein, lig, chl")
         if self.mode == "lig":
             lr = self.ligand_replace
             if lr.format not in ("auto", "pdb", "gro"):
@@ -685,7 +691,7 @@ class Config:
                     errors.append("ligand_replace.fit.old_ligand_fit_atoms must contain non-empty strings")
                 if any(not isinstance(name, str) or not name for name in lr.fit.new_ligand_fit_atoms):
                     errors.append("ligand_replace.fit.new_ligand_fit_atoms must contain non-empty strings")
-        elif self.mode == "receptor":
+        elif self.mode == "protein":
             for label, spec in (("target_box", self.target_box),
                                  ("replacement_structure", self.replacement_structure)):
                 if not isinstance(spec.path, str) or not spec.path.strip():
@@ -694,8 +700,8 @@ class Config:
                     errors.append(f"{label}.path does not exist: {spec.path}")
                 if spec.format not in ("auto", "pdb", "gro"):
                     errors.append(f"{label}.format must be one of: auto, pdb, gro")
-                if not spec.receptor_mask:
-                    errors.append(f"{label}.receptor_mask is required (cpptraj-style, e.g. ':1-963')")
+                if not spec.protein_mask:
+                    errors.append(f"{label}.protein_mask is required (cpptraj-style, e.g. ':1-963')")
                 if spec.box_dimensions is not None and len(spec.box_dimensions) != 6:
                     errors.append(f"{label}.box_dimensions must have exactly 6 values [x, y, z, alpha, beta, gamma]")
             if self.alignment.atoms not in (None, "", "CA", "backbone", "all"):
@@ -810,10 +816,10 @@ class Config:
                     "cholesterol.box_dimensions must have exactly 6 values "
                     "[x, y, z, alpha, beta, gamma]"
                 )
-            if not ch.target_receptor_mask:
-                errors.append("cholesterol.target_receptor_mask is required in chl mode")
-            if not ch.experimental_receptor_mask:
-                errors.append("cholesterol.experimental_receptor_mask is required in chl mode")
+            if not ch.target_protein_mask:
+                errors.append("cholesterol.target_protein_mask is required in chl mode")
+            if not ch.experimental_protein_mask:
+                errors.append("cholesterol.experimental_protein_mask is required in chl mode")
             if not ch.cholesterol_resnames:
                 errors.append("cholesterol.cholesterol_resnames cannot be empty")
             elif any(not isinstance(name, str) or not name for name in ch.cholesterol_resnames):
@@ -940,7 +946,7 @@ class Config:
                 f"valid values are {sorted(valid_classes)}"
             )
         for label, value in (
-            ("charge.exclusion_distance_from_receptor", self.charge.exclusion_distance_from_receptor),
+            ("charge.exclusion_distance_from_protein", self.charge.exclusion_distance_from_protein),
             ("charge.exclusion_distance_from_ligand", self.charge.exclusion_distance_from_ligand),
             ("charge.exclusion_distance_from_lipid", self.charge.exclusion_distance_from_lipid),
         ):
@@ -972,12 +978,12 @@ class Config:
             errors.append("topology.enabled must be boolean")
         elif self.topology.enabled:
             if (
-                not isinstance(self.topology.receptor_toppar_dir, str)
-                or not self.topology.receptor_toppar_dir.strip()
+                not isinstance(self.topology.protein_toppar_dir, str)
+                or not self.topology.protein_toppar_dir.strip()
             ):
-                errors.append("topology.receptor_toppar_dir is required when topology.enabled is true")
-            elif check_paths and not os.path.isdir(self.topology.receptor_toppar_dir):
-                errors.append(f"topology.receptor_toppar_dir does not exist: {self.topology.receptor_toppar_dir}")
+                errors.append("topology.protein_toppar_dir is required when topology.enabled is true")
+            elif check_paths and not os.path.isdir(self.topology.protein_toppar_dir):
+                errors.append(f"topology.protein_toppar_dir does not exist: {self.topology.protein_toppar_dir}")
             if (
                 not isinstance(self.topology.environment_toppar_dir, str)
                 or not self.topology.environment_toppar_dir.strip()
@@ -987,13 +993,13 @@ class Config:
                 errors.append(f"topology.environment_toppar_dir does not exist: {self.topology.environment_toppar_dir}")
             if not isinstance(self.topology.output_dir, str) or not self.topology.output_dir.strip():
                 errors.append("topology.output_dir must be a non-empty path string")
-            if self.topology.receptor_template_top and (
-                not isinstance(self.topology.receptor_template_top, str)
-                or (check_paths and not os.path.isfile(self.topology.receptor_template_top))
+            if self.topology.protein_template_top and (
+                not isinstance(self.topology.protein_template_top, str)
+                or (check_paths and not os.path.isfile(self.topology.protein_template_top))
             ):
                 errors.append(
-                    "topology.receptor_template_top does not exist or is not a file: "
-                    f"{self.topology.receptor_template_top}"
+                    "topology.protein_template_top does not exist or is not a file: "
+                    f"{self.topology.protein_template_top}"
                 )
         if self.minimization.enabled and not self.topology.enabled:
             errors.append(
@@ -1079,7 +1085,7 @@ class Config:
                 if len(labels) > 1:
                     errors.append("Configured output paths collide: " + ", ".join(labels))
         input_paths = []
-        if self.mode == "receptor":
+        if self.mode == "protein":
             input_paths = [self.target_box.path, self.replacement_structure.path]
         elif self.mode == "lig":
             input_paths = [
@@ -1119,7 +1125,7 @@ _COMMON_SECTIONS = {
     "output", "box_validation", "minimization"
 }
 _MODE_SECTIONS = {
-    "receptor": _COMMON_SECTIONS | {
+    "protein": _COMMON_SECTIONS | {
         "target_box", "replacement_structure", "name_restoration",
         "replacement_ligands", "charge",
     },
@@ -1129,8 +1135,8 @@ _MODE_SECTIONS = {
 
 _SECTION_KEYS = {
     "box_validation": set(BoxValidationSpec.__dataclass_fields__),
-    "target_box": {"path", "format", "receptor_mask", "box_dimensions"},
-    "replacement_structure": {"path", "format", "receptor_mask", "box_dimensions"},
+    "target_box": {"path", "format", "protein_mask", "box_dimensions"},
+    "replacement_structure": {"path", "format", "protein_mask", "box_dimensions"},
     # atoms is retained only as a deprecated compatibility fallback. New
     # configurations put @atom names directly in each region mask.
     "alignment": {
@@ -1143,7 +1149,7 @@ _SECTION_KEYS = {
     },
     "charge": {
         "target_net_charge", "neutralize", "tolerance",
-        "exclusion_distance_from_receptor", "exclusion_distance_from_ligand",
+        "exclusion_distance_from_protein", "exclusion_distance_from_ligand",
         "exclusion_distance_from_lipid", "membrane_z_margin", "random_seed", "charge_table_overrides",
         "exclude_membrane_interior", "membrane_z_override",
     },
@@ -1156,7 +1162,7 @@ _SECTION_KEYS = {
         "topology_path", "topology_to_pdb_resname",
     },
     "topology": {
-        "enabled", "receptor_toppar_dir", "receptor_template_top",
+        "enabled", "protein_toppar_dir", "protein_template_top",
         "environment_toppar_dir", "ligand_itp_paths",
         "moleculetype_overrides", "output_dir",
     },
@@ -1167,8 +1173,8 @@ _SECTION_KEYS = {
     },
     "cholesterol": {
         "experimental_structure_path", "target_system_path",
-        "target_system_format", "box_dimensions", "target_receptor_mask",
-        "experimental_receptor_mask", "cholesterol_resnames", "charmm_resname",
+        "target_system_format", "box_dimensions", "target_protein_mask",
+        "experimental_protein_mask", "cholesterol_resnames", "charmm_resname",
         "convert_to_charmm36", "reconstruct_missing_heavy_atoms",
         "max_missing_heavy_atoms", "max_heavy_atom_fit_rmsd", "write_diagnostics",
         "charmm36_reference_path", "obabel_command",
@@ -1293,9 +1299,9 @@ def _validate_nested_keys(raw: dict, mode: str) -> None:
                 )
 
 
-def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> Config:
+def load_config(path: str, mode: str = "protein", check_paths: bool = True) -> Config:
     if mode not in _MODE_SECTIONS:
-        raise ConfigError("Mode must be one of: receptor, lig, chl")
+        raise ConfigError("Mode must be one of: protein, lig, chl")
     try:
         with open(path, encoding="utf-8") as fh:
             raw = yaml.load(fh, Loader=_UniqueKeySafeLoader)
@@ -1411,13 +1417,13 @@ def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> 
         target_box=StructureSpec(
             path=_get(ob, "path", ""),
             format=_get(ob, "format", "auto"),
-            receptor_mask=_get(ob, "receptor_mask", ""),
+            protein_mask=_get(ob, "protein_mask", ""),
             box_dimensions=_get(ob, "box_dimensions", None),
         ),
         replacement_structure=StructureSpec(
             path=_get(rs, "path", ""),
             format=_get(rs, "format", "auto"),
-            receptor_mask=_get(rs, "receptor_mask", ""),
+            protein_mask=_get(rs, "protein_mask", ""),
             box_dimensions=_get(rs, "box_dimensions", None),
         ),
         alignment=AlignmentSpec(
@@ -1449,7 +1455,7 @@ def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> 
             target_net_charge=_get(ch, "target_net_charge", 0.0),
             neutralize=_get(ch, "neutralize", True),
             tolerance=_get(ch, "tolerance", 0.01),
-            exclusion_distance_from_receptor=_get(ch, "exclusion_distance_from_receptor", 10.0),
+            exclusion_distance_from_protein=_get(ch, "exclusion_distance_from_protein", 10.0),
             exclusion_distance_from_ligand=_get(ch, "exclusion_distance_from_ligand", 10.0),
             exclusion_distance_from_lipid=_get(
                 ch, "exclusion_distance_from_lipid", _get(ch, "membrane_z_margin", 5.0)
@@ -1468,10 +1474,10 @@ def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> 
         ),
         minimization=MinimizationSpec(
             enabled=_get(mn, "enabled", False),
-            output_dir=_get(mn, "output_dir", "minimization_inputs"),
-            engines=_get(mn, "engines", ["gromacs", "openmm"]),
-            gromacs=_get(mn, "gromacs", {}),
+            output_dir=_get(mn, "output_dir", "openmm_minimization"),
             resources=_get(mn, "resources", {}),
+            restraint_force_constant_kj_mol_nm2=_get(mn, "restraint_force_constant_kj_mol_nm2", 1000.0),
+            restraint_residue_classes=_get(mn, "restraint_residue_classes", {}),
             coordinates_path=_get(mn, "coordinates_path", ""),
             topology_path=_get(mn, "topology_path", ""),
             include_dir=_get(mn, "include_dir", ""),
@@ -1504,8 +1510,8 @@ def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> 
         ),
         topology=TopologySpec(
             enabled=_get(tp, "enabled", False),
-            receptor_toppar_dir=_get(tp, "receptor_toppar_dir", ""),
-            receptor_template_top=_get(tp, "receptor_template_top", ""),
+            protein_toppar_dir=_get(tp, "protein_toppar_dir", ""),
+            protein_template_top=_get(tp, "protein_template_top", ""),
             environment_toppar_dir=_get(tp, "environment_toppar_dir", ""),
             ligand_itp_paths=_get(tp, "ligand_itp_paths", []) or [],
             moleculetype_overrides=_get(tp, "moleculetype_overrides", {}) or {},
@@ -1543,8 +1549,8 @@ def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> 
             target_system_path=_get(cs, "target_system_path", ""),
             target_system_format=_get(cs, "target_system_format", "auto"),
             box_dimensions=_get(cs, "box_dimensions", None),
-            target_receptor_mask=_get(cs, "target_receptor_mask", ""),
-            experimental_receptor_mask=_get(cs, "experimental_receptor_mask", ""),
+            target_protein_mask=_get(cs, "target_protein_mask", ""),
+            experimental_protein_mask=_get(cs, "experimental_protein_mask", ""),
             cholesterol_resnames=[
                 str(x).upper() for x in (
                     _get(cs, "cholesterol_resnames", ["CHL1", "CHL", "CHOL", "CLR"])

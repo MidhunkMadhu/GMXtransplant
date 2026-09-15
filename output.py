@@ -123,7 +123,7 @@ def _reorder_canonical(universe, protein_chain_atom_counts=None):
         protein_atom_count = sum(int(count) for count in protein_chain_atom_counts)
         if protein_atom_count > len(universe.atoms):
             raise RuntimeError(
-                f"Topology describes {protein_atom_count} receptor atoms, but the "
+                f"Topology describes {protein_atom_count} protein atoms, but the "
                 f"assembled system contains only {len(universe.atoms)} atoms."
             )
         if protein_atom_count:
@@ -181,7 +181,7 @@ def finalize_system(
     box_dimensions,
     ions_removed: List[dict],
     protein_chain_atom_counts=None,
-    inserted_contains_receptor: bool = True,
+    inserted_contains_protein: bool = True,
 ):
     """Remove neutralization-selected ions from kept_environment_ag, merge
     with inserted_ag, and reorder the result into the fixed canonical
@@ -196,7 +196,7 @@ def finalize_system(
     else:
         final_env_ag = kept_environment_ag
 
-    if inserted_contains_receptor:
+    if inserted_contains_protein:
         final_universe = mda.Merge(inserted_ag, final_env_ag)
     else:
         final_universe = mda.Merge(final_env_ag, inserted_ag)
@@ -322,7 +322,7 @@ def refgro_completeness_check(final_universe, refgro_path: str) -> dict:
     expected to also appear somewhere in the final output. Informational
     only (never fail-stop): refgro is a shape/completeness reference, not
     necessarily this run's own donor file, so a genuinely apo run or a
-    receptor-only environment swap can legitimately be missing some of
+    protein-only environment swap can legitimately be missing some of
     refgro's species."""
     from classify import classify_resnames
 
@@ -344,10 +344,10 @@ def refgro_completeness_check(final_universe, refgro_path: str) -> dict:
 
 
 def write_inspection_pdb(target_full_ag, aligned_mobile_ag, path: str):
-    """Write a combined inspection structure: the box's original receptor
-    (chain X) overlaid with the newly-aligned replacement receptor
+    """Write a combined inspection structure: the box's original protein
+    (chain X) overlaid with the newly-aligned replacement protein
     (chain Y), so alignment quality can be checked visually before the
-    original receptor is removed."""
+    original protein is removed."""
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     merged = mda.Merge(target_full_ag, aligned_mobile_ag)
     n1 = len(target_full_ag)
