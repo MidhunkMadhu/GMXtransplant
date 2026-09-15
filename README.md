@@ -14,10 +14,8 @@ inputs, runners, and generic multicore SLURM templates. It never runs or submits
 minimization. It validates inputs and reads written coordinate files back before accepting
 them.
 
-This is a structure-assembly tool and expects every molecular component to be
-parameterized already. After assembly, the user can inspect and use the generated
-bundle directly or prepare portable minimization inputs in the same command.
-The generated runners execute separately before any preferred downstream protocol.
+This is a structure-assembly tool and expects every molecular component to be parameterized already. After assembly, the user can inspect the outputs and use them directly or prepare portable minimization inputs as described below.
+
 
 ## What it can do
 
