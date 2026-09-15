@@ -326,13 +326,17 @@ class OutputSpec:
 
 @dataclass
 class MinimizationSpec:
-    """OpenMM minimization inputs, physical settings, and output paths."""
+    """Preparation settings plus physical settings for the exported OpenMM runner."""
 
     enabled: bool = False
-    # Standalone minimization inputs.  For post-pipeline minimization these
+    output_dir: str = "minimization_inputs"
+    engines: List[str] = field(default_factory=lambda: ["gromacs", "openmm"])
+    gromacs: dict = field(default_factory=dict)
+    resources: dict = field(default_factory=dict)
+    # Standalone preparation inputs. For post-pipeline preparation these
     # are deliberately replaced with the freshly written output.gro_path and
     # topology.output_dir/topol.top, preventing an older system from being
-    # minimized by mistake.
+    # exported by mistake.
     coordinates_path: str = ""
     topology_path: str = ""
     include_dir: str = ""
@@ -363,6 +367,14 @@ class MinimizationSpec:
 
     def validate(self, check_paths: bool = True, require_inputs: bool = False):
         errors = []
+        if not isinstance(self.output_dir, str) or not self.output_dir.strip():
+            errors.append("minimization.output_dir must be a non-empty path")
+        if (not isinstance(self.engines, list) or not self.engines
+                or any(x not in ("gromacs", "openmm") for x in self.engines)
+                or len(set(self.engines)) != len(self.engines)):
+            errors.append("minimization.engines must be a unique list of gromacs/openmm")
+        if not isinstance(self.gromacs, dict) or not isinstance(self.resources, dict):
+            errors.append("minimization.gromacs and resources must be mappings")
         if type(self.enabled) is not bool:
             errors.append("minimization.enabled must be boolean")
         if self.algorithm != "lbfgs":
@@ -1060,15 +1072,6 @@ class Config:
                 elif concrete_outputs:
                     concrete_outputs[label] = value
         if concrete_outputs:
-            concrete_outputs["minimization.output_gro_path"] = (
-                self.minimization.output_gro_path
-            )
-            concrete_outputs["minimization.report_path (.txt)"] = (
-                self.minimization.report_path + ".txt"
-            )
-            concrete_outputs["minimization.report_path (.json)"] = (
-                self.minimization.report_path + ".json"
-            )
             by_realpath = {}
             for label, value in concrete_outputs.items():
                 by_realpath.setdefault(os.path.realpath(value), []).append(label)
@@ -1465,6 +1468,10 @@ def load_config(path: str, mode: str = "receptor", check_paths: bool = True) -> 
         ),
         minimization=MinimizationSpec(
             enabled=_get(mn, "enabled", False),
+            output_dir=_get(mn, "output_dir", "minimization_inputs"),
+            engines=_get(mn, "engines", ["gromacs", "openmm"]),
+            gromacs=_get(mn, "gromacs", {}),
+            resources=_get(mn, "resources", {}),
             coordinates_path=_get(mn, "coordinates_path", ""),
             topology_path=_get(mn, "topology_path", ""),
             include_dir=_get(mn, "include_dir", ""),

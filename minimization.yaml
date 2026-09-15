@@ -1,47 +1,51 @@
-# Standalone OpenMM minimization of an existing GROMACS GRO/topology bundle
-# Run: gmxtransplant --minimize -i minimization.yaml
-# Dry-run: gmxtransplant --minimize -i minimization.yaml --dry-run
-
-# -----------------------------------------------------------------------------
-# 1. PATHS: edit these values for the system being minimized
-# -----------------------------------------------------------------------------
-paths:
-  input_coordinates: step5_input.gro
-  input_topology: topol.top
-  topology_include_dir: ""
-  minimized_gro: minimized.gro
-  minimization_report: minimization_report
-
-# -----------------------------------------------------------------------------
-# 2. MINIMIZATION SETTINGS
-# -----------------------------------------------------------------------------
+# Prepare an existing bundle; nothing is executed or submitted.
+# gmxtransplant prepare-minimization -i minimization.yaml
+# Add --dry-run to validate only schema and settings.
+# Preparation only: no minimizer is launched by GMXtransplant.
+# Requires topology.enabled: true after assembly. Both folders are portable.
 minimization:
-  enabled: true
-  coordinates_path: "${input_coordinates}"
-  topology_path: "${input_topology}"
-  # Empty uses the directory containing topol.top. Set this only when includes
-  # must be found elsewhere.
-  include_dir: "${topology_include_dir}"
-  output_gro_path: "${minimized_gro}"
-  report_path: "${minimization_report}"
-
-  algorithm: lbfgs  # OpenMM's supported constrained local minimizer.
-  tolerance_kj_mol_nm: 10.0
-  max_iterations: 5000  # Alternative: 0 continues until convergence.
+  enabled: true  # true prepares folders after successful assembly.
+  output_dir: minimization_inputs
+  engines: [gromacs, openmm]
+  coordinates_path: step5_input.gro  # Standalone-only; assembly uses its freshly written GRO.
+  topology_path: topol.top     # Standalone-only; assembly uses its generated topol.top.
+  include_dir: ""
+  resources:
+    cpus_per_task: 8
+    gromacs_mpi_tasks: 1
+    time: "00:30:00"
+    memory: 8G
+  # GROMACS settings are independent of the OpenMM fields below.
+  # Review these defaults against your source force-field protocol.
+  gromacs:
+    integrator: steep
+    emtol: 100.0  # Maximum force, kJ/mol/nm; not an RMS tolerance.
+    emstep: 0.01
+    nsteps: 5000
+    constraints: h-bonds
+    coulombtype: PME
+    rcoulomb: 1.2
+    vdwtype: Cut-off
+    vdw_modifier: Force-switch  # Also Potential-switch, Potential-shift, None.
+    rvdw_switch: 1.0
+    rvdw: 1.2
+    disp_corr: "no"
+    ewald_rtol: 5.0e-4
+    defines: {}
+    restrained_defines: {}  # Optional {POSRES: 1}; requires existing restraint ITPs.
+  # OpenMM settings. No OpenMM installation is needed to prepare this folder.
+  algorithm: lbfgs
+  tolerance_kj_mol_nm: 10.0  # RMS minimizer objective gradient, not GROMACS Fmax.
+  max_iterations: 5000
   constraint_tolerance: 1.0e-5
-
-  # These choices replace the corresponding settings normally supplied by an
-  # MDP file. Match them to the force field and protocol that produced topol.top.
-  nonbonded_method: PME  # Alternatives: LJPME, Ewald, CutoffPeriodic.
+  nonbonded_method: PME  # Alternative: CutoffPeriodic.
   nonbonded_cutoff_nm: 1.2
-  switch_distance_nm: 1.0  # Alternative: null disables LJ switching.
-  constraints: h_bonds  # Alternatives: none, all_bonds, h_angles.
-  rigid_water: true  # Alternative: false.
+  switch_distance_nm: 1.0  # Potential switch, not GROMACS force switching.
+  constraints: h_bonds
+  rigid_water: true
   ewald_error_tolerance: 5.0e-4
-  use_dispersion_correction: false  # Alternative: true.
-
-  platform: auto  # Alternatives: CUDA, HIP, OpenCL, CPU, Reference.
-  precision: mixed  # Alternatives: single or double (platform permitting).
-  device_index: ""  # Example for a selected GPU: "0".
-  # GROMACS preprocessor definitions. Activating restraints must be deliberate.
-  defines: {}  # Alternative: {POSRES: 1}.
+  use_dispersion_correction: false
+  platform: CPU  # GPU submission overrides this explicitly; no silent fallback.
+  precision: mixed
+  device_index: ""  # Scheduler controls visible devices by default.
+  defines: {}  # Active position_restraints are unsupported for OpenMM export.

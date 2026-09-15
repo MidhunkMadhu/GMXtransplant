@@ -9,15 +9,15 @@ preserving as much of that environment as possible.
 The pipeline removes complete environment molecules that clash with the inserted
 atoms, corrects charge when requested, regenerates the GROMACS molecule list,
 writes an index, and produces detailed text and JSON reports. It can optionally
-energy-minimize the assembled system with the free, open-source OpenMM Python
-API. It validates inputs and reads written coordinate files back before accepting
+prepare independent GROMACS and OpenMM minimization folders, including all
+inputs, runners, and generic multicore SLURM templates. It never runs or submits
+minimization. It validates inputs and reads written coordinate files back before accepting
 them.
 
 This is a structure-assembly tool and expects every molecular component to be
 parameterized already. After assembly, the user can inspect and use the generated
-bundle directly, request optional OpenMM minimization in the same command, or run
-minimization later as a standalone step before continuing with any preferred
-downstream protocol.
+bundle directly or prepare portable minimization inputs in the same command.
+The generated runners execute separately before any preferred downstream protocol.
 
 ## What it can do
 
@@ -26,7 +26,8 @@ downstream protocol.
 | `receptor` | Insert a receptor or receptor–ligand block into a prepared membrane/solvent environment | `receptor_replace.yaml` |
 | `lig` | Replace one bound ligand while keeping the receptor and environment | `ligand_replace.yaml` |
 | `chl` | Restore experimental cholesterol and correct leaflet composition | `cholesterol_restore.yaml` |
-| `--minimize` | Minimize an assembled or existing GROMACS bundle with OpenMM L-BFGS | `minimization.yaml` |
+| `--prepare-minimization` | Export independent GROMACS/OpenMM input folders after assembly | `minimization.yaml` |
+| `prepare-minimization` | Export folders from an existing matching GRO/topology bundle | `minimization.yaml` |
 
 In receptor mode, ligands selected together with the incoming receptor are moved
 by the same rigid transform and inserted as one block. This is the intended route
@@ -80,7 +81,8 @@ python3 -m pip install .
 gmxtransplant --help
 ```
 
-To enable energy minimization, install the optional OpenMM dependency:
+Preparing folders does not require GROMACS or OpenMM. To run the generated
+OpenMM scripts in the same environment, install the optional dependency:
 
 ```bash
 python3 -m pip install '.[minimize]'
@@ -117,7 +119,7 @@ conda create -n gmxtransplant -c conda-forge \
   python=3.11 pip numpy scipy pyyaml mdanalysis openbabel
 conda activate gmxtransplant
 python -m pip install /path/to/GMXtransplant
-conda install -c conda-forge openmm  # Only when --minimize is wanted.
+conda install -c conda-forge openmm  # Only on the machine running OpenMM.
 ```
 
 Optional tools:
@@ -127,8 +129,9 @@ Optional tools:
 - **PyMOL** with the `pymol2` Python module is required only for
   `pymol_align` and `pymol_cealign`. The default examples use `mask_fit` and do
   not need PyMOL.
-- **OpenMM** is required only for `--minimize`. It is an optional dependency,
-  not imported by assembly-only runs.
+- **OpenMM** is required only when executing the exported OpenMM runner.
+  It is not imported or required during assembly or bundle preparation.
+- **GROMACS** is required only when executing the exported GROMACS runner.
 
 The old script form remains available from a source checkout:
 
@@ -185,14 +188,15 @@ Run the pipeline:
 gmxtransplant --mode receptor -i receptor_replace.yaml
 ```
 
-Run the assembly and then minimize its validated GRO/topology outputs:
+Run assembly and then prepare minimization folders without executing either engine:
 
 ```bash
-gmxtransplant --mode receptor -i receptor_replace.yaml --minimize
+gmxtransplant --mode receptor -i receptor_replace.yaml --prepare-minimization
 ```
 
 The same flag works with `lig` and `chl`. Alternatively set
-`minimization.enabled: true` in that mode's YAML.
+`minimization.enabled: true`; in version 0.3 this means **prepare only**.
+The old `--minimize` flag is rejected with a migration message.
 
 Use `--mode lig` with `ligand_replace.yaml` or `--mode chl` with
 `cholesterol_restore.yaml`. The mode and file must agree. Unknown and duplicate
@@ -266,64 +270,126 @@ can remove surplus molecules outside `distance_from_protein`; it does not create
 missing lipids. Salt is compared with `composition.reference_system_path`, which
 is treated as the authoritative concentration baseline.
 
-### Optional OpenMM energy minimization
+### Portable minimization inputs
 
-Post-assembly minimization always uses the GRO just written by that run and the
-generated `topol.top`; values in `minimization.coordinates_path` and
-`minimization.topology_path` are ignored in this combined workflow. Consequently,
-`topology.enabled` must be `true`. This prevents accidentally minimizing a new
-coordinate file against an older topology.
+After assembly, preparation always copies the freshly validated GRO and generated
+`topol.top`. It requires `topology.enabled: true`. Standalone input path fields
+are ignored in the combined assembly workflow.
 
-An existing matching GROMACS bundle can instead be minimized independently:
+An existing matching system can be prepared independently:
+
+```bash
+gmxtransplant prepare-minimization \
+  --coordinates step5_input.gro --topology topol.top \
+  --output minimization_inputs
+```
+
+Or edit the example to configure physical settings and resources:
 
 ```bash
 gmxtransplant --show-example minimize > minimization.yaml
-gmxtransplant --minimize -i minimization.yaml --dry-run
-gmxtransplant --minimize -i minimization.yaml
+gmxtransplant prepare-minimization -i minimization.yaml --dry-run
+gmxtransplant prepare-minimization -i minimization.yaml
 ```
 
-With no YAML, standalone mode deliberately uses conservative filename defaults
-in the current directory:
+The dry run checks schema/settings without reading molecular inputs. A normal
+preparation copies and audits inputs but does not load either engine or submit jobs.
+`--engines gromacs` or `--engines openmm` selects just one engine; both are the default.
+`--include-dir` supplies one additional search root for topology includes.
+
+| Directory | Contents |
+|---|---|
+| `minimization_inputs/` | README and manifest with input hashes, settings, version and atom/charge audits |
+| `gromacs/` | input.gro, topol.top, local toppar/, audited topology, minimization.mdp, run.sh, submit_cpu.slurm, summary script and README |
+| `openmm/` | input.gro, topol.top, local toppar/, audited topology, minimization.yaml, standalone Python runner and support files, requirements.txt, run.sh, CPU/GPU SLURM templates and README |
+
+Each engine directory is independently movable and contains real copies, not
+symlinks to the original system. All literal includes, including inactive branches,
+must resolve. Copied includes are rewritten to collision-free local paths.
+Preparation supports `#ifdef`, `#ifndef`, `#else`, `#endif`, object macros and
+literal includes. Expressions such as `#if`, function-like macros and cyclic
+include graphs require a preprocessed topology. Atom order, names, counts, charge,
+finite coordinates and the orthorhombic box are checked with active defines.
+These checks do not replace engine parsing or validate every force-field feature.
+
+The bundle is staged before publication. Existing output directories are refused,
+and source coordinates/topologies are never modified. If preparation fails after
+assembly, the validated assembly remains available; the command returns status 7.
+
+#### Run the exported inputs
+
+Activate the appropriate software environment first. No GMXtransplant installation
+is required on the execution machine.
 
 ```bash
-gmxtransplant --minimize
-# Inputs: step5_input.gro and topol.top
-# Outputs: minimized.gro and minimization_report.{txt,json}
+cd minimization_inputs/gromacs
+bash run.sh                  # Local thread-MPI gmx, multicore OpenMP
+# Or, from this directory:
+sbatch submit_cpu.slurm      # External-MPI gmx_mpi through srun
 ```
 
-Atom identity is checked against the original, preprocessed GROMACS `[ atoms ]`
-names in `[ molecules ]` order. OpenMM's public topology normalizes some names
-(for example `SER:HN` becomes `SER:H`, and water names can also change). Comparing
-GRO names directly with that normalized topology caused false atom-order errors
-in earlier versions. No coordinate or ITP renaming is needed for this case;
-genuine source-name/count/order mismatches still stop minimization. The check
-uses OpenMM's parsed molecule records and reports an explicit compatibility
-error if a future OpenMM version no longer exposes them. After updating the
-package, an already assembled bundle can be retried with the standalone command
-above without repeating receptor replacement.
+```bash
+cd minimization_inputs/openmm
+python3 -m pip install -r requirements.txt
+bash run.sh                  # Explicit CPU in the examples
+# Alternatives, from this directory:
+sbatch submit_cpu.slurm
+sbatch submit_gpu.slurm      # One GPU, explicit CUDA
+```
 
-OpenMM uses constrained L-BFGS. `tolerance_kj_mol_nm` is the RMS objective-force
-tolerance; `max_iterations: 0` asks OpenMM to continue until convergence. The
-finite default avoids an accidentally unbounded command and reports a nonzero
-exit status if the objective remains above tolerance.
+SLURM templates are generic and contain no site-specific settings. They request
+one node, a configurable CPU count, memory and wall time. GROMACS MPI tasks
+are independently configurable; OpenMM uses one process with CPU threads or
+one GPU. The scheduler controls device visibility. Load your software environment
+in the template if needed, and submit from the engine directory.
 
-A GROMACS topology does not contain every run choice normally held in an MDP.
-The YAML therefore makes the nonbonded method, cutoff, LJ switch distance,
-constraints, rigid-water choice, Ewald tolerance, and dispersion correction
-explicit. Match these values to the force-field protocol that produced the
-system. OpenMM's switching function should not be assumed numerically identical
-to every GROMACS `vdw-modifier` variant.
+`minimization.resources` accepts `cpus_per_task`, `gromacs_mpi_tasks`,
+`time` and `memory`. CPU OpenMM uses `OPENMM_CPU_THREADS`; GROMACS uses
+`OMP_NUM_THREADS`. The GPU runner fails if the requested platform cannot
+initialize; it does not silently use the Reference platform. In exported settings,
+legacy `platform: auto` becomes CPU; the GPU submission script overrides it.
 
-`platform: auto` tries CUDA, HIP, OpenCL, CPU, then Reference, falling back when
-a registered accelerator cannot create a context. A selected GPU can be set with
-`device_index`. `defines: {POSRES: 1}` activates compatible conditional position
-restraints already present in the supplied topology; it does not create new
-restraints.
+Execution creates an exclusive `results/` directory. Existing results are not
+overwritten; rename them yourself before another attempt.
+GROMACS writes preprocessing logs, resolved MDP/topology, TPR, GRO, energy/log files
+and a JSON convergence summary. OpenMM writes a minimized GRO, text/JSON report
+and a failure report when execution raises an error. A zero engine exit code alone
+is not treated as proof of convergence. Status 7 means failure or unconfirmed
+convergence; inspect logs before using any resulting coordinates.
 
-The original assembled GRO is never overwritten. The minimized GRO and both
-reports are staged, read back, and promoted together. Reports include initial
-and final potential energy, physical-force diagnostics, the minimizer objective,
-convergence status, OpenMM platform/settings, and any accelerator fallbacks.
+#### Scientific settings and optional restrained stage
+
+GROMACS settings live in `minimization.gromacs`. The default is steepest descent,
+PME, 1.2 nm cutoffs and LJ force switching from 1.0 nm. These are editable starting
+values, not a force-field-independent prescription. GROMACS runs `grompp` with
+`-maxwarn 0`. No TPR is created during preparation.
+
+The existing physical fields directly under `minimization` configure OpenMM.
+GROMACS `emtol` measures maximum force; OpenMM's tolerance uses the RMS minimizer
+objective gradient. Their tolerances and step counts are not equivalent.
+OpenMM potential switching is not GROMACS force switching. Constraints, water
+rigidity and preprocessor choices also require deliberate review. Defaults do
+not promise identical Hamiltonians or minimized coordinates across engines.
+
+Set `gromacs.restrained_defines: {POSRES: 1}` to generate `restrained.mdp`
+followed by `minimization.mdp`. This requires existing, compatible position-restraint
+definitions in the supplied topology. The preparation audit checks that they are
+active in the first stage and inactive in the final stage; final-stage `defines`
+must be empty for this option. Both stages reference the original input.gro.
+The second stage uses the first stage's coordinates and starts only after confirmed
+convergence. Without this option, only one stage is generated.
+
+OpenMM export rejects active GROMACS `position_restraints`, which are not translated
+by this runner. Use GROMACS for that protocol. OpenMM executes the expanded
+`audit_openmm.top` generated with its requested defines; regenerate the bundle
+when changing those defines. The audit includes OpenMM's implicit `FLEXIBLE`
+definition, which supplies water bonds/angles before rigid-water constraints are
+applied. Original source atom records are used for identity
+checks because OpenMM's public topology may normalize atom names.
+
+Engine reference documentation:
+[GROMACS MDP options](https://manual.gromacs.org/current/user-guide/mdp-options.html)
+and [OpenMM platform properties](https://docs.openmm.org/latest/userguide/library/04_platform_specifics.html).
 
 ## Residue masks
 
@@ -376,8 +442,9 @@ With the enabled options in the examples, a successful run produces:
 - `topol.top` plus a self-contained `toppar/`; and
 - `index.ndx`.
 
-When minimization is requested, it additionally produces `minimized.gro`,
-`minimization_report.txt`, and `minimization_report.json`.
+When preparation is requested, it additionally creates `minimization_inputs/`.
+Minimized coordinates and runtime reports appear only when a generated runner is
+executed separately.
 
 The final order is protein, ligand/cofactor, lipid, ion, then water. PDB and GRO
 are written to temporary files, read back, and checked for atom names/order,
@@ -411,20 +478,15 @@ non-identical receptor sequences.
 **Open Babel not found** — install it with Conda (`conda install -c conda-forge
 openbabel`) or set `cholesterol.obabel_command` to its executable path.
 
-**OpenMM is required for --minimize** — install with `python -m pip install
-'.[minimize]'` from a downloaded checkout, or `conda install -c
-conda-forge openmm`, then run `python -m openmm.testInstallation`.
+**Preparation refuses an existing directory**: choose a new `--output` directory;
+the generator deliberately does not overwrite prior inputs or results.
 
-**OpenMM cannot parse the topology** — make sure every quoted include is inside
-the generated bundle. Set `minimization.include_dir` only for an additional
-include root, and provide required preprocessor values through
-`minimization.defines`. Advanced GROMACS-specific topology constructs may still
-require conversion or simplification before OpenMM can use them.
+**OpenMM is unavailable on the execution machine**: install from the generated
+`requirements.txt`. Neither engine is needed on the preparation machine.
 
-**Minimization exits with status 7** — the assembly outputs remain valid and
-untouched. Read `minimization_report.json` if it was written; increase
-`max_iterations` only after checking for bad parameters, severe overlaps, and
-incorrect nonbonded settings.
+**Minimization exits with status 7**: inspect the generated results/logs. Increase
+iteration limits only after checking parameters, overlaps and nonbonded settings.
+Assembly outputs and copied inputs remain unchanged.
 
 **Large lipid-removal warning** — inspect the inserted pose, cell, and mask before
 continuing. Keeping all lipids can hide serious overlaps; it is a deliberate
@@ -446,13 +508,13 @@ python3 -m build
 ```
 
 Artifacts are written under `dist/`. GitHub Actions runs the core suite on
-Python 3.10–3.12, builds both distributions, and runs the real OpenMM
-minimization smoke test in a separate optional-dependency job. Before publishing
+Python 3.10–3.12, builds both distributions, and runs real OpenMM and GROMACS
+smoke tests in separate engine-enabled jobs. Core tests also exercise bundle
+portability, source identity, script syntax, CLI migration and overwrite protection. Before publishing
 the repository, add the owner’s chosen `LICENSE` file and update any repository
 URL used in installation examples.
 
-At handoff, users can keep the validated assembly unchanged, use the optional
-OpenMM-minimized coordinates, apply a different compatible minimizer, or take
+At handoff, users can keep the validated assembly unchanged, execute either exported minimization workflow, apply a different compatible minimizer, or take
 the standard GROMACS-format bundle into their chosen downstream protocol.
 
 ## Current limitations
@@ -465,6 +527,6 @@ the standard GROMACS-format bundle into their chosen downstream protocol.
   require a preprocessed topology.
 - Cholesterol composition correction removes surplus molecules but cannot add
   missing lipids or solvent.
-- Optional energy minimization uses OpenMM L-BFGS; users who prefer a different
-  minimizer can take the validated GRO/topology bundle into another compatible
-  workflow.
+- Prepared minimization supports GROMACS steepest descent and OpenMM L-BFGS.
+  Execution is external; these engines' force and convergence settings are not
+  assumed equivalent. Other minimizers can use the validated GRO/topology bundle.

@@ -1,4 +1,4 @@
-"""Optional OpenMM energy minimization for assembled GROMACS systems."""
+"""Runtime support for the exported standalone OpenMM runner, not assembly."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def _load_openmm():
         from openmm import app, unit
     except (ImportError, ModuleNotFoundError) as exc:
         raise MinimizationError(
-            "OpenMM is required for --minimize. Install the optional dependency "
+            "OpenMM is required to execute this standalone runner. Install the optional dependency "
             "from the repository with `python -m pip install '.[minimize]'`, "
             "install it directly with `python -m pip install openmm`, or use "
             "`conda install -c conda-forge openmm`."
@@ -84,6 +84,8 @@ def _create_simulation(openmm, app, unit, topology, system, spec: MinimizationSp
         properties = {}
         if "Precision" in property_names:
             properties["Precision"] = spec.precision
+        if name == "CPU" and "Threads" in property_names and os.environ.get("OPENMM_CPU_THREADS"):
+            properties["Threads"] = os.environ["OPENMM_CPU_THREADS"]
         if spec.device_index:
             if "DeviceIndex" not in property_names:
                 if spec.platform != "auto":
@@ -180,11 +182,19 @@ def _validate_coordinate_topology_identity(input_gro: str, topology) -> None:
         import MDAnalysis as mda
 
         universe = mda.Universe(input_gro)
-    top_atoms = list(topology.atoms())
     coordinate_names = [str(name) for name in universe.atoms.names]
-    topology_names = [str(atom.name) for atom in top_atoms]
     coordinate_resnames = [str(name) for name in universe.atoms.resnames]
-    topology_resnames = [str(atom.residue.name) for atom in top_atoms]
+    # Public OpenMM atom names are normalized (for example HN -> H). Audit
+    # against the source records actually parsed, without renaming coordinates.
+    try:
+        records = [atom for name, count in topology._molecules
+                   for _ in range(count) for atom in topology._moleculeTypes[name].atoms]
+        topology_names = [atom[4] for atom in records]
+        topology_resnames = [atom[3] for atom in records]
+    except (AttributeError, KeyError, IndexError, TypeError) as exc:
+        raise MinimizationError("OpenMM source atom records unavailable; incompatible parser version") from exc
+    if len(records) != len(coordinate_names):
+        raise MinimizationError("GRO/topology source atom counts differ")
     for index, (coord_name, top_name, coord_resname, top_resname) in enumerate(
         zip(
             coordinate_names,
@@ -284,7 +294,7 @@ def run_minimization(spec: MinimizationSpec) -> dict:
                 f"GRO/topology atom-count mismatch: coordinates={coordinate_count}, "
                 f"topology={topology_count}"
             )
-        _validate_coordinate_topology_identity(input_gro, top.topology)
+        _validate_coordinate_topology_identity(input_gro, top)
 
         method = getattr(app, spec.nonbonded_method)
         constraints = {

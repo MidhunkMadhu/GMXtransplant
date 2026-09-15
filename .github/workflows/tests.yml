@@ -35,4 +35,19 @@ jobs:
       - name: Install package with OpenMM
         run: python -m pip install --upgrade pip '.[minimize]'
       - name: Run minimization smoke test
-        run: python -m unittest -v test_minimization
+        run: python -m unittest -v test_minimization test_minimization_bundle
+
+  gromacs-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install GROMACS and package
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gromacs
+          python -m pip install .
+      - name: Run exported GROMACS smoke test
+        run: python -m unittest -v test_minimization_bundle.BundleTests.test_real_gromacs_runner
