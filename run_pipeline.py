@@ -786,7 +786,7 @@ def _run_pipeline_mode(config_path: str, mode: str, dry_run: bool = False) -> in
     print(f"[config] output.report_path            = {cfg.output.report_path} (.txt + .json)")
     print("-" * 78)
 
-    replacement_ligand_itp_paths = []
+    replacement_ligand_itp_paths = [ligand.itp_path for ligand in resolved_replacement_ligands]
 
     # topology.ligand_itp_paths automatically picks up ligand_replace's own
     # new_ligand.itp_path, if set, so it doesn't need to be listed twice.

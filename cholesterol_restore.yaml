@@ -2,7 +2,7 @@
 # Run: gmxtransplant --mode chl -i cholesterol_restore.yaml
 #
 # EDITING GUIDE
-# 1. Edit paths only in this first block. ${name} references reuse them below.
+# 1. Edit input paths and selections at the top. ${name} reuses path values.
 # 2. Edit protein masks, cholesterol names, and target composition below.
 # 3. Run with --dry-run before processing coordinates (checks configuration and
 #    paths, not a full geometric trial). Inspect the assembled reports afterward.
@@ -19,7 +19,6 @@ paths:
   environment_coordinates: inputs/environment/equilibrated.gro
   composition_reference_coordinates: inputs/environment/equilibrated.gro
   protein_toppar: inputs/environment/toppar
-  protein_topology: inputs/environment/topol.top
   environment_toppar: inputs/environment/toppar
   topology_output_dir: .
   final_pdb: step5_input.pdb
@@ -27,12 +26,6 @@ paths:
   report_prefix: cholesterol_restoration_report
   inspection_pdb: aligned_cholesterol_inspection.pdb
   index: index.ndx
-  reference_gro: null
-  diagnostic_raw_pdb: cholesterol_protonated_raw.pdb
-  diagnostic_converted_pdb: cholesterol_charmm36.pdb
-  diagnostic_aligned_reference_pdb: cholesterol_reference_aligned.pdb
-  diagnostic_placed_reference_pdb: cholesterol_reference_placed.pdb
-  diagnostic_merged_pdb: merged_system.pdb
 
 # -----------------------------------------------------------------------------
 # 2. STRUCTURES, CHOLESTEROL CONVERSION, AND COMPOSITION
@@ -46,10 +39,8 @@ cholesterol:
   # Prefer GRO with full lipid names. Cholesterol mode does not run protein-
   # mode name_restoration; ambiguous PDB names must be resolved beforehand.
   target_system_path: "${environment_coordinates}"
-  target_system_format: auto  # Alternatives: pdb or gro.
   # null reads the stored cell. For PDB without CRYST1 supply the MATCHING
   # cell: [a, b, c, alpha, beta, gamma] in Å/degrees (GRO lengths are in nm).
-  box_dimensions: null
 
   # Masks use 1-based sequential residue positions, NOT file residue IDs.
   # 1-328 is a placeholder for the corresponding protein in each structure.
@@ -69,11 +60,6 @@ cholesterol:
   charmm36_reference_path: ""
   obabel_command: obabel
   verify_tolerance: 0.40  # Å, heavy-atom position verification tolerance.
-  raw_protonated_pdb_path: "${diagnostic_raw_pdb}"
-  converted_pdb_path: "${diagnostic_converted_pdb}"
-  aligned_reference_pdb_path: "${diagnostic_aligned_reference_pdb}"
-  reference_placed_pdb_path: "${diagnostic_placed_reference_pdb}"
-  merged_pdb_path: "${diagnostic_merged_pdb}"
 
   composition:
     # Salt baseline and desired leaflet counts. Missing lipids are reported but
@@ -102,8 +88,6 @@ alignment:
   method: mask_fit  # Alternatives: pymol_align or pymol_cealign (need PyMOL).
   region_mask_original: ":1-328@CA"
   region_mask_replacement: ":1-328@CA"
-  cycles: 5  # Used by pymol_align; retained for easy method switching.
-  cutoff: 2.0
 
 # -----------------------------------------------------------------------------
 # 4. ENVIRONMENT AND CLASH SAFETY
@@ -115,10 +99,7 @@ alignment:
 box_validation:
   mode: strict  # Alternatives: repair or off.
   hard_clash_cutoff: 1.2  # Å, nonbonded pairs.
-  molecule_protrusion_allowance: 5.0  # Å, diagnostic only.
-  search_sample_size: 20000  # Atoms sampled for the orientation search.
   random_seed: 42
-  wrap_after_validation: false  # true images whole connected molecules.
   # Optional repair search budgets; raising them may help but costs runtime.
   # search_starts: 12
   # search_max_iterations: 150
@@ -133,11 +114,6 @@ clash_detection:
   # Complete lipid/water/ion residues within 3 Å of inserted cholesterol are
   # removed. Protein and other solutes are protected by cholesterol mode.
   threshold: 3.0
-  thresholds:
-    lipid: 3.0
-    water: 3.0
-    ion: 3.0
-    other: 3.0
   use_pbc: true  # false requires box_validation.mode: off.
   heavy_atoms_only: false  # Alternative: true to test only heavy atoms.
   flag_lipid_removal_fraction: 0.05  # Flag removal above 5%; not a removal cap.
@@ -153,10 +129,7 @@ clash_detection:
 topology:
   enabled: true  # Alternative: false writes coordinates/reports without topology.
   protein_toppar_dir: "${protein_toppar}"
-  protein_template_top: "${protein_topology}"
   environment_toppar_dir: "${environment_toppar}"
-  ligand_itp_paths: []
-  moleculetype_overrides: {}  # Example: {LIG1: LigandType}; resname -> ITP type.
   output_dir: "${topology_output_dir}"
 
 # generic writes descriptive groups (Protein, Ligand, etc.); charmm_gui writes
@@ -165,9 +138,7 @@ ndx:
   enabled: true
   output_path: "${index}"
   style: charmm_gui  # Alternatives: generic or both.
-  extra_groups: {}  # Example: {Backbone: ":1-100@C,CA,N,O"}; edit indices.
 
-refgro: "${reference_gro}"  # null disables the optional comparison.
 
 output:
   pdb_path: "${final_pdb}"
@@ -175,26 +146,5 @@ output:
   report_path: "${report_prefix}"  # Prefix for .txt and .json reports.
   inspection_pdb_path: "${inspection_pdb}"
 
-# Prepare portable OpenMM inputs. Run the generated script separately.
-minimization:
-  enabled: false  # Or add --prepare-minimization to the assembly command.
-  output_dir: openmm_minimization
-  restraint_force_constant_kj_mol_nm2: 1000.0
-  # Unknown molecules are treated as ligands. Classify custom lipids here.
-  restraint_residue_classes: {}  # Example: {MYLIP: lipid}
-  tolerance_kj_mol_nm: 10.0  # RMS minimizer objective gradient.
-  max_iterations: 5000
-  # Review nonbonded settings for your force field.
-  nonbonded_method: PME
-  nonbonded_cutoff_nm: 1.2
-  switch_distance_nm: 1.0  # OpenMM potential switching.
-  constraints: h_bonds
-  rigid_water: true
-  ewald_error_tolerance: 5.0e-4
-  use_dispersion_correction: false
-  platform: CPU
-  defines: {}  # Topology position_restraints must be inactive.
-  resources:
-    cpus_per_task: 8
-    time: "00:30:00"
-    memory: 8G
+# Optional: --prepare-minimization prepares portable OpenMM inputs.
+# See minimization.yaml for settings; run the generated script separately.

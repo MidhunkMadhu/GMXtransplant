@@ -4,11 +4,10 @@
 minimization:
   coordinates_path: step5_input.gro
   topology_path: topol.top
-  include_dir: ""
   output_dir: openmm_minimization
   restraint_force_constant_kj_mol_nm2: 1000.0
   # Unknown molecules are treated as ligands. Classify custom lipids here.
-  restraint_residue_classes: {}  # Example: {MYLIP: lipid}
+# Optional restraint_residue_classes: {MYLIP: lipid} classifies custom lipids.
   tolerance_kj_mol_nm: 10.0  # RMS minimizer objective gradient.
   max_iterations: 5000
   # Review nonbonded settings for your force field.
@@ -20,7 +19,7 @@ minimization:
   ewald_error_tolerance: 5.0e-4
   use_dispersion_correction: false
   platform: CPU
-  defines: {}  # Topology position_restraints must be inactive.
+# Topology position_restraints must be inactive.
   resources:
     cpus_per_task: 8
     time: "00:30:00"

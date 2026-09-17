@@ -16,12 +16,12 @@
 # -----------------------------------------------------------------------------
 paths:
   # TARGET supplies the retained membrane, water, ions, and periodic box.
-  target_coordinates: inputs/environment/equilibrated.gro
+  target_coordinates: ./environment/frames_100ns.pdb
   # REPLACEMENT supplies ONLY the selected protein/ligands inserted into TARGET.
   # Its solvent, membrane, ions and box are not imported.
-  replacement_coordinates: inputs/replacement/step5_input.gro
-  protein_toppar: inputs/replacement/toppar
-  environment_toppar: inputs/environment/toppar
+  replacement_coordinates: ./replacement/step5_input.gro
+  protein_toppar: ./replacement/toppar
+  environment_toppar: ./environment/toppar
   topology_output_dir: .
   final_pdb: step5_input.pdb
   final_gro: step5_input.gro
@@ -35,10 +35,10 @@ paths:
 # The ITP [ atoms ] residue name must match coordinates; [ moleculetype ] may differ.
 # Only ambiguous ITPs require an explicit moleculetype. Use [] for no ligands.
 replacement_ligands:
-  - resname: LIG1
-    itp_path: inputs/replacement/toppar/LIG1.itp
-  - resname: LIG2
-    itp_path: inputs/replacement/toppar/LIG2.itp
+  - resname: LDP
+    itp_path: ./replacement/toppar/LDP.itp
+  - resname: G4C
+    itp_path: ./replacement/toppar/G4C.itp
 
 # -----------------------------------------------------------------------------
 # 2. STRUCTURES AND ALL MASKS (edit these together)
@@ -62,7 +62,7 @@ target_box:
 
 replacement_structure:
   # The complete selected block is aligned and inserted. Here it contains the
-  # protein plus bound ligands LIG1 and LIG2. Select ALL atoms to INSERT,
+  # protein plus bound ligands LDP and G4C. Select ALL atoms to INSERT,
   # including ligands/cofactors: the entire block moves with the protein fit.
   # For one ligand use :1-962; for a third at position 964 use :1-964.
   path: "${replacement_coordinates}"
@@ -101,7 +101,7 @@ alignment:
 # atom_signature instead compares atom-name sets with an untruncated coordinate
 # reference: exact unique matches first, then unique matches >= min_jaccard.
 name_restoration:
-  enabled: false  # Enable for truncated PDB names; GRO normally needs no repair.
+  enabled: true  # Enable for truncated PDB names; GRO normally needs no repair.
   method: itp_atom_count  # Alternative: atom_signature.
   apply_to: target_box  # itp_atom_count supports target_box only.
   # Options for method: atom_signature (uncomment when switching):

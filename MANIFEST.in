@@ -3,3 +3,7 @@ include PORTABLE_USAGE.md
 include requirements.txt
 include *.yaml
 include test_*.py
+include examples/protein_insertion/README.md
+include examples/protein_insertion/*.yaml
+recursive-include examples/protein_insertion/environment *.pdb *.gro *.top *.itp
+recursive-include examples/protein_insertion/replacement *.pdb *.gro *.top *.itp

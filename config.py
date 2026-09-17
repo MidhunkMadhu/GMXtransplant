@@ -1392,6 +1392,10 @@ def load_config(path: str, mode: str = "protein", check_paths: bool = True) -> C
         )
     reference_topol = new_reference_topol or legacy_topology_path
     tp = raw.get("topology", {})
+    if not reference_topol and tp.get("environment_toppar_dir"):
+        reference_topol = os.path.join(
+            os.path.dirname(os.path.normpath(tp["environment_toppar_dir"])), "topol.top"
+        )
     ix = raw.get("ndx", {})
     mn = raw.get("minimization", {})
     lr = raw.get("ligand_replace", {})

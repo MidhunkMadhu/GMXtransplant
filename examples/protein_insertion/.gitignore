@@ -1,0 +1,10 @@
+/step5_input.pdb
+/step5_input.gro
+/aligned_protein_inspection.pdb
+/protein_replacement_report.txt
+/protein_replacement_report.json
+/index.ndx
+/topol.top
+/toppar/
+/.gmxtransplant-*
+/openmm_minimization/

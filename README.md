@@ -67,7 +67,7 @@ Set these together in `protein_replace.yaml`:
 - `target_box.protein_mask`: the complete old protein/ligand block to remove.
 - `replacement_structure.protein_mask`: the complete incoming block to insert, including any bound ligands.
 - `alignment`: corresponding protein atoms used for fitting.
-- `replacement_ligands`: residue names, ITP files, and charges for incoming ligands. Use `[]` when there are none.
+- `replacement_ligands`: coordinate residue names and ITP files for incoming ligands; charge and molecule type are read automatically from the ITP. Use `[]` when there are none.
 - `topology.protein_toppar_dir` and `topology.environment_toppar_dir`: the protein and retained environment parameter sources.
 
 The alignment transform is applied to the whole incoming block. Fit a stable protein region so that a changed ligand pose does not bias placement. For example, a receptor complex can be aligned using corresponding receptor backbone atoms.
@@ -222,3 +222,35 @@ python3 -m build
 ```
 
 GitHub Actions tests Python 3.10, 3.11, and 3.12, builds the package, and runs OpenMM tests with the optional dependency installed.
+
+## Runnable protein insertion example
+
+The repository includes a complete input system in
+[`examples/protein_insertion`](examples/protein_insertion/README.md).
+Run from that directory: all input paths in its YAML start with `./`.
+
+```bash
+python -m pip install -e .
+cd examples/protein_insertion
+gmxtransplant --mode protein -i protein_replace.yaml
+```
+
+`environment/` supplies the target box, membrane, solvent and ions.
+`replacement/` supplies the selected incoming protein and bound ligands only.
+Protein topology definitions come from the replacement; retained environment
+molecules use environment definitions. Explicit incoming ligand ITPs supersede
+old copies in either directory. Conflicts within a source remain errors.
+
+In the generated examples, incoming ligand names and ITP paths are together
+near the top. `charge: from_itp` and `moleculetype` need not be repeated.
+Coordinate `resname` and ITP `[ moleculetype ]` names need not be identical:
+the unique matching `[ atoms ]` residue name determines the type. Ambiguous
+ITPs still require an explicit molecule type. Old detailed YAMLs remain supported.
+
+For protein-mode PDB name restoration, the environment's `topol.top` is found
+beside `environment_toppar_dir`; no separate reference topology is needed.
+A nonstandard layout can still set `name_restoration.reference_topol` explicitly.
+The example enables name restoration so truncated POP/TIP/CHL names are
+classified correctly before clash removal. Scientific choices (masks, cutoffs,
+protection and composition) remain explicit in the YAMLs; inactive/default
+plumbing is omitted. Standalone minimization settings remain in minimization.yaml.

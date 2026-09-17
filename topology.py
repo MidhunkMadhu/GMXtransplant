@@ -24,7 +24,8 @@ directories:
   environment_toppar_dir  -- a toppar/ folder (from any CHARMM-GUI system)
                               containing correct parameters for the kept
                               environment's lipid/water/ion species. Its
-                              own topol.top is NOT read -- only the .itp
+                              own topol.top supplies names for optional PDB name
+                              restoration; assembly reads the .itp
                               files themselves, each parsed for its own
                               [ moleculetype ] name and the resname(s) its
                               [ atoms ] section uses.
@@ -243,14 +244,29 @@ def _parse_replacement_itp_definitions(replacement_ligand_itp_paths):
     return definitions, files, realpaths
 
 
+def _select_source_pools(protein_defs, protein_files, env_defs, env_files):
+    """Protein belongs to the replacement; retained nonprotein types to the target.
+
+    Discard obsolete copies before conflict checking. Explicit incoming ligand
+    definitions are applied separately after this source selection.
+    """
+    for name in list(env_defs):
+        if env_defs[name].resnames & AMINO_ACID_RESNAMES:
+            env_defs.pop(name)
+            env_files.pop(name)
+    for name in list(protein_defs):
+        if name in env_defs and not (protein_defs[name].resnames & AMINO_ACID_RESNAMES):
+            protein_defs.pop(name)
+            protein_files.pop(name)
+
+
 def collect_topology_definitions(
     topology_cfg, replacement_ligand_itp_paths=()
 ):
-    """Collect all configured molecule definitions with conflict detection.
+    """Select replacement proteins, target environment, and explicit ligands.
 
-    A ligand ITP explicitly identified as a replacement shadows a definition
-    with the same moleculetype name in either template directory. All other
-    conflicting definitions still stop the run.
+    Obsolete copies in the other source are discarded. Conflicting definitions
+    within a source or among explicit additional ITPs still stop the run.
     """
     definitions: Dict[str, ITPMoleculeType] = {}
     files: Dict[str, str] = {}
@@ -273,17 +289,11 @@ def collect_topology_definitions(
             definitions[mtype] = definition
             files[mtype] = new_files[mtype]
 
-    seen_dirs = set()
-    for directory in (
-        topology_cfg.protein_toppar_dir,
-        topology_cfg.environment_toppar_dir,
-    ):
-        normalized = os.path.realpath(directory)
-        if normalized in seen_dirs:
-            continue
-        seen_dirs.add(normalized)
-        new_definitions, new_files = scan_toppar_definitions(directory)
-        merge(new_definitions, new_files)
+    protein_defs, protein_files = scan_toppar_definitions(topology_cfg.protein_toppar_dir)
+    env_defs, env_files = scan_toppar_definitions(topology_cfg.environment_toppar_dir)
+    _select_source_pools(protein_defs, protein_files, env_defs, env_files)
+    merge(protein_defs, protein_files)
+    merge(env_defs, env_files)
 
     for path in topology_cfg.ligand_itp_paths:
         if os.path.realpath(path) in replacement_realpaths:
@@ -600,6 +610,7 @@ def resolve_topology(
             recv_file_by_mtype.setdefault(mtype, itp_path)
 
     env_defs, env_file_by_mtype = scan_toppar_definitions(environment_toppar_dir)
+    _select_source_pools(recv_defs, recv_file_by_mtype, env_defs, env_file_by_mtype)
     notes: List[str] = []
     for mtype in sorted(replaced_mtypes):
         old_protein_definition = recv_defs.get(mtype)
