@@ -401,7 +401,8 @@ class MultiMoleculeBinderTests(unittest.TestCase):
     def test_trimer_too_tall_for_the_box_is_rejected_with_height_needed(self):
         code, out = self._run("trimer", "trimer.gro",
                               [GPROTEIN / "toppar" / f"{n}.itp" for n in ("PROB", "PROC", "PROD")],
-                              side="lower", distance=120.0, min_image_gap=4.0, min_membrane_gap=4.0)
+                              side="lower", distance=120.0, min_image_gap=4.0, min_membrane_gap=4.0,
+                              binder_forcefield=str(GPROTEIN / "toppar" / "forcefield.itp"))
         self.assertEqual(code, 3)
         report = json.loads((out / "binderpose1" / "addbinder_report.json").read_text())
         self.assertEqual(report["binder"]["moleculetype"], "PROB+PROC+PROD")
@@ -417,6 +418,38 @@ class MultiMoleculeBinderTests(unittest.TestCase):
             self._run("swapped", "trimer.gro",
                       [GPROTEIN / "toppar" / f"{n}.itp" for n in ("PROB", "PROD", "PROC")])
 
+
+
+class ParameterCoverageTests(unittest.TestCase):
+    """Every binder molecule is checked: atom types, bonded terms and CMAP."""
+
+    def setUp(self):
+        from charmprot import _included_files
+        toppar = (EXAMPLE / "host" / "toppar").resolve()
+        self.host_ff = [str(p) for p in _included_files(toppar / "forcefield.itp", toppar)]
+        self.gs = [str(EXAMPLE / "gprotein" / f"PRO{c}.itp") for c in "BCD"]
+
+    def test_gs_needs_the_complex_force_field(self):
+        from topology import TopologyError, check_parameters
+        with self.assertRaisesRegex(TopologyError, r"bonds with no parameters: CC-CT1 \(residue LEU 246\)"):
+            check_parameters(self.gs, self.host_ff, "advice")
+        check_parameters(self.gs, self.host_ff + [str(EXAMPLE / "gprotein" / "forcefield.itp")], "advice")
+
+    def test_non_standard_residue_is_named(self):
+        import re
+        from topology import TopologyError, check_parameters
+        lines = Path(self.gs[2]).read_text().splitlines()
+        row = next(i for i, line in enumerate(lines) if re.match(r"\s*20\s+\S+\s+\d+\s+\S+\s+\S+", line))
+        fields = lines[row].split()
+        lines[row] = lines[row].replace(fields[1], "ZPX1", 1)  # an atom type no force field here defines
+        with tempfile.TemporaryDirectory() as tmp:
+            modified = Path(tmp) / "PROD.itp"
+            modified.write_text("\n".join(lines) + "\n")
+            with self.assertRaisesRegex(TopologyError, rf"atom types not in \[ atomtypes \]: ZPX1 "
+                                                        rf"\(residue {fields[3]} {fields[2]}\).*binder_forcefield"):
+                from addbinder import PARAMETER_ADVICE
+                check_parameters([str(modified)], self.host_ff + [str(EXAMPLE / "gprotein" / "forcefield.itp")],
+                                 PARAMETER_ADVICE)
 
 
 class GProteinExampleTests(unittest.TestCase):

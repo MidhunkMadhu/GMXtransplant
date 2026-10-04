@@ -28,7 +28,7 @@ In the desktop application, both are on the Examples tab.
 The installed package leaves out `host/step5_input.pdb` (30 MB), which
 addbinder does not read.
 
-| `gprotein/` | `gs_trimer.pdb`, `PROB.itp`, `PROC.itp`, `PROD.itp` | The Gs heterotrimer (Gα PROB, Gβ PROC, Gγ PROD; 9,954 atoms, −7 e) from the D1R–Gs complex in `examples/cholesterol_restoration/environment`, placed in this host's frame in its receptor-bound arrangement (see below). |
+| `gprotein/` | `gs_trimer.pdb`, `PROB.itp`, `PROC.itp`, `PROD.itp`, `forcefield.itp` | The Gs heterotrimer (Gα PROB, Gβ PROC, Gγ PROD; 9,954 atoms, −7 e) from the D1R–Gs complex in `examples/cholesterol_restoration/environment`, placed in this host's frame in its receptor-bound arrangement (see below). |
 
 You do not edit any `forcefield.itp` yourself. addbinder merges the host and
 binder force fields into each pose's `toppar/forcefield.itp`, and it stops with
@@ -90,8 +90,14 @@ yellow sphere.
 # Example 2: Gs heterotrimer, intracellular
 
 The D1R C-terminus points to −z, so `side: lower` is the intracellular side.
-The host's protein force field already covers Gs, so no `binder_forcefield`
-is given.
+**Force field.** CHARMM-GUI writes into `forcefield.itp` only the parameters
+its own system uses. The D1R-only host therefore lacks some bonded terms that
+Gs needs, e.g. the `CC-CT1` bond and angles of Gα's C-terminal carboxylate
+(LEU 246) and some proline/aspartate backbone dihedrals. addbinder checks this
+before building and would stop with those terms listed. The example therefore
+sets `binder_forcefield: gprotein/forcefield.itp`, the force field of the
+D1R–Gs complex the trimer came from; it merges with the host's without a
+single conflicting value.
 
 **Bound arrangement.** `gs_trimer.pdb` holds the trimer where it sits on the
 receptor in the D1R–Gs complex, moved into this host's frame:

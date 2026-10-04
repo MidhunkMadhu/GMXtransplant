@@ -3,12 +3,14 @@
 # host/: the same CHARMM-GUI apo D1R build as the dopamine example.
 # gprotein/: the trimer from the D1R-Gs complex in examples/cholesterol_restoration,
 #            already placed in the host's frame in its receptor-bound arrangement
-#            (see README.md), and its three ITPs. The host's protein force field
-#            covers it, so no binder_forcefield is needed.
+#            (see README.md), its three ITPs, and the complex's forcefield.itp.
 addbinder:
   host: host
   binder_coordinates: gprotein/gs_trimer.pdb
   binder_itp: [gprotein/PROB.itp, gprotein/PROC.itp, gprotein/PROD.itp]
+  # The D1R-only host force field lacks some bonded terms Gs uses (e.g. its
+  # C-terminal CC-CT1 bond), so add the forcefield.itp of the D1R-Gs complex.
+  binder_forcefield: gprotein/forcefield.itp
   side: lower                  # the D1R C-terminus points to -z: lower is intracellular
   min_image_gap: 10.0          # A, to every periodic image of host and binder
   min_membrane_gap: 5.0        # A, to lipid heavy atoms

@@ -38,13 +38,18 @@ from config import ConfigError, _UniqueKeySafeLoader, anchor_config_paths
 from ion_selection import select_counterions
 from itp import parse_itp
 from output import write_outputs
-from topology import audit_final_topology, check_ligand_parameters, TopologyError
+from topology import audit_final_topology, check_parameters, TopologyError
 
 
 ORIENTATIONS = ("auto", "flat", "end_on", "edge", "as_is", "euler")
 _POSE_KEYS = {"name", "distance", "lateral_offset", "orientation", "angles", "spin", "flip", "approach", "centroid", "from_input_position",
               "distance_to", "reduce_distance_by", "min_distance"}
 RANDOM_ATTEMPTS = 2000
+PARAMETER_ADVICE = (
+    "The binder uses atom types or parameters that neither the host force field nor binder_forcefield "
+    "defines, e.g. a non-standard or modified residue, a capping group or a CGenFF ligand. Set "
+    "binder_forcefield to the forcefield.itp generated together with the binder's ITPs (CHARMM-GUI "
+    "writes one into toppar/), or to a file holding the missing [ atomtypes ] and parameters.")
 CENTROID_MIN_GAP = 3.0  # A; a centroid pose closer than this to the host overlaps it
 # auto poses take these (orientation, flip) in turn, skipping any an explicit
 # pose already uses; past the end the cycle repeats turned 45 degrees further.
@@ -1352,14 +1357,15 @@ def _run_addbinder(config_path, dry_run=False, output_root=None):
               f"{binder_report['atoms']} atoms, charge {binder_report['net_charge']:+.3f} e"
               + (f"; renamed " + ", ".join(f"{old} -> {new}" for new, old in binder_report["renamed_from"].items())
                  if binder_report["renamed_from"] else ""))
-        ligand_itps = [d.source_path for d, c in zip(binder.definitions, binder.categories) if c == "ligand"]
-        if ligand_itps:
-            forcefields = ([str(p) for p in binder.files[:-len(binder.definitions)]]
-                           + [str(p) for p in host.files])
-            try:
-                check_ligand_parameters(ligand_itps, forcefields)
-            except TopologyError as exc:
-                raise ConfigError(str(exc)) from exc
+        # Every binder molecule, protein or ligand: atom types, bonded terms and CMAP must
+        # exist in the host force field plus binder_forcefield (e.g. a non-standard residue).
+        forcefields = ([str(p) for p in binder.files[:-len(binder.definitions)]]
+                       + [str(p) for p in host.files])
+        try:
+            check_parameters([d.source_path for d in binder.definitions], forcefields, PARAMETER_ADVICE)
+        except TopologyError as exc:
+            raise ConfigError(str(exc)) from exc
+        print("[binder] force field covers every atom type, bonded term and CMAP of the binder")
         heavy_mask = np.array([_is_heavy(a) for a in binder.atoms])
         drawn = random_poses(cfg, frame, host_heavy, lipid_heavy, binder.positions, heavy_mask, tip)
         if drawn:
