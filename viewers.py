@@ -57,6 +57,31 @@ def _mac_bundle(name: str) -> Optional[Viewer]:
     return None
 
 
+def launch(viewer: Viewer, args, cwd) -> None:
+    """Start a viewer detached, so it stays open after GMXtransplant closes.
+
+    VMD reads commands from its standard input and quits at end of input, so
+    with no input (/dev/null) its window would close straight away. It gets a
+    pipe instead, held open by a small watcher that exits once VMD has quit.
+    """
+    import subprocess
+    env = {**os.environ, **viewer.env}
+    quiet = dict(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+                 cwd=str(cwd), env=env)
+    if viewer.name != 'vmd' or os.name != 'posix':
+        subprocess.Popen(viewer.command(*args), stdin=subprocess.DEVNULL, **quiet)
+        return
+    read_end, write_end = os.pipe()
+    try:
+        process = subprocess.Popen(viewer.command(*args), stdin=read_end, **quiet)
+        subprocess.Popen(['/bin/sh', '-c', f'while kill -0 {process.pid} 2>/dev/null; do sleep 5; done'],
+                         stdin=subprocess.DEVNULL, stdout=write_end, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+    finally:
+        os.close(read_end)
+        os.close(write_end)
+
+
 def find_viewer(name: str) -> Optional[Viewer]:
     """The PyMOL ('pymol') or VMD ('vmd') program to run, or None if not installed."""
     override = os.environ.get(OVERRIDE[name], '').strip()

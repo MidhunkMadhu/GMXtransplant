@@ -615,9 +615,11 @@ class GuiEditorTests(unittest.TestCase):
             window.last_job = {'directory': out}
             with patch.object(window_module.subprocess, 'Popen') as popen:
                 window.open_viewer('vmd')
-            command = popen.call_args.args[0]
-            self.assertEqual(command, [vmd.executable, '-e', str(Path(out) / 'view.vmd')])
-            self.assertEqual(popen.call_args.kwargs['env']['VMDDIR'], vmd.env['VMDDIR'])
+            # The first process is VMD; on POSIX a second one holds VMD's input open.
+            started = popen.call_args_list[0]
+            self.assertEqual(started.args[0], [vmd.executable, '-e', str(Path(out) / 'view.vmd')])
+            self.assertEqual(started.kwargs['env']['VMDDIR'], vmd.env['VMDDIR'])
+            self.assertIsNot(started.kwargs['stdin'], window_module.subprocess.DEVNULL)
         window.deleteLater()
 
     def test_disabled_run_and_cancel_buttons_look_disabled(self):
