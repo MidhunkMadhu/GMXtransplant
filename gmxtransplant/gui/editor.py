@@ -217,7 +217,7 @@ DESCRIPTIONS = {
     ('addbinder', 'host_gro'): "Tick to use a coordinate file other than the host folder's own step5 GRO, e.g. an MD frame.",
     ('addbinder', 'binder_coordinates'): 'One binder molecule with hydrogens. Atom names must match the ITP. Its position does not matter.',
     ('addbinder', 'binder_itp'): 'The ITP with the binder\'s one molecule type. A name already used by a different host molecule (e.g. PROA) is renamed automatically. Binders of several molecules (one ITP each) are set in the YAML as a list.',
-    ('addbinder', 'binder_forcefield'): 'The force field holding the binder\'s parameters, e.g. the forcefield.itp CHARMM-GUI generated with the ligand. Untick only when the host force field already covers the binder.',
+    ('addbinder', 'binder_forcefield'): 'The force field holding the binder\'s parameters: the forcefield.itp CHARMM-GUI generated with the binder (ligand or protein). Before building, every atom type, bond, angle, dihedral and CMAP term of the binder is checked against the host force field plus this one; a gap (e.g. a non-standard residue) stops the run and is named. CHARMM-GUI force fields hold only what their own system uses, so a protein from another build usually needs its own.',
     ('addbinder', 'side'): 'upper = +z side of the membrane, lower = −z side. Which side is extracellular depends on how your system was built.',
     ('addbinder', 'distance'): 'Gap along the membrane normal from the protein\'s outermost heavy atom to the binder\'s nearest heavy atom. Used by every pose without its own distance.',
     ('addbinder', 'min_image_gap'): 'The binder must stay at least this far from every periodic image of the protein and of itself. A pose that fails is rejected with the box height it would need.',

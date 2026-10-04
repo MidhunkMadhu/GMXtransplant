@@ -866,13 +866,16 @@ class TopologyResult:
 
 
 # (section, function) -> number of atoms and position of the first parameter.
-_BONDED = {("bonds", "1"): 2, ("angles", "5"): 3, ("dihedrals", "9"): 4, ("dihedrals", "2"): 4}
-_TYPE_SECTIONS = {"bondtypes": ("bonds", 2), "angletypes": ("angles", 3), "dihedraltypes": ("dihedrals", 4)}
+_BONDED = {("bonds", "1"): 2, ("angles", "5"): 3, ("dihedrals", "9"): 4, ("dihedrals", "2"): 4,
+           ("cmap", "1"): 5}
+_TYPE_SECTIONS = {"bondtypes": ("bonds", 2), "angletypes": ("angles", 3), "dihedraltypes": ("dihedrals", 4),
+                  "cmaptypes": ("cmap", 5)}
 
 
 def _parameter_keys(paths):
-    """Bonded parameter keys ({(section, func): {type tuples}}) defined in these files."""
-    keys: Dict[Tuple[str, str], Set[Tuple[str, ...]]] = {}
+    """Parameter keys defined in these files: {(section, func): {type tuples}}, plus the
+    atom type names under ("atomtypes", "")."""
+    keys: Dict[Tuple[str, str], Set[Tuple[str, ...]]] = {("atomtypes", ""): set()}
     for path in paths:
         section = None
         with open(path, encoding="utf-8", errors="replace") as handle:
@@ -883,10 +886,12 @@ def _parameter_keys(paths):
                 if line.startswith("["):
                     section = line.strip("[] ").lower()
                     continue
-                if section in _TYPE_SECTIONS:
+                fields = line.rstrip("\\").split()
+                if section == "atomtypes" and fields:
+                    keys[("atomtypes", "")].add((fields[0],))
+                elif section in _TYPE_SECTIONS:
                     target, count = _TYPE_SECTIONS[section]
-                    fields = line.split()
-                    if len(fields) > count:
+                    if len(fields) > count and not fields[0].replace(".", "", 1).lstrip("-").isdigit():
                         keys.setdefault((target, fields[count]), set()).add(tuple(fields[:count]))
     return keys
 
@@ -902,40 +907,85 @@ def _covered(types, known):
     return False
 
 
-def check_ligand_parameters(itp_paths, forcefield_paths):
-    """Fail before writing when a replacement ligand uses bonded terms the force field lacks.
+def missing_parameters(itp, known):
+    """What one molecule ITP uses that the known parameters lack.
 
-    CHARMM-GUI ligand ITPs list only which atoms are bonded; the parameters are
-    looked up by atom type in forcefield.itp. A ligand whose own forcefield.itp
-    was not supplied would otherwise produce a topology that grompp rejects.
+    Returns {section: {type combination: {residue labels}}}, with section
+    "atomtypes" for atom types missing from [ atomtypes ], and "bonds",
+    "angles", "dihedrals" or "cmap" for bonded terms with no parameters.
+    """
+    atom_types: Dict[str, str] = {}
+    residue: Dict[str, str] = {}
+    missing: Dict[str, Dict[str, Set[str]]] = {}
+    section = None
+    with open(itp, encoding="utf-8", errors="replace") as handle:
+        for raw in handle:
+            line = _strip_comment(raw).strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("["):
+                section = line.strip("[] ").lower()
+                continue
+            fields = line.split()
+            if section == "atoms" and len(fields) >= 4:
+                atom_types[fields[0]] = fields[1]
+                residue[fields[0]] = f"{fields[3]} {fields[2]}"
+                if (fields[1],) not in known[("atomtypes", "")]:
+                    missing.setdefault("atomtypes", {}).setdefault(fields[1], set()).add(residue[fields[0]])
+                continue
+            for (target, func), count in _BONDED.items():
+                if section != target or len(fields) != count + 1 or fields[count] != func:
+                    continue  # other functions, or explicit parameters on the line
+                try:
+                    combo = tuple(atom_types[i] for i in fields[:count])
+                except KeyError:
+                    continue
+                if not _covered(combo, known.get((target, func), set())):
+                    where = {residue[i] for i in fields[:count]}
+                    missing.setdefault(target, {}).setdefault("-".join(combo), set()).update(where)
+    return missing
+
+
+def _describe_missing(missing):
+    parts = []
+    for section, combos in sorted(missing.items()):
+        label = "atom types not in [ atomtypes ]" if section == "atomtypes" else f"{section} with no parameters"
+        items = []
+        for combo, residues in sorted(combos.items())[:6]:
+            shown = sorted(residues)[:3]
+            items.append(f"{combo} (residue {', '.join(shown)}{' ...' if len(residues) > 3 else ''})")
+        more = f" (+{len(combos) - 6} more)" if len(combos) > 6 else ""
+        parts.append(f"{label}: {'; '.join(items)}{more}")
+    return "; ".join(parts)
+
+
+def check_parameters(itp_paths, forcefield_paths, advice):
+    """Fail before writing when molecules use atom types or bonded terms the force field lacks.
+
+    CHARMM-GUI ITPs list which atoms are bonded and look the parameters up by
+    atom type in forcefield.itp; a missing type would otherwise only show up as
+    a grompp error. advice is appended to the error message.
     """
     known = _parameter_keys(list(forcefield_paths) + list(itp_paths))
     problems = []
     for itp in itp_paths:
-        types: Dict[str, str] = {}
-        missing: Dict[str, Set[str]] = {}
-        section = None
-        with open(itp, encoding="utf-8", errors="replace") as handle:
-            for raw in handle:
-                line = _strip_comment(raw).strip()
-                if not line or line.startswith("#"):
-                    continue
-                if line.startswith("["):
-                    section = line.strip("[] ").lower()
-                    continue
-                fields = line.split()
-                if section == "atoms" and len(fields) >= 2:
-                    types[fields[0]] = fields[1]
-                    continue
-                for (target, func), count in _BONDED.items():
-                    if section != target or len(fields) != count + 1 or fields[count] != func:
-                        continue  # other functions, or explicit parameters on the line
-                    try:
-                        combo = tuple(types[i] for i in fields[:count])
-                    except KeyError:
-                        continue
-                    if not _covered(combo, known.get((target, func), set())):
-                        missing.setdefault(target, set()).add("-".join(combo))
+        missing = missing_parameters(itp, known)
+        if missing:
+            problems.append(f"'{itp}' uses {_describe_missing(missing)}")
+    if problems:
+        raise TopologyError("; ".join(problems) + ". " + advice)
+
+
+def check_ligand_parameters(itp_paths, forcefield_paths):
+    """Bonded-term coverage for replacement ligands (CHARMM-GUI Ligand Reader output).
+
+    Ligand replacement checks bonded terms only; check_parameters also checks
+    atom types and CMAP.
+    """
+    known = _parameter_keys(list(forcefield_paths) + list(itp_paths))
+    problems = []
+    for itp in itp_paths:
+        missing = {k: v for k, v in missing_parameters(itp, known).items() if k not in ("atomtypes", "cmap")}
         if missing:
             detail = "; ".join(f"{section}: {', '.join(sorted(v)[:6])}"
                                + (f" (+{len(v) - 6} more)" if len(v) > 6 else "")
