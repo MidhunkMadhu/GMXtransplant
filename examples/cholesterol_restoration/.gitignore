@@ -1,0 +1,15 @@
+/step5_input.pdb
+/step5_input.gro
+/topol.top
+/toppar/
+/index.ndx
+/*_report.txt
+/*_report.json
+/aligned_*_inspection.pdb
+/openmm_minimization/
+/.gmxtransplant-*
+/cholesterol_protonated_raw.pdb
+/cholesterol_charmm36.pdb
+/cholesterol_reference_aligned.pdb
+/cholesterol_reference_placed.pdb
+/merged_system.pdb

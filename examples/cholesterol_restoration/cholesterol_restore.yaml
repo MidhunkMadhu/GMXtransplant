@@ -1,0 +1,167 @@
+# Restore experimentally resolved cholesterol into an equilibrated membrane
+# Run: gmxtransplant --mode chl -i cholesterol_restore.yaml
+#
+# EDITING GUIDE
+# 1. Edit input paths and selections at the top. ${name} reuses path values.
+# 2. Edit protein masks, cholesterol names, and target composition below.
+# 3. Run with --dry-run before processing coordinates (checks schema and values only;
+#    input files are not opened). Inspect the assembled reports afterward.
+# Paths below match the supplied files. Run from this example directory.
+# ${name} reuses a value from paths; no YAML anchors are needed.
+# Distances are Å unless explicitly marked nm; charges are elementary charges e.
+# Numeric settings are examples to review for your system, not universal defaults.
+
+# -----------------------------------------------------------------------------
+# 1. PATHS: normally the only block that changes when moving to a new system
+# -----------------------------------------------------------------------------
+paths:
+  experimental_coordinates: experimental/D1R_chl_fixed.pdb
+  environment_coordinates: environment/step5_input.gro
+  # One source for protein, CHL1, other lipids, ligands, water and ions.
+  system_toppar: environment/toppar
+  topology_output_dir: .
+  final_pdb: step5_input.pdb
+  final_gro: step5_input.gro
+  report_prefix: cholesterol_restoration_report
+  inspection_pdb: aligned_cholesterol_inspection.pdb
+  index: index.ndx
+
+# -----------------------------------------------------------------------------
+# 2. STRUCTURES, CHOLESTEROL CONVERSION, AND COMPOSITION
+# -----------------------------------------------------------------------------
+cholesterol:
+  # Experimental protein/cholesterol source. The protein provides only the
+  # alignment transform; the target protein itself is retained.
+  experimental_structure_path: "${experimental_coordinates}"
+
+  # Complete equilibrated protein/membrane/solvent/ion environment.
+  # Prefer GRO with full lipid names. Cholesterol mode does not run protein-
+  # mode name_restoration; ambiguous PDB names must be resolved beforehand.
+  target_system_path: "${environment_coordinates}"
+  # Read the periodic box directly from the fresh GRO; no override is needed.
+
+  # Masks use 1-based sequential residue positions, NOT file residue IDs.
+  # Positions 1-328 are the matching D1R receptor in both supplied files.
+  # Exclude cholesterol from protein masks: only protein defines placement.
+  # Include corresponding G-protein residues if desired; edit both fit masks too.
+  target_protein_mask: ":1-328"
+  experimental_protein_mask: ":1-328"
+  cholesterol_resnames: [CHL1, CHL, CHOL, CLR]
+  charmm_resname: CHL1
+
+  convert_to_charmm36: true  # Alternative: false for already compatible CHL1.
+  reconstruct_missing_heavy_atoms: true  # Alternative: false to reject any gap.
+  max_missing_heavy_atoms: 2  # Maximum absent heavy atoms allowed for rebuilding.
+  max_heavy_atom_fit_rmsd: 1.5  # Å, maximum reference-fit RMSD for rebuilding.
+  write_diagnostics: false  # Alternative: true retains all files named below.
+  # Empty uses the embedded 74-atom reference; alternative: a reference PDB path.
+  charmm36_reference_path: ""
+  obabel_command: obabel
+  verify_tolerance: 0.40  # Å, heavy-atom position verification tolerance.
+
+  composition:
+    # Salt baseline and desired leaflet counts. Missing lipids are reported but
+    # not added; surplus molecules farther than distance_from_protein can be removed.
+    # No separate reference is needed: the target system supplies the salt
+    # baseline by default. Set reference_system_path only for another baseline.
+    distance_from_protein: 20.0
+    target_concentration: 0.15  # mol/L; edit for the desired salt concentration.
+    concentration_tolerance_fraction: 0.05  # Relative tolerance (5%).
+    salt_cation: SOD
+    salt_anion: CLA
+    random_seed: 42
+    # Example counts, not universal membrane composition; edit each leaflet.
+    lipid_targets:
+      CHL1: {upper: 40, lower: 40}
+      POPE: {upper: 60, lower: 59}
+      POPC: {upper: 100, lower: 98}
+
+  # repack/ next to the output GRO: topol.top, toppar/, GRO, index and mdp files
+  # for a short GROMACS equilibration. The restored cholesterols start
+  # under-packed (their overlapping lipids were removed), so protein, ligands
+  # and restored cholesterols are held (all heavy atoms) while the other
+  # lipids, water and ions fill the gaps. A sample run script is also saved.
+  # Restraints in kJ/mol/nm^2; ~1.4 ns of MD.
+  repack:
+    enabled: true
+    moleculetype: CHLR       # restored cholesterols get this restrained copy of CHL1
+    lipid_restraint: 0.0     # other lipids: POSRES_FC_LIPID and DIHRES_FC (0 = free)
+    temperature: 310.0       # K
+    stages:
+      - {name: step6.0_minimization,  integrator: steep, nsteps: 5000,   dt: 0.0,   restraint: 4000.0}
+      - {name: step6.1_equilibration, integrator: nvt,   nsteps: 125000, dt: 0.001, restraint: 4000.0}
+      - {name: step6.2_equilibration, integrator: nvt,   nsteps: 125000, dt: 0.001, restraint: 2000.0}
+      - {name: step6.3_equilibration, integrator: npt,   nsteps: 125000, dt: 0.001, restraint: 1000.0}
+      - {name: step6.4_equilibration, integrator: npt,   nsteps: 500000, dt: 0.002, restraint: 1000.0}  # 1 ns
+
+# -----------------------------------------------------------------------------
+# 3. ALIGNMENT
+# -----------------------------------------------------------------------------
+# These fit masks select corresponding protein CA atoms, not cholesterol.
+# mask_fit uses equal-size selections paired in file order without outlier
+# rejection. Alternative @C,CA,N,O fits backbone; smaller stable regions work.
+# The resulting transform moves experimental cholesterol into the target frame.
+alignment:
+  method: mask_fit  # Alternatives: pymol_align or pymol_cealign (need PyMOL).
+  region_mask_original: ":1-328@CA"
+  region_mask_replacement: ":1-328@CA"
+
+# -----------------------------------------------------------------------------
+# 4. ENVIRONMENT AND CLASH SAFETY
+# -----------------------------------------------------------------------------
+# Preflight checks the input environment against its periodic cell before insertion.
+# strict rejects invalid periodic geometry; repair searches for one global rigid
+# rotation/translation that passes clash checks without changing the cell. off
+# skips checks. Repair is not a cure for incorrect box lengths or overlapping atoms.
+box_validation:
+  mode: strict  # Alternatives: repair or off.
+  hard_clash_cutoff: 1.2  # Å, nonbonded pairs.
+  random_seed: 42
+  # Optional repair search budgets; raising them may help but costs runtime.
+  # search_starts: 12
+  # search_max_iterations: 150
+  # max_candidate_verifications: 12
+  # max_search_seconds: 45.0
+
+# Class cutoffs override threshold (the fallback). A clash removes a complete
+# eligible residue, not just an atom. keep_classes preserves listed classes and
+# reports contacts: retained contacts may still need attention before simulation.
+# Valid classes: protein, lipid, water, ion, other; mode protections also apply.
+clash_detection:
+  # Complete lipid/water/ion residues within 0.80 Å of inserted cholesterol are
+  # removed. Protein and other solutes are protected by cholesterol mode.
+  # Cholesterol uses this same cutoff as every other lipid.
+  threshold: 0.80
+  use_pbc: true  # false requires box_validation.mode: off.
+  heavy_atoms_only: false  # Alternative: true to test only heavy atoms.
+  flag_lipid_removal_fraction: 0.05  # Flag removal above 5%; not a removal cap.
+  keep_classes: []
+
+# -----------------------------------------------------------------------------
+# 5. GROMACS AND OUTPUTS
+# -----------------------------------------------------------------------------
+# Protein ITPs/template define protein molecules and their order. Environment
+# ITPs define retained lipids/water/ions. They may share a directory/topology when
+# derived from the same compatible system. Use consistent force-field parameters.
+# Output molecule counts are rebuilt from the assembled coordinates.
+topology:
+  enabled: true  # Alternative: false writes coordinates/reports without topology.
+  protein_toppar_dir: "${system_toppar}"
+  environment_toppar_dir: "${system_toppar}"
+  output_dir: "${topology_output_dir}"
+
+# generic writes descriptive groups (Protein, Ligand, etc.); charmm_gui writes
+# SOLU/MEMB/SOLV-style groups; both writes both naming conventions.
+ndx:
+  output_path: "${index}"
+  style: charmm_gui  # Alternatives: generic or both.
+
+
+output:
+  pdb_path: "${final_pdb}"
+  gro_path: "${final_gro}"
+  report_path: "${report_prefix}"  # Prefix for .txt and .json reports.
+  inspection_pdb_path: "${inspection_pdb}"
+
+# Optional: --prepare-minimization prepares portable OpenMM inputs.
+# See minimization.yaml for settings; run the generated script separately.

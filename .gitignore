@@ -1,0 +1,42 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+.venv/
+venv/
+
+# Default pipeline products (inputs elsewhere are not affected).
+/step5_input.pdb
+/step5_input.gro
+/topol.top
+/toppar/
+/index.ndx
+/*_report.txt
+/*_report.json
+/aligned_*_inspection.pdb
+/cholesterol_protonated_raw.pdb
+/cholesterol_charmm36.pdb
+/cholesterol_reference_aligned.pdb
+/cholesterol_reference_placed.pdb
+/merged_system.pdb
+/minimized.gro
+/minimization_report.txt
+/minimization_report.json
+/.gmxtransplant-*
+/*.backup.*
+
+# GUI run outputs when gmxtransplant-gui is launched inside the repository:
+# mode folders at the top level and example-run folders under examples/.
+/charmprot/
+/protein/
+/ligand/
+/cholesterol/
+/minimization/
+/examples/protein/
+/examples/ligand/
+/examples/cholesterol/
+/examples/minimization/

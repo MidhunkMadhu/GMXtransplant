@@ -1,0 +1,30 @@
+# Place a binder (ligand or protein) in the water above (upper) or below (lower)
+# a membrane protein, a set distance from the protein's outermost heavy atom.
+addbinder:
+  host: /path/to/apo_system            # folder with topol.top, toppar/ and step5_input.gro
+  binder_coordinates: /path/to/binder.pdb
+  binder_itp: /path/to/binder.itp      # or a list, one ITP per molecule: [/path/PROB.itp, /path/PROC.itp]
+  binder_forcefield: /path/to/forcefield.itp   # the forcefield.itp generated with a CHARMM-GUI ligand
+  side: upper                  # upper (+z) or lower (-z); state which side is extracellular yourself
+  distance: 10.0               # A, tip heavy-atom plane -> nearest binder heavy atom
+  min_image_gap: 10.0          # A, to every periodic image of the host and of the binder
+  min_membrane_gap: 5.0        # A, to lipid heavy atoms
+  poses:                       # one output folder per pose; rejected poses keep only their report
+    - name: binderpose1      # optional; poses are named binderpose1, binderpose2 ... by default
+      orientation: auto        # auto | flat | end_on | edge | as_is | euler (with angles: [z, y, z] degrees)
+      spin: 0                  # degrees about the membrane normal
+      lateral_offset: [0, 0]   # A in x, y from the tip
+    # - name: tilted
+    #   approach: [30, 90]     # tilt from the normal, azimuth (degrees); distance is then to the nearest host atom
+    #   distance: 15.0         # any pose can have its own distance
+    # - name: exact
+    #   centroid: [70, 50, 185]  # binder centre in A, host GRO frame (GRO nm x 10)
+  random_poses: 3              # extra poses from random directions, numbered on; 0 for none
+  random_distance: [10.0, 15.0]  # A; default: distance to distance + 5
+  random_seed: 1               # same seed, same random poses
+# Replace each /path/to/ placeholder with a full path; none is resolved against the
+# working directory. Generated files use the --output folder, or the directory you
+# run the command from. Optional: host_gro, lateral_reference (tip | host_center),
+# water_clash_distance, neutralize, target_net_charge, ion_side (binder_side | any),
+# ion_exclusion_distance, lipid_ion_exclusion_distance, environment_overrides, output_dir,
+# same_orientation, copy_run_inputs, random_max_tilt, random_min_angle, random_min_separation.

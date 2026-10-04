@@ -1,0 +1,30 @@
+include README.md
+include PORTABLE_USAGE.md
+include GUI_USAGE.md
+recursive-include docs *.png
+include docs/GMXtransplant.pdf
+include tools/build_docs_pdf.py
+include requirements.txt
+include *.yaml
+include test_*.py
+include examples/protein_insertion/README.md
+include examples/protein_insertion/*.yaml
+recursive-include examples/protein_insertion/environment *.pdb *.gro *.top *.itp
+recursive-include examples/protein_insertion/replacement *.pdb *.gro *.top *.itp
+include examples/ligand_replacement/README.md
+include examples/ligand_replacement/*.yaml
+recursive-include examples/ligand_replacement/environment README.md *.gro *.top *.itp
+recursive-include examples/ligand_replacement/replacement README.md *.mol2 *.itp
+include examples/cholesterol_restoration/README.md
+include examples/cholesterol_restoration/*.yaml
+recursive-include examples/cholesterol_restoration/environment README.md *.pdb *.gro *.top *.itp
+recursive-include examples/cholesterol_restoration/experimental README.md *.pdb
+
+include CHARMPROT.md
+include ADDBINDER.md
+include ADDBINDER_ROADMAP.md
+include VISUALIZATION.md
+recursive-include examples/charmprot *.md *.yaml *.gro *.pdb *.top *.itp
+recursive-include examples/addbinder *.md *.yaml *.gro *.pdb *.top *.itp *.mdp README
+exclude examples/addbinder/host/step5_input.pdb
+include gmxtransplant/charmm_environment.json

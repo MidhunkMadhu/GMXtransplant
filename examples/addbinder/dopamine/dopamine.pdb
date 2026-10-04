@@ -1,0 +1,26 @@
+TITLE     MDANALYSIS FRAME 0: Created by PDBWriter
+CRYST1  118.107  118.107  170.435  90.00  90.00  90.00 P 1           1
+ATOM      1  C1  LDP X   1      60.980  60.970  90.880  1.00  0.00      SYST    
+ATOM      2  N1  LDP X   1      58.530  57.940  91.000  1.00  0.00      SYST    
+ATOM      3  O1  LDP X   1      62.620  64.020  92.220  1.00  0.00      SYST    
+ATOM      4  C2  LDP X   1      61.340  62.040  91.730  1.00  0.00      SYST    
+ATOM      5  O2  LDP X   1      63.530  64.020  89.390  1.00  0.00      SYST    
+ATOM      6  C3  LDP X   1      62.170  63.070  91.270  1.00  0.00      SYST    
+ATOM      7  C4  LDP X   1      62.640  63.060  89.940  1.00  0.00      SYST    
+ATOM      8  C5  LDP X   1      62.280  62.000  89.100  1.00  0.00      SYST    
+ATOM      9  C6  LDP X   1      61.470  60.970  89.570  1.00  0.00      SYST    
+ATOM     10  C7  LDP X   1      60.230  59.760  91.440  1.00  0.00      SYST    
+ATOM     11  C8  LDP X   1      59.210  59.160  90.440  1.00  0.00      SYST    
+ATOM     12  H01 LDP X   1      57.920  58.130  91.810  1.00  0.00      SYST    
+ATOM     13  H02 LDP X   1      59.290  57.260  91.340  1.00  0.00      SYST    
+ATOM     14  H03 LDP X   1      63.450  64.380  91.870  1.00  0.00      SYST    
+ATOM     15  H04 LDP X   1      61.020  62.030  92.760  1.00  0.00      SYST    
+ATOM     16  H05 LDP X   1      64.120  63.530  88.800  1.00  0.00      SYST    
+ATOM     17  H06 LDP X   1      62.660  61.960  88.080  1.00  0.00      SYST    
+ATOM     18  H07 LDP X   1      61.260  60.150  88.910  1.00  0.00      SYST    
+ATOM     19  H08 LDP X   1      59.730  60.050  92.380  1.00  0.00      SYST    
+ATOM     20  H09 LDP X   1      61.000  59.000  91.680  1.00  0.00      SYST    
+ATOM     21  H10 LDP X   1      58.430  59.870  90.160  1.00  0.00      SYST    
+ATOM     22  H11 LDP X   1      59.710  58.830  89.530  1.00  0.00      SYST    
+ATOM     23  H12 LDP X   1      58.020  57.410  90.260  1.00  0.00      SYST    
+END

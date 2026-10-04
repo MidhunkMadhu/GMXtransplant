@@ -1,0 +1,15 @@
+# Prepare inputs for an existing assembled system:
+# gmxtransplant prepare-minimization -i minimization.yaml
+# Prepares a portable OpenMM folder; run its run.sh separately.
+#
+# Restrained: protein and ligand heavy atoms, and lipid head groups.
+# Free to relax: lipid tails, water and ions. Every other setting has a
+# default suited to CHARMM36 membrane systems.
+minimization:
+  # Full paths to the assembled system; replace both placeholders.
+  coordinates_path: /path/to/assembled/step5_input.gro
+  topology_path: /path/to/assembled/topol.top
+  output_dir: openmm_minimization
+  # Optional: restraint_force_constant_kj_mol_nm2 (default 1000.0),
+  # max_iterations (default 5000), platform (auto, CPU, CUDA, HIP, OpenCL),
+  # restraint_residue_classes: {MYLIP: lipid} to classify custom lipids.

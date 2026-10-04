@@ -1,0 +1,6289 @@
+{
+  "names": {
+    "23SM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "2HEX": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "2PTE": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "3HEX": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "A2UDM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ABAC": {
+      "category": "lipid",
+      "sources": [
+        1
+      ]
+    },
+    "ABLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "ABLIPB": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "ACHO": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "ACTF": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "ACY3G": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ACY3M": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ACY4M": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ACY5M": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ACY6M": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ACY7M": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ADDG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ADDM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ADDTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ADG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ADM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ADMHM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ADR": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ADRP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ADTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "AG1P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "AG2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "AHTG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "AIPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "AIPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "AIPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "AL3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "ALIN": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ALINP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "AMHCG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ANG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ANM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ANTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "AOG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "AOM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "AOTG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "AOTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "APPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "APPM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "ARA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ARAN": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ARANP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ARAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ARCL2": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "AROL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ASM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "ATM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "AU1P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "AU3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "AUDM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "AUDTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "B2UDM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BAR": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "BBAC": {
+      "category": "lipid",
+      "sources": [
+        1
+      ]
+    },
+    "BBCYG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BBPHG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BCLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "BCLIPB": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "BCLIPC": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "BCY3G": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BCY3M": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BCY4M": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BCY5M": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BCY6M": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BCY7M": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BDDG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BDDM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BDDTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BDG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BDM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BDMHM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BDMNG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BDTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BE2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "BEH": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "BEHP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "BHTG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BI3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "BLMNG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BMGP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "BMHCG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BNG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BNM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BNTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BOG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BOGNG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BOING": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BOM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BOTG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BOTGNG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BOTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BPPM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BSM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "BTE1": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "BTE2": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "BTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BUDM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BUDTM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "BUTA": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "C10EG5": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C10EG6": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C10EG9": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C12DEG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C12EG7": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C12EG8": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C12EG9": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C13EG8": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C5MNG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C6DHPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "C6EG3": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C6EG4": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C6EG5": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C6MNG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C7DHPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "C7EG4": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C7EG5": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C8EG4": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C8EG5": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "C8EG6": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "CAL": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "CAMP": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "CD2": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "CE3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "CER1": {
+      "category": "lipid",
+      "sources": [
+        13
+      ]
+    },
+    "CER160": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CER180": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CER181": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CER2": {
+      "category": "lipid",
+      "sources": [
+        13
+      ]
+    },
+    "CER200": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CER220": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CER240": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CER241": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CER3": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CER3E": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CER6": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CER6X": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "CES": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "CHAPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CHAPSO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CHL1": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "CHLH": {
+      "category": "sterol",
+      "sources": [
+        0
+      ]
+    },
+    "CHM1": {
+      "category": "sterol",
+      "sources": [
+        4
+      ]
+    },
+    "CHNS": {
+      "category": "sterol",
+      "sources": [
+        4
+      ]
+    },
+    "CHOL": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "CHSD": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "CHSP": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "CJLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "CLA": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "CO2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "CO3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "CPS04A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPS04C": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPS04D": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPS05A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPS05C": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPS05D": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPS09A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPS09C": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPS09D": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPU08E": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPU08F": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPU12E": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPU12F": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CPU18S": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CQS09C": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CQS09D": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CR2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "CR3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "CSS04A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSS05A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU08B": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU08I": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU08J": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU08L": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU12B": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU12I": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU12J": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU12L": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU13A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU13L": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU18H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU18P": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU20H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CSU20P": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "CTB10": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CTB11": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CTB12": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CTB13": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CTB14": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CTB15": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CTB16": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CTLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "CU1P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "CU2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "CYFOS3": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CYFOS4": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CYFOS5": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CYFOS6": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CYFOS7": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "CYSF": {
+      "category": "lipid",
+      "sources": [
+        12
+      ]
+    },
+    "CYSG": {
+      "category": "lipid",
+      "sources": [
+        12
+      ]
+    },
+    "CYSL": {
+      "category": "lipid",
+      "sources": [
+        12
+      ]
+    },
+    "CYSP": {
+      "category": "lipid",
+      "sources": [
+        12
+      ]
+    },
+    "DAGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DAPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DAPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DAPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DAPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DAPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DCPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DDA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DDAO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DDAOP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DDAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DDMG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DDOPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DDOPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DDOPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DDPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DEGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DEPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DEPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DEPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DEPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DEPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DGGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DGLA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DGLAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DGPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DGPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DGPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DGPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DGPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DHA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DHAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DHEG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "DHPCE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "DIGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DIHE": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "DIPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DIPE": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "DL16PP": {
+      "category": "lipid",
+      "sources": [
+        1
+      ]
+    },
+    "DL19PP": {
+      "category": "lipid",
+      "sources": [
+        1
+      ]
+    },
+    "DL2PP": {
+      "category": "lipid",
+      "sources": [
+        1
+      ]
+    },
+    "DLDAP": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLDAPH": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLDMA": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLDMAH": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLIPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DLIPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DLIPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DLKC1": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLKC1H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLKC2": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLKC2H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLMC3": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLMC3H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DLPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DLPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DLPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DLPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DLPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DLTAP": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMDAP": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMDAPH": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMDMA": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMDMAH": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "DMGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMKC1": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMKC1H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMKC2": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMKC2H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMMC3": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMMC3H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DMP": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "DMPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DMPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DMPCE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "DMPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DMPEE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "DMPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DMPGM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "DMPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI13": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI14": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI15": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI24": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI25": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI2A": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI2B": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI2C": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI2D": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI33": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI34": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPI35": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DMPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DMTAP": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DNGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DNPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DNPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DNPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DNPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DNPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DODAP": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DODAPH": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DODMA": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DODMAH": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DOGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DOKC1": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DOKC1H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DOKC2": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DOKC2H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DOMC3": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DOMC3H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DOMG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DOPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DOPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DOPCE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "DOPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DOPEE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "DOPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DOPP1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DOPP2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DOPP3": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DOPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DOTAP": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DPAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DPDAP": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPDAPH": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPDMA": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPDMAH": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPKC1": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPKC1H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPKC2": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPKC2H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPMC3": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPMC3H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPOP": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "DPPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DPPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DPPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DPPEE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "DPPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DPPGH": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "DPPGK": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "DPPGP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "DPPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "DPPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DPT": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DPTAP": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DPTP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "DRPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DSDAP": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSDAPH": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSDMA": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSDMAH": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSKC1": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSKC1H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSKC2": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSKC2H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "DSMC3": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSMC3H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DSPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DSPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DSPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DSPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DSPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "DSTAP": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DTGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DTPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DUM": {
+      "category": "solvent",
+      "sources": [
+        15
+      ]
+    },
+    "DUPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DXPC": {
+      "category": "lipid",
+      "sources": [
+        10
+      ]
+    },
+    "DXPE": {
+      "category": "lipid",
+      "sources": [
+        10
+      ]
+    },
+    "DY3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "DYGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "DYPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DYPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        14
+      ]
+    },
+    "DYPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        14
+      ]
+    },
+    "DYPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "DYPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "ECLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "ECLIPB": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "ECLIPC": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "EDA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "EDAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "EGTM10": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "EGTM11": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "EICO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "EICOP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "EPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "EPAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "EPEN": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "EPS04A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPS04C": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPS04D": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPS05A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPS05C": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPS05D": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPS09A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPS09C": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPS09D": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPU08E": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPU08F": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPU12E": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPU12F": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EPU18S": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EQS09C": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "EQS09D": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ER3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "ERG": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "ERU": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ERUP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ESS04A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESS05A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU08B": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU08I": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU08J": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU08L": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU12B": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU12I": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU12J": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU12L": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU13A": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU13L": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU18H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU18P": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU20H": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ESU20P": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ETA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ETAC": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "ETAM": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "ETAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ETE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ETEP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "ETHE": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "EU2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "EU3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "FE2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "FE3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "FOIS11": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "FOIS9": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "FOS10": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "FOS12": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "FOS13": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "FOS14": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "FOS15": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "FOS16": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "GA3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "GCAMP": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "GD3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "GH2F": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "GLA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "GLAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "GLPH": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "GLYC": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "GLYM": {
+      "category": "lipid",
+      "sources": [
+        12
+      ]
+    },
+    "GMS1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "GMS2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "GPC": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "GSITO": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "GSTIG": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "H2O2": {
+      "category": "solvent",
+      "sources": [
+        18
+      ]
+    },
+    "HE1": {
+      "category": "solvent",
+      "sources": [
+        15
+      ]
+    },
+    "HEPT": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "HEXA": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "HG2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "HO3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "HPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "HPAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "HPLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "HPLIPB": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "HTA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "HTAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "IN3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "IPAC": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "IPPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "KPLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "KPLIPB": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "KPLIPC": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "LA3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "LANO": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "LAPAO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LAPAOP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LAU": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LAUP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LDAO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LDAOP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LELIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "LIGN": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LIGNP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LILIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "LIN": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LINP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LINPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "LIT": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "LLATG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "LLGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "LLGTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "LLLTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "LLNTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "LLPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "LLPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "LLPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "LLPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "LLPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "LMPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LNACL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LNACL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LNBCL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LNBCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LNCCL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LNCCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LNDCL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LNDCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LNNTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "LOACL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LOACL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LOCCL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LOCCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "LOSTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "LPC10": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LPC12": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LPC14": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LPC16": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LPCO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LPE18": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LPPC": {
+      "category": "lipid",
+      "sources": [
+        17
+      ]
+    },
+    "LPPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "LSM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "LU3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "LYPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "LYSM": {
+      "category": "lipid",
+      "sources": [
+        12
+      ]
+    },
+    "MAIPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "MAIPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "MAIPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "MAS": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "MBUT": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "MCLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "MEA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "MEAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "MEEF": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "MEN7": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "MEN8": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "MEN9": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "MEPPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "MG": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "MGTM10": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "MGTM11": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "MKOL8": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "MLN1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "MLN2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "MN2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "MN3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "MPCL2": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "MPPE": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "MPPI": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "MPRO": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "MP_1": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "MP_2": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "MSO4": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "MYR": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "MYRO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "MYROP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "MYRP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "NC4": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "NC5": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "ND3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "NDEC": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "NE1": {
+      "category": "solvent",
+      "sources": [
+        15
+      ]
+    },
+    "NER": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "NERP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "NGLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "NGLIPB": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "NGLIPC": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "NHEG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "NHEX": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "NI2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "NIDP40": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "NMG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "NNNTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "NSM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "OAPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "OAPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "ODOPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "OEPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "OEPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "OEPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "OH": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "OLATG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "OLE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "OLEP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "OLGTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "OLLTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "OLNTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "OLPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "ONATG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "ONNTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "OOLTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "OONTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "OOOTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "OPOTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "OPPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "OSM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "OYPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PAICL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PAIPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PAIPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PAIPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PAL": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "PALIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "PALIPB": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "PALIPC": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "PALIPD": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "PALIPE": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "PALO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "PALOP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "PALP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "PAPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PAPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PAPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PAPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PAPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PB2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "PC": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "PD2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "PDAG": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "PDOPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PDOPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PEAR": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PENT": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "PEPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PEPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PEPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PGAR": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PGCAMP": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "PGHG": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "PGMAR": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PGSITO": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "PGSTIG": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "PHPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PHPGH": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "PHPGP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "PILPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PLA18": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLA20": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLATG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PLC18": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PLC20": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PLC22": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PLEEA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLEEEP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLEOA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLEOL": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLEPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PLEPAA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLEPAO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLEPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PLEPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PLEPEP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLEPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PLEPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PLESAD": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLESEP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "PLGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PLLTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PLNTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PLPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PLPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PLPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PLPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PLPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI13": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI14": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI15": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI24": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI25": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI2A": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI2B": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI2C": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI2D": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI33": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI34": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPI35": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PLPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PM3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "PMCL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "PMCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "PMPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PMPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PMSPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PMSPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PNNTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PNPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI13": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI14": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI15": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI24": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI25": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI2A": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI2B": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI2C": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI2D": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI33": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI34": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PNPI35": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POCL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "POCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "POGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "POLTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PONTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "POOTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "POPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "POPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "POPCE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "POPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "POPEE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        6
+      ]
+    },
+    "POPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "POPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI13": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI14": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI15": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI24": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI25": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI2A": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI2B": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI2C": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI2D": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI33": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI34": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPI35": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "POPP1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "POPP2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "POPP3": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "POPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "POSTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "POT": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "PPLTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PPNTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PPOTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PPPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PPPTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PR3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "PRPE": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "PSGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PSLTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PSM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "PSOTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "PSPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PSPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PSPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PSPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PSPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "PSPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "PT2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "PU3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "PVCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PVPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PVPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PYPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        14
+      ]
+    },
+    "PYPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        14
+      ]
+    },
+    "PYPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "PYPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "QMPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "RA2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "RH3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "RUB": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "SAGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SAPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SAPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "SAPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SAPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SAPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI13": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI14": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI15": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI24": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI25": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI2A": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI2B": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI2C": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI2D": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI33": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI34": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPI35": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SAPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SB3-10": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "SB3-12": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "SB3-14": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "SC3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "SDA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "SDAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "SDGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SDPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SDPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "SDPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SDPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SDPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SDPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SDS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "SELIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "SELIPB": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "SELIPC": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "SEPPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SFLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "SITO": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "SLATG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SLEPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SLGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SLGTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SLLTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SLNTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SLPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SLPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SLPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SLPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SLPI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        8
+      ]
+    },
+    "SLPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SM2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "SM3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "SMDD": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "SN2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "SNGTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SNLTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SOD": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    },
+    "SODPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SOGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SOLTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SONTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SOOTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SOPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SOPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        17
+      ]
+    },
+    "SOPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SOPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SOPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "SPOTG": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "SR2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "SSM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "STE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "STEP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "STIG": {
+      "category": "sterol",
+      "sources": [
+        0,
+        4
+      ]
+    },
+    "TAG": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "TB3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "TEA": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "TETD": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "THA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "THAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "THCHL": {
+      "category": "detergent",
+      "sources": [
+        5
+      ]
+    },
+    "THDPPC": {
+      "category": "detergent",
+      "sources": [
+        5
+      ]
+    },
+    "TI1P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "TI3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "TIGL": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "TIP3": {
+      "category": "water",
+      "sources": [
+        18
+      ]
+    },
+    "TIPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "TL3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "TLCL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "TLCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "TMCL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "TMCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "TOCL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "TOCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "TP3M": {
+      "category": "water",
+      "sources": [
+        18
+      ]
+    },
+    "TPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "TPAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "TPG": {
+      "category": "lipid",
+      "sources": [
+        11
+      ]
+    },
+    "TPT": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "TPTP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "TRI": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "TRIP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "TRIPAO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "TRPAOP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "TSM": {
+      "category": "lipid",
+      "sources": [
+        0,
+        13
+      ]
+    },
+    "TSPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        10
+      ]
+    },
+    "TTA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "TTAP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "TU3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "TX100": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "TX114": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "TX305": {
+      "category": "lipid",
+      "sources": [
+        1
+      ]
+    },
+    "TX405": {
+      "category": "lipid",
+      "sources": [
+        1
+      ]
+    },
+    "TYCL1": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "TYCL2": {
+      "category": "lipid",
+      "sources": [
+        0,
+        3
+      ]
+    },
+    "TZME10": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "TZME9": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "TZMH10": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "TZMH9": {
+      "category": "lipid",
+      "sources": [
+        0,
+        1
+      ]
+    },
+    "U3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "UDAO": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "UDAOP": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "UFOS10": {
+      "category": "lipid",
+      "sources": [
+        0,
+        5
+      ]
+    },
+    "UNDPP": {
+      "category": "lipid",
+      "sources": [
+        1
+      ]
+    },
+    "UQ1": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQ10": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQ2": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQ3": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQ4": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQ5": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQ6": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQ7": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQ8": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQ9": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQOL1": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQOL10": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQOL2": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQOL3": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQOL4": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQOL5": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQOL6": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQOL7": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQOL8": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "UQOL9": {
+      "category": "lipid",
+      "sources": [
+        0
+      ]
+    },
+    "V2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "V3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "VCLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "VCLIPB": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "VCLIPC": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "VCLIPD": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "VCLIPE": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "Y3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "YB2P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "YB3P": {
+      "category": "ion",
+      "sources": [
+        16
+      ]
+    },
+    "YLIPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "YOPA": {
+      "category": "lipid",
+      "sources": [
+        0,
+        14
+      ]
+    },
+    "YOPC": {
+      "category": "lipid",
+      "sources": [
+        0,
+        14
+      ]
+    },
+    "YOPE": {
+      "category": "lipid",
+      "sources": [
+        0,
+        14
+      ]
+    },
+    "YOPS": {
+      "category": "lipid",
+      "sources": [
+        0,
+        14
+      ]
+    },
+    "YPLIPA": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "YPLIPB": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "YPLIPC": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "YPLIPD": {
+      "category": "lipid",
+      "sources": [
+        9
+      ]
+    },
+    "YPPG": {
+      "category": "lipid",
+      "sources": [
+        0,
+        2
+      ]
+    },
+    "ZN2": {
+      "category": "ion",
+      "sources": [
+        18
+      ]
+    }
+  },
+  "retrieved_at": "2026-09-17T20:24:04.262073+00:00",
+  "sources": [
+    {
+      "sha256": "3f3e4d3d0cd28a87b048825102aa66a62125f933670271f3631e34523f570bb0",
+      "url": "https://www.charmm-gui.org/?doc=archive&lib=lipid"
+    },
+    {
+      "sha256": "f57e337e5978b70b0c953325d004446d79481cced0980172dfac72542b294ed6",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/carb/toppar_all36_carb_glycolipid.str"
+    },
+    {
+      "sha256": "64729c38fff0c577957ed158420f04eba1e6682a3967fd42440024a0e59b5293",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_bacterial.str"
+    },
+    {
+      "sha256": "98a09923eba20be946029626d22fa5f5e17adcdb2aa7b37195227736031325b2",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_cardiolipin.str"
+    },
+    {
+      "sha256": "af57cb3e3a41e985a57fc95dbce5e9c658fd1da3c048e6f60769ed1c692b43db",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_cholesterol.str"
+    },
+    {
+      "sha256": "33a0c2a7a1595475e298c102461c9cdf742f77a9b67783552c89244ee086a9c0",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_detergent.str"
+    },
+    {
+      "sha256": "b5d46d75e93780bc2155576d2051ab12803cf9e57bf58b0d8ab158416b8cda17",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_ether.str"
+    },
+    {
+      "sha256": "77ee507fd8ebf70d325f462c1f1373d579c83b53f3dd0b9175eb2275469b2246",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_hmmm.str"
+    },
+    {
+      "sha256": "24238debeec516da94d1a66e0da4fbbd4210b5ccfe21461dff9bfce9eb39dee8",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_inositol.str"
+    },
+    {
+      "sha256": "908eebcc71ea92027f3b39473f8692ffd0df2ea2960ad7e2e15b68113b370aa5",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_lps.str"
+    },
+    {
+      "sha256": "2ea141df27dd357c7db10793d2c61004ac42c461fe0987ea09a105ef46a98ce3",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_miscellaneous.str"
+    },
+    {
+      "sha256": "d826a4a8465e5f8cc309256d4eca95fc0b61d941526e92da2276564028313f06",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_model.str"
+    },
+    {
+      "sha256": "e5903ea89bc79357ed048086824637c7090b4fb608044dba2a65e119156e653c",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_prot.str"
+    },
+    {
+      "sha256": "5a001b2daed38f06fd348f708a5c31f2869988ee00c17d90a30c671a9c38457e",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_sphingo.str"
+    },
+    {
+      "sha256": "092cbeef1f7ad04e19758d542c36f33d6fe657e10575bad706899679425cdc8a",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/lipid/toppar_all36_lipid_yeast.str"
+    },
+    {
+      "sha256": "1bd50219fac520b79e921392c568ef08b470f5d866cab9deb5437b130d84bf0f",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/misc/toppar_dum_noble_gases.str"
+    },
+    {
+      "sha256": "f97799b3376ea1a4a71fbc1816e46611196e7d2f002653470e65106fc9990603",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=stream/misc/toppar_ions_won.str"
+    },
+    {
+      "sha256": "5735829e13cde8ca81625be3f821287092d1eef4f3d889b00d5dfbef107e989f",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=top_all36_lipid.rtf"
+    },
+    {
+      "sha256": "baf2205d56af395c50f985104f4f0043ec0507f0e39d8f471d6eefa14e7386e9",
+      "url": "https://www.charmm-gui.org/?doc=open_toppar&filename=toppar_water_ions.str"
+    }
+  ]
+}
