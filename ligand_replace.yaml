@@ -1,0 +1,144 @@
+# Replace one ligand while retaining an equilibrated protein/membrane system
+# Run: gmxtransplant --mode lig -i ligand_replace.yaml
+#
+# EDITING GUIDE
+# 1. Edit input paths and selections at the top. ${name} reuses path values.
+# 2. Edit ligand names and fit settings in the next block.
+# 3. Run with --dry-run before processing coordinates (checks schema and values;
+#    input files are not opened). Inspect the assembled reports afterward.
+# Every input path below is a placeholder: replace each one with the full path
+# to that file or folder on your system. Input paths are never resolved against
+# the working directory or a shared input folder. Generated files use the
+# --output folder, or the directory you run the command from.
+# ${name} reuses a value from paths; no YAML anchors are needed.
+# Distances are Å unless explicitly marked nm; charges are elementary charges e.
+# Numeric settings are examples to review for your system, not universal defaults.
+
+# -----------------------------------------------------------------------------
+# 1. PATHS: normally the only block that changes when moving to a new system
+# -----------------------------------------------------------------------------
+paths:
+  # TARGET: complete environment retained except the selected old ligand.
+  environment_coordinates: /path/to/environment/equilibrated.gro
+  # REPLACEMENT: incoming ligand placed into that environment.
+  new_ligand_coordinates: /path/to/ligand/LIG1.mol2
+  new_ligand_itp: /path/to/ligand/LIG1.itp
+  # CHARMM-GUI forcefield.itp generated with that ITP (bonded parameters).
+  new_ligand_forcefield: /path/to/ligand/forcefield.itp
+  protein_toppar: /path/to/environment/toppar
+  environment_toppar: /path/to/environment/toppar
+  topology_output_dir: .
+  final_pdb: step5_input.pdb
+  final_gro: step5_input.gro
+  report_prefix: ligand_replacement_report
+  inspection_pdb: aligned_ligand_inspection.pdb
+  index: index.ndx
+
+# -----------------------------------------------------------------------------
+# 2. SYSTEM, LIGANDS, AND PLACEMENT
+# -----------------------------------------------------------------------------
+ligand_replace:
+  # Complete protein + membrane + solvent + ions + old ligand system.
+  # Prefer GRO to retain full residue names and the simulation box. Ligand
+  # mode does not run protein-mode name_restoration; supply correct names.
+  structure_path: "${environment_coordinates}"
+  # null uses the stored box. Alternative: [a,b,c,alpha,beta,gamma] in Å/degrees.
+
+  # LIG1 means ligand 1; replace with the actual old/new names independently.
+  original_ligand:
+    # Use LIG1:N (for example LIG1:2) if multiple LIG1 residues exist.
+    resname: LIG1
+
+  new_ligand:
+    coord_path: "${new_ligand_coordinates}"
+    resname: LIG1
+    # Coordinates must have the ITP atom names/count; parameters are not generated.
+    itp_path: "${new_ligand_itp}"
+    # Bond/angle/dihedral parameters for the ITP. Optional: a forcefield.itp
+    # next to the ITP is used automatically; otherwise the environment one.
+    forcefield_path: "${new_ligand_forcefield}"
+
+  fit:
+    # Active: autofit matches all uniquely named heavy atoms by exact name.
+    # Alternative: pairfit uses the two ordered lists below (>=3 non-collinear).
+    # Alternative: mcsfit detects the largest substructure both ligands share
+    # (same elements and bonds) automatically and reports the pairs it chose.
+    # Alternative: nofit keeps an already positioned ligand exactly as supplied.
+    method: autofit
+    # old_ligand_fit_atoms: [C1, C2, N1]
+    # new_ligand_fit_atoms: [C1, C2, N1]
+
+# -----------------------------------------------------------------------------
+# 3. ENVIRONMENT AND CLASH SAFETY
+# -----------------------------------------------------------------------------
+# Preflight checks the input environment against its periodic cell before insertion.
+# strict rejects invalid periodic geometry; repair searches for one global rigid
+# rotation/translation that passes clash checks without changing the cell. off
+# skips checks. Repair is not a cure for incorrect box lengths or overlapping atoms.
+box_validation:
+  mode: strict  # Alternatives: repair or off.
+  hard_clash_cutoff: 1.2  # Å, nonbonded pairs.
+  random_seed: 42
+  # Optional repair search budgets; raising them may help but costs runtime.
+  # search_starts: 12
+  # search_max_iterations: 150
+  # max_candidate_verifications: 12
+  # max_search_seconds: 45.0
+
+# Class cutoffs override threshold (the fallback). A clash removes a complete
+# eligible residue, not just an atom. keep_classes preserves listed classes and
+# reports contacts: retained contacts may still need attention before simulation.
+# Valid classes: protein, lipid, water, ion, other; mode protections also apply.
+clash_detection:
+  threshold: 0.80
+  use_pbc: true  # false requires box_validation.mode: off.
+  heavy_atoms_only: true  # Alternative: false includes hydrogen atoms.
+  flag_lipid_removal_fraction: 0.05  # Flag removal above 5%; not a removal cap.
+  keep_classes: []  # Protein is always protected automatically in ligand mode.
+
+# -----------------------------------------------------------------------------
+# 4. CHARGE CORRECTION
+# -----------------------------------------------------------------------------
+# Neutralization removes existing counterions; it does not add ions or set salt
+# concentration. ITP charges take precedence over generic residue charge guesses.
+charge:
+  target_net_charge: 0.0
+  neutralize: true  # Alternative: false reports charge without removing ions.
+  tolerance: 0.01  # e; acceptable deviation from target net charge.
+  exclusion_distance_from_protein: 10.0  # Å; protect nearby ions from removal.
+  exclusion_distance_from_ligand: 10.0
+  exclusion_distance_from_lipid: 5.0
+  # true protects ions near lipid heavy atoms using the PBC distance above;
+  # it does NOT use an absolute-z membrane slab. false disables lipid protection.
+  exclude_membrane_interior: true
+  random_seed: 42
+
+# -----------------------------------------------------------------------------
+# 5. GROMACS AND OUTPUTS
+# -----------------------------------------------------------------------------
+# Protein ITPs/template define protein molecules and their order. Environment
+# ITPs define retained lipids/water/ions. They may share a directory/topology when
+# derived from the same compatible system. Use consistent force-field parameters.
+# Output molecule counts are rebuilt from the assembled coordinates.
+topology:
+  enabled: true  # Alternative: false writes coordinates/reports without topology.
+  protein_toppar_dir: "${protein_toppar}"
+  environment_toppar_dir: "${environment_toppar}"
+  # new_ligand.itp_path is included automatically. List only extra cofactors.
+  output_dir: "${topology_output_dir}"
+
+# generic writes descriptive groups (Protein, Ligand, etc.); charmm_gui writes
+# SOLU/MEMB/SOLV-style groups; both writes both naming conventions.
+ndx:
+  output_path: "${index}"
+  style: both  # Alternatives: generic or charmm_gui.
+
+
+output:
+  pdb_path: "${final_pdb}"
+  gro_path: "${final_gro}"
+  report_path: "${report_prefix}"  # Prefix for .txt and .json reports.
+  inspection_pdb_path: "${inspection_pdb}"
+
+# Optional: --prepare-minimization prepares portable OpenMM inputs.
+# See minimization.yaml for settings; run the generated script separately.

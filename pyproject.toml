@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "GMXtransplant"
+version = "0.1.0"
+description = "Insert protein-ligand systems or experimental cholesterol into prepared GROMACS membrane environments"
+readme = "README.md"
+requires-python = ">=3.10"
+# Set in setup.py: the desktop application (PySide6) is installed by default,
+# and GMXTRANSPLANT_CLI_ONLY=1 installs only the command-line tool.
+dynamic = ["dependencies"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Chemistry",
+]
+
+[project.optional-dependencies]
+# The desktop application is part of every default installation; the extra
+# restores it after a GMXTRANSPLANT_CLI_ONLY=1 install and keeps existing
+# `pip install ".[gui]"` commands working.
+gui = ["PySide6>=6.6,<7"]
+minimize = ["openmm>=8.2"]
+dev = ["build>=1.2"]
+
+[project.scripts]
+gmxtransplant = "run_pipeline:cli"
+gmxtransplant-gui = "gmxtransplant.gui:main"
+gmxtransplant-cholesterol = "charmm36_cholesterol:main"
+
+[tool.setuptools]
+packages = ["gmxtransplant", "gmxtransplant.gui"]
+py-modules = [
+  "addbinder",
+  "align",
+  "charmprot",
+  "charmm_environment",
+  "visualization",
+  "box_validation",
+  "chainids",
+  "charges",
+  "charmm36_cholesterol",
+  "cholesterol",
+  "cholesterol_report",
+  "clash_logic",
+  "clashes",
+  "classify",
+  "config",
+  "ion_selection",
+  "itp",
+  "kabsch",
+  "ligand_replace",
+  "masks",
+  "minimization",
+  "minimization_bundle",
+  "minimization_restraints",
+  "namefix",
+  "ndx",
+  "output",
+  "repack",
+  "replace",
+  "replacement_ligands",
+  "report",
+  "run_pipeline",
+  "substructure",
+  "viewers",
+  "topology",
+]
+
+[tool.setuptools.package-data]
+gmxtransplant = ["charmm_environment.json"]

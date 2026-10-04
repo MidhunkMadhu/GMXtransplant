@@ -1,0 +1,14 @@
+# Only these two folders are required. Each contains topol.top, toppar/ and step5_input.gro.
+# Default: replace reference proteins and ligands; retain its membrane, water and ions.
+charmprot:
+  reference: /path/to/reference_system
+  transplant: /path/to/transplant_system
+  # auto: reference proteins and ligands are removed; transplant proteins and
+  #   ligands are inserted.
+  # ignore: reference proteins and ligands are removed; only transplant proteins
+  #   are inserted (its ligands are left out).
+  ligands: auto
+# Replace both placeholders with the full path to each prepared folder; neither is
+# resolved against the working directory. Generated files use the --output folder,
+# or the directory you run the command from.
+# Other optional settings (keep_lipids, clash_distance, ...) also belong under charmprot.

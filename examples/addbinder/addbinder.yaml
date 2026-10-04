@@ -1,0 +1,32 @@
+# Place dopamine (CGenFF residue LDP) in the extracellular water 20 A above the
+# apo dopamine D1 receptor.
+# host/: the CHARMM-GUI apo D1R membrane build, with its step6/step7 mdp files
+#        and README run script (copied into every pose folder).
+# dopamine/: dopamine as its own PDB, its ITP and the forcefield.itp that holds
+#          its CGenFF parameters (both from examples/cholesterol_restoration).
+addbinder:
+  host: host
+  binder_coordinates: dopamine/dopamine.pdb
+  binder_itp: dopamine/LDP.itp
+  binder_forcefield: dopamine/forcefield.itp
+  side: upper                  # the D1R N-terminus points to +z: upper is extracellular
+  distance: 20.0               # A, tip heavy atom plane -> nearest dopamine heavy atom
+  min_image_gap: 10.0          # A, to every periodic image of host and binder
+  min_membrane_gap: 5.0        # A, to lipid heavy atoms
+  # One pose straight above the tip ...
+  poses:
+    - distance: 20.0           # binderpose1: straight above the tip, flat
+    # More poses can be listed, each with its own distance, approach direction or
+    # an exact dopamine centre:
+    # - centroid: [70.0, 50.0, 185.0]   # A, host GRO frame (GRO nm x 10)
+  # ... plus three from random directions (binderpose2-4): each comes in tilted up to
+  # random_max_tilt from the membrane normal, at a random distance in
+  # random_distance from the nearest receptor heavy atom, in a random orientation.
+  # A draw is redrawn when it leaves the box checks, comes within random_min_angle
+  # of another pose's direction, or within random_min_separation of its position.
+  random_poses: 3
+  random_distance: [20.0, 25.0]
+  random_max_tilt: 60.0        # degrees
+  random_min_angle: 25.0       # degrees between any two approach directions
+  random_min_separation: 10.0  # A between dopamine centres of any two poses
+  random_seed: 1               # change for a different set; the reports record every value

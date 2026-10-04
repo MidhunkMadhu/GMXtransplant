@@ -1,0 +1,33 @@
+# Place the Gs heterotrimer (Galpha PROB, Gbeta PROC, Ggamma PROD) in the
+# intracellular water below the apo dopamine D1 receptor.
+# host/: the same CHARMM-GUI apo D1R build as the dopamine example.
+# gprotein/: the trimer from the D1R-Gs complex in examples/cholesterol_restoration,
+#            already placed in the host's frame in its receptor-bound arrangement
+#            (see README.md), and its three ITPs. The host's protein force field
+#            covers it, so no binder_forcefield is needed.
+addbinder:
+  host: host
+  binder_coordinates: gprotein/gs_trimer.pdb
+  binder_itp: [gprotein/PROB.itp, gprotein/PROC.itp, gprotein/PROD.itp]
+  side: lower                  # the D1R C-terminus points to -z: lower is intracellular
+  min_image_gap: 10.0          # A, to every periodic image of host and binder
+  min_membrane_gap: 5.0        # A, to lipid heavy atoms
+  # binderpose1: the bound arrangement pulled straight out along the membrane
+  # normal until its nearest heavy atom is 20 A from the receptor. If that does
+  # not fit the box (10 A to every periodic image, 5 A to lipids), try 18, 16 ...
+  # down to 10 A.
+  poses:
+    - from_input_position: true
+      distance: 20.0
+      reduce_distance_by: 2.0
+      min_distance: 10.0
+  # binderpose2-3: pulled out from the bound arrangement towards random sides at
+  # different random tilts, 15 A from the receptor; at least 25 degrees apart in
+  # direction and 10 A in position from each other and from binderpose1.
+  # binderpose2 keeps the bound orientation; binderpose3 is also randomly rotated.
+  random_poses: 2
+  random_distance: [15.0, 15.0]
+  random_max_tilt: 45.0
+  random_rotated: 1                  # the last random pose also gets a random rotation
+  random_from_input_position: true   # start from the bound arrangement
+  random_seed: 1

@@ -1,0 +1,193 @@
+# Protein/protein-ligand insertion into an equilibrated environment
+# Run: gmxtransplant --mode protein -i protein_replace.yaml
+#
+# EDITING GUIDE
+# 1. Edit input paths and selections at the top. ${name} reuses path values.
+# 2. Edit masks, residue names, and scientific settings in the later blocks.
+# 3. Run with --dry-run before processing coordinates (checks configuration and
+#    values without opening input files). Inspect the assembled reports afterward.
+# Paths below are placeholders. Relative paths resolve from the working directory.
+# ${name} reuses a value from paths; no YAML anchors are needed.
+# Distances are Å unless explicitly marked nm; charges are elementary charges e.
+# Numeric settings are examples to review for your system, not universal defaults.
+
+# -----------------------------------------------------------------------------
+# 1. PATHS: normally the only block that changes when moving to a new system
+# -----------------------------------------------------------------------------
+paths:
+  # TARGET supplies the retained membrane, water, ions, and periodic box.
+  target_coordinates: ./environment/frames_100ns.pdb
+  # REPLACEMENT supplies ONLY the selected protein/ligands inserted into TARGET.
+  # Its solvent, membrane, ions and box are not imported.
+  replacement_coordinates: ./replacement/step5_input.gro
+  protein_toppar: ./replacement/toppar
+  environment_toppar: ./environment/toppar
+  topology_output_dir: .
+  final_pdb: step5_input.pdb
+  final_gro: step5_input.gro
+  report_prefix: protein_replacement_report
+  inspection_pdb: aligned_protein_inspection.pdb
+  index: index.ndx
+
+# Incoming ligands already included in the insertion mask. Edit names and paths here.
+# resname is the coordinate residue name (RES:N selects an occurrence).
+# Charge and molecule type are read from the ITP: no duplicate metadata needed.
+# The ITP [ atoms ] residue name must match coordinates; [ moleculetype ] may differ.
+# Only ambiguous ITPs require an explicit moleculetype. Use [] for no ligands.
+replacement_ligands:
+  - resname: LDP
+    itp_path: ./replacement/toppar/LDP.itp
+  - resname: G4C
+    itp_path: ./replacement/toppar/G4C.itp
+
+# -----------------------------------------------------------------------------
+# 2. STRUCTURES AND ALL MASKS (edit these together)
+# -----------------------------------------------------------------------------
+# Masks count residues sequentially from 1 in each file, NOT PDB/GRO residue
+# IDs or chain numbering. Ranges are inclusive. Quote masks to keep YAML safe.
+# Example system: protein complex (a receptor with a G protein) = positions 1-961;
+# ligand 1 = 962; ligand 2 = 963. These numbers are placeholders.
+# Syntax: ":1-963" all atoms; ":1,5,10-20" disjoint positions;
+# ":1-961@CA" CA only; ":1-963&!:962-963" excludes the ligand positions.
+# Selection order follows the coordinate file, not the order of mask terms.
+target_box:
+  # Complete equilibrated environment. The selected block is removed; all
+  # residues outside it provide the membrane, solvent, ions, and other solutes.
+  # Select ALL atoms of the old protein and ligands you intend to REMOVE.
+  # This mask may differ from the incoming mask (e.g. old system has no ligand).
+  path: "${target_coordinates}"
+  protein_mask: ":1-963"
+  # The stored box is used automatically. For a PDB without CRYST1 set
+  # box_dimensions: [a, b, c, alpha, beta, gamma] in Å/degrees.
+
+replacement_structure:
+  # The complete selected block is aligned and inserted. Here it contains the
+  # protein plus bound ligands LDP and G4C. Select ALL atoms to INSERT,
+  # including ligands/cofactors: the entire block moves with the protein fit.
+  # For one ligand use :1-962; for a third at position 964 use :1-964.
+  path: "${replacement_coordinates}"
+  protein_mask: ":1-963"
+
+# -----------------------------------------------------------------------------
+# Alignment: protein fit only; directly alongside the two block masks
+# -----------------------------------------------------------------------------
+# The fit uses fewer residues (1-961) because ligands are excluded. Fit the
+# corresponding protein (or protein + G protein if present) scaffold, so a
+# changed ligand pose does not bias placement. A stable protein subset is also
+# valid. This fit transform is applied to the ENTIRE incoming selected block.
+# mask_fit pairs atoms in file order: equal counts and matching atom names are
+# required; choose corresponding residues in each file, even if indices differ.
+alignment:
+  method: mask_fit  # Alternatives: pymol_align or pymol_cealign (need PyMOL).
+  region_mask_original: ":1-961@C,CA,N,O"
+  region_mask_replacement: ":1-961@C,CA,N,O"
+  # PyMOL align defaults: cycles=5, cutoff=2 Å.
+  # mask_fit has no outlier rejection; PyMOL align can reject outliers.
+
+# -----------------------------------------------------------------------------
+# 3. ENVIRONMENT NAME RESTORATION
+# -----------------------------------------------------------------------------
+# GRO is preferred for simulation input: it preserves names such as POPC/POPE
+# and TIP3 that strict PDB's three-character residue field can truncate.
+# If using PDB, enable restoration before classification, charge, and topology.
+# POP is ambiguous: it could mean POPC, POPE, or another species in YOUR system.
+# The mapping below declares candidates, not a blind prefix substitution.
+# The environment topol.top is found automatically beside environment_toppar.
+# itp_atom_count validates candidates against that topology and distinguishes
+# shared aliases using exact residue atom counts from environment ITPs (e.g.
+# common CHARMM POPC=134 versus POPE=125). Counts depend on your force field.
+# Missing or ambiguous matches fail instead of guessing; incomplete molecules
+# cannot reliably be identified this way. Edit candidates for your chemistry.
+# atom_signature instead compares atom-name sets with an untruncated coordinate
+# reference: exact unique matches first, then unique matches >= min_jaccard.
+name_restoration:
+  enabled: true  # Enable for truncated PDB names; GRO normally needs no repair.
+  method: itp_atom_count  # Alternative: atom_signature.
+  apply_to: target_box  # itp_atom_count supports target_box only.
+  # Options for method: atom_signature (uncomment when switching):
+  # reference: replacement_structure  # Or target_box; must have full names.
+  # min_jaccard: 0.95  # Atom-name set similarity threshold, 0 <= value <= 1.
+  # apply_to: both  # Or target_box / replacement_structure; replace key above.
+  pdb_to_full_resname:
+    CHL: [CHL1]
+    POP: [POPC, POPE]
+    TIP: [TIP3]
+
+# -----------------------------------------------------------------------------
+# 4. ENVIRONMENT AND CLASH SAFETY
+# -----------------------------------------------------------------------------
+# Preflight checks the input environment against its periodic cell before insertion.
+# strict rejects invalid periodic geometry; repair searches for one global rigid
+# rotation/translation that passes clash checks without changing the cell. off
+# skips checks. Repair is not a cure for incorrect box lengths or overlapping atoms.
+box_validation:
+  mode: repair  # Alternatives: strict (validate only) or off (unchecked).
+  hard_clash_cutoff: 1.2  # Å, nonbonded pairs.
+  random_seed: 42
+  # Optional repair search budgets; raising them may help but costs runtime.
+  # search_starts: 12
+  # search_max_iterations: 150
+  # max_candidate_verifications: 12
+  # max_search_seconds: 45.0
+
+# Class cutoffs override threshold (the fallback). A clash removes a complete
+# eligible residue, not just an atom. keep_classes preserves listed classes and
+# reports contacts: retained contacts may still need attention before simulation.
+# Valid classes: protein, lipid, water, ion, other; mode protections also apply.
+clash_detection:
+  # A complete environment residue is removed when it crosses its class cutoff
+  # against the inserted block, unless the class is listed in keep_classes.
+  threshold: 0.80
+  use_pbc: true  # false requires box_validation.mode: off.
+  heavy_atoms_only: false  # Alternative: true to test only heavy atoms.
+  flag_lipid_removal_fraction: 0.05  # Flag removal above 5%; not a removal cap.
+  keep_classes: [lipid]  # Alternative: [] removes every clashing class.
+
+# -----------------------------------------------------------------------------
+# 5. CHARGE CORRECTION
+# -----------------------------------------------------------------------------
+# Neutralization removes existing counterions; it does not add ions or set salt
+# concentration. ITP charges take precedence over generic residue charge guesses.
+charge:
+  target_net_charge: 0.0
+  neutralize: true  # Alternative: false reports charge without removing ions.
+  tolerance: 0.01  # e; acceptable deviation from target net charge.
+  exclusion_distance_from_protein: 10.0  # Å; protect nearby ions from removal.
+  exclusion_distance_from_ligand: 10.0
+  exclusion_distance_from_lipid: 5.0
+  # true protects ions near lipid heavy atoms using the PBC distance above;
+  # it does NOT use an absolute-z membrane slab. false disables lipid protection.
+  exclude_membrane_interior: true
+  random_seed: 42
+  # Add RESNAME: charge only for a species without a usable ITP definition.
+
+# -----------------------------------------------------------------------------
+# 6. GROMACS AND OUTPUTS
+# -----------------------------------------------------------------------------
+# Protein ITPs/template define protein molecules and their order. Environment
+# ITPs define retained lipids/water/ions. They may share a directory/topology when
+# derived from the same compatible system. Use consistent force-field parameters.
+# Output molecule counts are rebuilt from the assembled coordinates.
+topology:
+  enabled: true  # Alternative: false writes coordinates/reports without topology.
+  protein_toppar_dir: "${protein_toppar}"
+  environment_toppar_dir: "${environment_toppar}"
+  # Enabled replacement ligand ITPs are included from replacement_ligands automatically.
+  output_dir: "${topology_output_dir}"
+
+# generic writes descriptive groups (Protein, Ligand, etc.); charmm_gui writes
+# SOLU/MEMB/SOLV-style groups; both writes both naming conventions.
+ndx:
+  output_path: "${index}"
+  style: both  # Alternatives: generic or charmm_gui.
+
+# Optional refgro: path enables a comparison against an existing GRO.
+
+output:
+  pdb_path: "${final_pdb}"
+  gro_path: "${final_gro}"
+  report_path: "${report_prefix}"  # Prefix for .txt and .json reports.
+  inspection_pdb_path: "${inspection_pdb}"
+
+# Optional: --prepare-minimization prepares portable OpenMM inputs.
+# See minimization.yaml for settings; run the generated script separately.
