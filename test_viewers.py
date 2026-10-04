@@ -60,5 +60,36 @@ class ViewerLookupTests(unittest.TestCase):
             self.assertIsNone(find_viewer("vmd"))
 
 
+class LaunchTests(unittest.TestCase):
+    def test_vmd_gets_an_open_input_pipe_and_pymol_does_not(self):
+        import os
+        import subprocess
+        from unittest import mock
+        from viewers import Viewer, launch
+        calls = []
+
+        class Process:
+            pid = 4321
+
+        def popen(command, **kwargs):
+            calls.append((command, kwargs))
+            return Process()
+        with mock.patch('subprocess.Popen', side_effect=popen):
+            launch(Viewer('pymol', '/x/pymol'), ['view.pml'], '/tmp')
+            self.assertEqual(calls[-1][1]['stdin'], subprocess.DEVNULL)
+            calls.clear()
+            launch(Viewer('vmd', '/x/vmd', {'VMDDIR': '/x'}), ['-e', 'view.vmd'], '/tmp')
+        if os.name != 'posix':
+            return
+        (vmd, vmd_kwargs), (watcher, watcher_kwargs) = calls
+        self.assertEqual(vmd, ['/x/vmd', '-e', 'view.vmd'])
+        # VMD quits at end of input: it reads a pipe that the watcher holds open while VMD runs.
+        self.assertIsInstance(vmd_kwargs['stdin'], int)
+        self.assertIsInstance(watcher_kwargs['stdout'], int)
+        self.assertIn('kill -0 4321', watcher[-1])
+        self.assertTrue(vmd_kwargs['start_new_session'] and watcher_kwargs['start_new_session'])
+        self.assertEqual(vmd_kwargs['env']['VMDDIR'], '/x')
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QLineEdit, QComboBox, QTabWidget, QPlainTextEdit,
     QFrame, QProgressBar, QListWidget, QScrollArea, QSizePolicy)
 
-from viewers import find_viewer
+from viewers import find_viewer, launch as launch_viewer
 from .editor import ConfigEditor, choose_path
 from .model import (MODES, FOLDERS, EXAMPLE_KEYS, build_job, load_yaml, example_mode, example_folder,
                     example_path, destination, example_document,
@@ -723,9 +723,7 @@ class MainWindow(QMainWindow):
         args = [scene] if viewer == 'pymol' else ['-e', scene]
         try:
             # Detached, so closing GMXtransplant leaves the viewer open.
-            subprocess.Popen(found.command(*args), cwd=str(root), env={**os.environ, **found.env},
-                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL, start_new_session=True)
+            launch_viewer(found, args, root)
         except OSError as exc:
             self.error(f'Could not start {viewer} ({found.executable}): {exc}')
 
