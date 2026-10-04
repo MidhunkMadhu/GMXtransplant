@@ -76,3 +76,32 @@ class VisualizationTests(unittest.TestCase):
         self.assertNotIn('+ Add entry', buttons)
         self.assertNotIn('Remove', buttons)
         editor.deleteLater()
+
+
+class RepresentationTests(unittest.TestCase):
+    """Proteins and peptides as cartoon, ligands and small molecules as licorice, lipids as lines."""
+
+    def test_style_follows_what_an_object_contains(self):
+        import warnings
+        import MDAnalysis as mda
+        from visualization import _style
+        root = Path(__file__).resolve().parent / 'examples' / 'addbinder'
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            gs = mda.Universe(str(root / 'gprotein' / 'gs_trimer.pdb')).atoms
+            dopamine = mda.Universe(str(root / 'dopamine' / 'dopamine.pdb')).atoms
+            mixed = mda.Merge(gs[-897:], dopamine).atoms
+        self.assertEqual(_style('binder_binderpose1', gs), {'cartoon': True, 'rest': None, 'spheres': None})
+        self.assertEqual(_style('binder_binderpose1', dopamine), {'cartoon': False, 'rest': 'licorice', 'spheres': None})
+        self.assertEqual(_style('binder_x', mixed), {'cartoon': True, 'rest': 'licorice', 'spheres': None})
+        self.assertEqual(_style('binder_x', gs.residues[:2].atoms)['rest'], 'licorice')  # a dipeptide
+        self.assertEqual(_style('retained_lipid', dopamine)['rest'], 'lines')
+        self.assertEqual(_style('host_tip', dopamine[:1])['spheres'], 'tip')
+
+    def test_scripts_draw_cartoon_licorice_and_lines(self):
+        load = Path(__file__).resolve().parent / 'visualization.py'
+        text = load.read_text()
+        for snippet in ("cmd.show('cartoon', name + ' and not hetatm')", "cmd.show('sticks', rest)",
+                        "cmd.show('lines', rest)", "'Licorice 0.3 12 12'", "'Lines 1.0'",
+                        "'mol representation NewCartoon'"):
+            self.assertIn(snippet, text)
