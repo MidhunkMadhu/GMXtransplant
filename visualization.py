@@ -90,6 +90,50 @@ def comparison_groups(final, reference=None, inserted=None, replaced=None, trans
     return groups
 
 
+# Proteins and peptides of at least this many residues are drawn as cartoon;
+# shorter peptides, ligands and other small molecules as licorice.
+MIN_CARTOON_RESIDUES = 3
+# Lines for the membrane, removed molecules and whole-system overlays, so they do not crowd the view.
+LINE_ROLES = {'retained_lipid', 'retained_cholesterol', 'removed_environment'}
+
+
+def _style(role, atoms):
+    """How a scene object is drawn, from what it contains.
+
+    cartoon: its protein/peptide part (>= MIN_CARTOON_RESIDUES residues) as cartoon.
+    rest: 'licorice' for ligands and small molecules, 'lines' for the membrane
+    and overlays, None when nothing else is left. spheres: 'tip' or 'ion'.
+    """
+    from classify import classify_resnames
+    if role.endswith('_tip'):
+        return {'cartoon': False, 'rest': None, 'spheres': 'tip'}
+    classes = classify_resnames(set(atoms.resnames))
+    kinds = [classes.get(r.resname, 'other') for r in atoms.residues]
+    protein = sum(k == 'protein' for k in kinds)
+    cartoon = protein >= MIN_CARTOON_RESIDUES
+    if kinds and all(k == 'ion' for k in kinds):
+        return {'cartoon': False, 'rest': None, 'spheres': 'ion'}
+    if kinds and all(k == 'water' for k in kinds):
+        return {'cartoon': False, 'rest': 'lines', 'spheres': None, 'water': True}
+    rest = [k for k in kinds if k not in ('water', 'ion') and not (cartoon and k == 'protein')]
+    overlay = role.endswith('_input')
+    lines = overlay or role in LINE_ROLES or (kinds and all(k == 'lipid' for k in kinds))
+    return {'cartoon': cartoon, 'rest': ('lines' if lines else 'licorice') if rest else None, 'spheres': None}
+
+
+def _write_object(atoms, path, style):
+    """PDB of one scene object; protein drawn as cartoon is ATOM, everything else HETATM."""
+    import MDAnalysis as mda
+    from classify import classify_resnames
+    copy = mda.Merge(atoms)
+    classes = classify_resnames(set(copy.atoms.resnames))
+    copy.add_TopologyAttr('record_types', ['ATOM' if style['cartoon'] and classes.get(r) == 'protein'
+                                           else 'HETATM' for r in copy.atoms.resnames])
+    if atoms.universe.dimensions is not None:
+        copy.dimensions = atoms.universe.dimensions
+    copy.atoms.write(str(path))
+
+
 def write_scene(directory, groups, mode, alignment='Inputs use the assembly alignment in the final coordinate frame.',
                 palette=None):
     """Write viewer scripts and coordinates; make a real PSE when PyMOL is installed.
@@ -108,10 +152,11 @@ def write_scene(directory, groups, mode, alignment='Inputs use the assembly alig
             if role not in palette or len(atoms) == 0:
                 continue
             label, rgb, visible = palette[role]
+            style = _style(role, atoms)
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
-                atoms.write(str(assets / (role + '.pdb')))
-            objects.append(dict(name=role, label=label, color=rgb, visible=visible, atoms=len(atoms)))
+                _write_object(atoms, assets / (role + '.pdb'), style)
+            objects.append(dict(name=role, label=label, color=rgb, visible=visible, atoms=len(atoms), style=style))
         manifest = dict(mode=mode, alignment=alignment, objects=objects,
                         note='Source overlays and removed molecules are comparisons, not part of the final system. Water and ions are initially hidden.')
         (assets / 'scene.json').write_text(json.dumps(manifest, indent=2) + '\n')
@@ -130,16 +175,20 @@ for obj in scene['objects']:
     cmd.hide('everything', name)
     cmd.set_color('gmx_' + name, obj['color'])
     cmd.color('gmx_' + name, name)
-    if 'protein' in name or name.endswith('_input'):
-        cmd.show('cartoon', name)
-        cmd.show('lines', name + ' and not polymer and not solvent')
-    elif name.endswith('_tip'):
+    style = obj['style']
+    # Proteins and peptides as cartoon, ligands and small molecules as licorice.
+    if style['cartoon']:
+        cmd.show('cartoon', name + ' and not hetatm')
+    if style['rest']:
+        rest = (name + ' and hetatm' if style['cartoon'] else name) + ('' if style.get('water') else ' and not solvent')
+        if style['rest'] == 'licorice':
+            cmd.show('sticks', rest)
+            cmd.set('stick_radius', 0.25, name)
+        else:
+            cmd.show('lines', rest)
+    if style['spheres']:
         cmd.show('spheres', name)
-        cmd.set('sphere_scale', 0.6, name)
-    else:
-        cmd.show('sticks', name)
-    if name.startswith('binder'):
-        cmd.set('stick_radius', 0.25, name)
+        cmd.set('sphere_scale', 0.6 if style['spheres'] == 'tip' else 0.35, name)
     if name.startswith('removed_') or name.endswith('_input'):
         cmd.set('stick_transparency', 0.45, name)
         cmd.set('cartoon_transparency', 0.55, name)
@@ -162,15 +211,19 @@ cmd.save(str(base.parent / 'view.pse'))
                     f'set gmx_mol [mol new [file join $gmx_root visualization {name}.pdb] type pdb waitfor all]',
                     f'mol rename $gmx_mol {name}', 'mol delrep 0 $gmx_mol',
                     f'mol color ColorID {color}']
-            if 'protein' in name or name.endswith('_input'):
-                vmd += ['mol representation NewCartoon', 'mol selection protein', 'mol addrep $gmx_mol',
-                        'mol representation Lines 1.0', 'mol selection {not protein and not water}', 'mol addrep $gmx_mol']
-            elif name.endswith('_tip'):
-                vmd += ['mol representation VDW 0.8 12', 'mol selection all', 'mol addrep $gmx_mol']
-            elif name.startswith('binder'):
-                vmd += ['mol representation Licorice 0.3 12 12', 'mol selection all', 'mol addrep $gmx_mol']
-            else:
-                vmd += ['mol representation Licorice 0.14 12 12', 'mol selection all', 'mol addrep $gmx_mol']
+            style = obj['style']
+            # Proteins and peptides as cartoon, ligands and small molecules as licorice.
+            if style['cartoon']:
+                vmd += ['mol representation NewCartoon', 'mol selection protein', 'mol addrep $gmx_mol']
+            if style['rest']:
+                selection = ('all' if style.get('water') else
+                             '{not protein and not water}' if style['cartoon'] else '{not water}')
+                representation = 'Licorice 0.3 12 12' if style['rest'] == 'licorice' else 'Lines 1.0'
+                vmd += [f'mol representation {representation}', f'mol selection {selection}',
+                        'mol addrep $gmx_mol']
+            if style['spheres']:
+                vmd += [f"mol representation VDW {'0.8' if style['spheres'] == 'tip' else '0.5'} 12",
+                        'mol selection all', 'mol addrep $gmx_mol']
             if not obj['visible']:
                 vmd += ['mol off $gmx_mol']
         vmd += ['display resetview']
