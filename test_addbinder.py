@@ -133,6 +133,11 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual([(p.name, p.distance, p.orientation) for p in cfg.poses],
                          [("binderpose1", 10.0, "flat")])
 
+    def test_pose_names_cannot_replace_root_run_outputs(self):
+        for name in ('run.yaml', 'summary.json', 'view.pml'):
+            with self.subTest(name=name), self.assertRaisesRegex(ConfigError, 'reserved for run output'):
+                self._load({}, [{'name': name}])
+
     def test_auto_poses_get_different_orientations(self):
         cfg = self._load({}, [{"distance": 10}, {"distance": 15}, {}, {}])
         self.assertEqual([(p.orientation, p.flip) for p in cfg.poses],

@@ -85,7 +85,7 @@ python -m gmxtransplant.gui
 ```
 
 The desktop application supports macOS, Linux, and WSL 2 with WSLg. It includes an input
-editor for all configuration sections, file and folder browsing, configuration import/export,
+editor for all configuration sections, file and folder browsing,
 one-click examples, validation, readable progress summaries, cancellation, and result browsing.
 Detailed logs are collapsed until **View Command Progress** is clicked. YAML is
 generated automatically in the background; there is no YAML editing tab.
@@ -93,9 +93,8 @@ Select an output folder first. Runs write directly to `charmprot/`, `protein/`, 
 `cholesterol/`; example runs use `examples/<mode>/`. Repeating a run replaces its
 generated products, including `toppar/`, without timestamped run directories.
 
-Complete example inputs are included in the package for offline use. This adds
-approximately 58 MB of installed data (the full wheel is about 12 MB compressed).
-Read the [GUI guide](GUI_USAGE.md) for path handling, output replacement, and WSL setup.
+Complete example inputs are included in the package for offline use.
+Read the [GUI guide](GUI_USAGE.md) for a first run, input setup, results, and platform help.
 
 On a MacBook Air, run these commands in Bash (or zsh) from the repository root:
 
@@ -108,8 +107,8 @@ gmxtransplant-gui
 ```
 
 Use a native Python installation matching your Mac's architecture. See the
-[macOS instructions](GUI_USAGE.md#macos-and-macbook-air) for prerequisites
-(including Open Babel on macOS 12 and 13).
+[platform help](GUI_USAGE.md#platform-help) if the window does not open or
+the cholesterol workflow reports that Open Babel is missing.
 
 ## Quick start
 

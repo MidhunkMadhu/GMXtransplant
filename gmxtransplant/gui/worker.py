@@ -28,15 +28,19 @@ class Tee:
 
 
 def cleanup(job):
-    """Replace only known generated products; unrelated files are left alone."""
+    """Replace only products recorded by a previous GUI run."""
     root = Path(job['directory'])
     names = set(job['artifacts'])
     manifest = root / '.gui-manifest.json'
     if manifest.is_symlink():
         raise ValueError('The output manifest must not be a symbolic link.')
+    owned = set()
     if manifest.is_file():
         old = json.loads(manifest.read_text())
-        names.update(old['artifacts'])
+        if not isinstance(old, dict) or not isinstance(old.get('artifacts'), list):
+            raise ValueError('The output manifest has an invalid artifact list.')
+        owned = set(old['artifacts'])
+        names.update(owned)
     paths = []
     for name in names:
         if not isinstance(name, str) or Path(name).name != name or name in {'', '.', '..', '.gui.lock'}:
@@ -47,6 +51,9 @@ def cleanup(job):
         for source in map(Path, job['inputs']):
             if source == p or p in source.parents:
                 raise ValueError(f'Output replacement would affect input {source}')
+        if p.exists() and name not in owned:
+            raise ValueError(f'{p} already exists and was not created by a previous GUI run. '
+                             'Choose another output folder or move the file first.')
         paths.append(p)
     # Complete all safety checks before removing anything.
     for p in paths:
@@ -54,7 +61,15 @@ def cleanup(job):
             shutil.rmtree(p)
         elif p.exists():
             p.unlink()
-    manifest.write_text(json.dumps({'artifacts': job['artifacts']}, indent=2))
+    # A run may stop before producing some optional artifacts. Claim ownership
+    # only after the worker has actually written them.
+    manifest.write_text(json.dumps({'artifacts': []}, indent=2))
+
+
+def record_generated_outputs(job):
+    root = Path(job['directory'])
+    created = [name for name in dict.fromkeys(job['artifacts']) if (root / name).exists()]
+    (root / '.gui-manifest.json').write_text(json.dumps({'artifacts': created}, indent=2))
 
 
 def execute(job, action='run'):
@@ -103,6 +118,7 @@ def execute(job, action='run'):
         finally:
             os.chdir(previous_cwd)
             status_path.write_text(json.dumps({'status': status, 'mode': job['mode'], 'exit_code': code, 'id': job.get('id')}))
+            record_generated_outputs(job)
         return code
 
 

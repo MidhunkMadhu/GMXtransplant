@@ -315,6 +315,7 @@ def build_job(raw, output_root, mode, example_base=None, prepare=False, example_
         if p == out or out in p.parents or (p.is_dir() and p in out.parents):
             raise ValueError(f'Input and output locations overlap: {p}. Choose a separate output folder.')
     if mode == 'addbinder':
+        from addbinder import RESERVED_POSE_NAMES
         section = values.get('addbinder')
         if not isinstance(section, dict):
             raise ValueError('addbinder must be a mapping of settings.')
@@ -327,6 +328,8 @@ def build_job(raw, output_root, mode, example_base=None, prepare=False, example_
         for name in names:
             if not isinstance(name, str) or Path(name).name != name or name in {'.', '..'}:
                 raise ValueError(f'Pose names must be simple folder names: {name!r}')
+            if name in RESERVED_POSE_NAMES:
+                raise ValueError(f'Pose name {name!r} is reserved for run output.')
         return {'id': uuid.uuid4().hex, 'mode': mode, 'directory': str(out), 'config': values,
                 'inputs': [str(p) for p in inputs],
                 'artifacts': ['run.yaml', 'run.log', 'run-status.json', 'summary.txt', 'summary.json',

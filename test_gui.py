@@ -55,6 +55,14 @@ class GuiModelTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_job(raw, self.root, 'addbinder')
 
+    def test_addbinder_pose_cannot_use_a_run_artifact_name(self):
+        raw = template_document('addbinder')
+        for name in ('run.yaml', 'summary.txt', 'visualization'):
+            with self.subTest(name=name):
+                raw['addbinder']['poses'] = [{'name': name}]
+                with self.assertRaisesRegex(ValueError, 'reserved for run output'):
+                    build_job(raw, self.root, 'addbinder')
+
     def test_all_example_inputs_validate_without_mutating_inputs(self):
         for mode in EXAMPLES:
             p = example_path(mode)
@@ -116,11 +124,56 @@ class GuiModelTests(unittest.TestCase):
         (out / 'toppar/stale.itp').write_text('old')
         (out / 'notes.txt').write_text('keep')
         (out / 'old_report.txt').write_text('old')
-        (out / '.gui-manifest.json').write_text(json.dumps({'artifacts': ['old_report.txt']}))
+        (out / '.gui-manifest.json').write_text(json.dumps({'artifacts': ['toppar', 'old_report.txt']}))
         cleanup(job)
         self.assertFalse((out / 'toppar').exists())
         self.assertFalse((out / 'old_report.txt').exists())
         self.assertEqual((out / 'notes.txt').read_text(), 'keep')
+
+    def test_cleanup_preserves_existing_file_without_a_manifest(self):
+        job = self.job()
+        out = Path(job['directory'])
+        out.mkdir(parents=True)
+        existing = out / 'step5_input.gro'
+        existing.write_text('user data')
+        with self.assertRaisesRegex(ValueError, 'was not created by a previous GUI run'):
+            cleanup(job)
+        self.assertEqual(existing.read_text(), 'user data')
+        self.assertFalse((out / '.gui-manifest.json').exists())
+
+    def test_cleanup_preserves_unowned_file_after_output_name_changes(self):
+        job = self.job()
+        out = Path(job['directory'])
+        out.mkdir(parents=True)
+        old = out / 'step5_input.gro'
+        old.write_text('previous GUI output')
+        unowned = out / 'new_result.gro'
+        unowned.write_text('user data')
+        (out / '.gui-manifest.json').write_text(json.dumps({'artifacts': ['step5_input.gro']}))
+        job['artifacts'].append('new_result.gro')
+        with self.assertRaisesRegex(ValueError, 'was not created by a previous GUI run'):
+            cleanup(job)
+        self.assertEqual(old.read_text(), 'previous GUI output')
+        self.assertEqual(unowned.read_text(), 'user data')
+
+    def test_manifest_owns_only_outputs_created_by_the_run(self):
+        job = self.job()
+
+        def run(_args):
+            Path('step5_input.gro').write_text('generated')
+            return 0
+
+        with patch('gmxtransplant.gui.worker.validate_job'), patch('run_pipeline.cli', side_effect=run):
+            self.assertEqual(execute(job), 0)
+        out = Path(job['directory'])
+        owned = json.loads((out / '.gui-manifest.json').read_text())['artifacts']
+        self.assertIn('step5_input.gro', owned)
+        self.assertNotIn('view.pse', owned)
+        (out / 'view.pse').write_text('user file')
+        with self.assertRaisesRegex(ValueError, 'was not created by a previous GUI run'):
+            cleanup(job)
+        self.assertEqual((out / 'step5_input.gro').read_text(), 'generated')
+        self.assertEqual((out / 'view.pse').read_text(), 'user file')
 
     def test_cleanup_rejects_symlink_before_deleting_anything(self):
         job = self.job()

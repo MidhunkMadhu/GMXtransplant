@@ -65,6 +65,18 @@ output:
             self.assertEqual(config.output.gro_path, str(Path(out) / "final.gro"))
             self.assertEqual(config.topology.output_dir, str(Path(out).absolute()))
 
+    def test_cholesterol_repack_folder_name_is_not_an_input_path(self):
+        root = Path(__file__).resolve().parent / 'examples' / 'cholesterol_restoration'
+        raw = yaml.safe_load((root / 'cholesterol_restore.yaml').read_text())
+        for key, value in raw['paths'].items():
+            if isinstance(value, str) and (root / value).exists():
+                raw['paths'][key] = str(root / value)
+        raw['cholesterol']['repack']['output_dir'] = 'custom_repack'
+        with tempfile.TemporaryDirectory() as out:
+            config = load_config(str(self._write(yaml.safe_dump(raw))), mode='chl',
+                                 check_paths=False, output_root=out)
+            self.assertEqual(config.cholesterol.repack.output_dir, 'custom_repack')
+
     def test_duplicate_yaml_key_is_rejected(self):
         text = MINIMAL_LIGAND_CONFIG.replace(
             "  structure_path: *environment_coordinates\n",

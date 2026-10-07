@@ -42,6 +42,10 @@ from topology import audit_final_topology, check_parameters, TopologyError
 
 
 ORIENTATIONS = ("auto", "flat", "end_on", "edge", "as_is", "euler")
+RESERVED_POSE_NAMES = frozenset({
+    'run.yaml', 'run.log', 'run-status.json', '.gui-manifest.json', '.gui.lock',
+    'summary.txt', 'summary.json', 'visualization', 'view.pml', 'view.vmd', 'view.pse',
+})
 _POSE_KEYS = {"name", "distance", "lateral_offset", "orientation", "angles", "spin", "flip", "approach", "centroid", "from_input_position",
               "distance_to", "reduce_distance_by", "min_distance"}
 RANDOM_ATTEMPTS = 2000
@@ -151,6 +155,8 @@ def _parse_pose(raw, index, default_distance):
     name = raw.get("name") or f"binderpose{index + 1}"
     if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", name):
         raise ConfigError(f"poses[{index}].name must be a simple folder name")
+    if name in RESERVED_POSE_NAMES:
+        raise ConfigError(f"poses[{index}].name {name!r} is reserved for run output")
     offset = raw.get("lateral_offset", [0.0, 0.0])
     if not isinstance(offset, (list, tuple)) or len(offset) != 2:
         raise ConfigError(f"poses[{index}].lateral_offset must be [dx, dy] in Angstrom")

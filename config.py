@@ -107,8 +107,9 @@ CHOLESTEROL_DIAGNOSTIC_PATHS = frozenset({
     "reference_placed_pdb_path", "merged_pdb_path",
 })
 
-# Names of files written inside a generated folder that is itself anchored.
-_UNANCHORED_OUTPUTS = {("minimization", "output_gro_path"), ("minimization", "report_path")}
+# Names of files or folders written inside an output folder that is itself anchored.
+_UNANCHORED_OUTPUTS = {("minimization", "output_gro_path"), ("minimization", "report_path"),
+                       ("cholesterol", "repack", "output_dir")}
 
 
 def path_kind(path):
