@@ -18,8 +18,8 @@ from config import ConfigError
 from scipy.spatial.transform import Rotation
 from topology import parse_top_molecules
 
-EXAMPLE = Path(__file__).resolve().parent / "examples" / "addbinder"
-GPROTEIN = Path(__file__).resolve().parent / "examples" / "cholesterol_restoration" / "environment"
+EXAMPLE = Path(__file__).resolve().parent.parent / "examples" / "addbinder"
+GPROTEIN = Path(__file__).resolve().parent.parent / "examples" / "cholesterol_restoration" / "environment"
 
 
 def _frame(lengths=(80.0, 80.0, 100.0)):

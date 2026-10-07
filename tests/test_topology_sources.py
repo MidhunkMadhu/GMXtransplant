@@ -6,7 +6,7 @@ from pathlib import Path
 from config import TopologySpec, load_config
 from replacement_ligands import resolve_replacement_ligands
 from topology import collect_topology_definitions, assemble_topology, TopologyError
-from test_topology_ligand_replacement import _write_itp, _final_universe
+from tests.test_topology_ligand_replacement import _write_itp, _final_universe
 
 
 class SourceSelectionTests(unittest.TestCase):

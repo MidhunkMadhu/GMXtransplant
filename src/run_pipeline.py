@@ -2,9 +2,9 @@
 """Entry point for protein, ligand, and cholesterol modification modes.
 
 Usage:
-    python3 run_pipeline.py --mode protein -i protein_replace.yaml
-    python3 run_pipeline.py --mode lig -i ligand_replace.yaml
-    python3 run_pipeline.py --mode chl -i cholesterol_restore.yaml
+    python3 src/run_pipeline.py --mode protein -i protein_replace.yaml
+    python3 src/run_pipeline.py --mode lig -i ligand_replace.yaml
+    python3 src/run_pipeline.py --mode chl -i cholesterol_restore.yaml
 
 PROTEIN MODE:
 implements the project's core workflow:
@@ -102,7 +102,7 @@ _EXAMPLE_FILES = {
 def _read_example(mode: str, comments: bool = True) -> str:
     filename = _EXAMPLE_FILES[mode]
     candidates = (
-        Path(__file__).resolve().parent / filename,
+        Path(__file__).resolve().parent.parent / "configs" / filename,
         Path(sysconfig.get_path("data"))
         / "share"
         / "gmxtransplant"

@@ -85,7 +85,7 @@ class RepresentationTests(unittest.TestCase):
         import warnings
         import MDAnalysis as mda
         from visualization import _style
-        root = Path(__file__).resolve().parent / 'examples' / 'addbinder'
+        root = Path(__file__).resolve().parent.parent / 'examples' / 'addbinder'
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             gs = mda.Universe(str(root / 'gprotein' / 'gs_trimer.pdb')).atoms
@@ -99,7 +99,7 @@ class RepresentationTests(unittest.TestCase):
         self.assertEqual(_style('host_tip', dopamine[:1])['spheres'], 'tip')
 
     def test_scripts_draw_cartoon_licorice_and_lines(self):
-        load = Path(__file__).resolve().parent / 'visualization.py'
+        load = Path(__file__).resolve().parent.parent / 'src' / 'visualization.py'
         text = load.read_text()
         for snippet in ("cmd.show('cartoon', name + ' and not hetatm')", "cmd.show('sticks', rest)",
                         "cmd.show('lines', rest)", "'Licorice 0.3 12 12'", "'Lines 1.0'",

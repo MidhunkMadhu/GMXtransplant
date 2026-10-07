@@ -69,8 +69,8 @@ python -B -m gmxtransplant --mode chl -i cholesterol_restore.yaml
 with the dependencies installed):
 
 ```bash
-python -B ../../run_pipeline.py --mode chl -i cholesterol_restore.yaml --dry-run
-python -B ../../run_pipeline.py --mode chl -i cholesterol_restore.yaml
+python -B ../../src/run_pipeline.py --mode chl -i cholesterol_restore.yaml --dry-run
+python -B ../../src/run_pipeline.py --mode chl -i cholesterol_restore.yaml
 ```
 
 Dry-run checks configuration only; full validation requires your files.

@@ -66,7 +66,7 @@ output:
             self.assertEqual(config.topology.output_dir, str(Path(out).absolute()))
 
     def test_cholesterol_repack_folder_name_is_not_an_input_path(self):
-        root = Path(__file__).resolve().parent / 'examples' / 'cholesterol_restoration'
+        root = Path(__file__).resolve().parent.parent / 'examples' / 'cholesterol_restoration'
         raw = yaml.safe_load((root / 'cholesterol_restore.yaml').read_text())
         for key, value in raw['paths'].items():
             if isinstance(value, str) and (root / value).exists():

@@ -15,7 +15,7 @@ gmxtransplant --mode addbinder -i addbinder.yaml --output results/
 ```
 
 To try the included dopamine and G-protein examples, see the
-[addbinder example guide](examples/addbinder/README.md). The desktop application
+[addbinder example guide](../../examples/addbinder/README.md). The desktop application
 also has a card for each example on its Examples tab.
 
 ## Inputs
