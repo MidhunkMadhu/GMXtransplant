@@ -12,21 +12,27 @@ If GMXtransplant is already installed, open a terminal and run:
 gmxtransplant-gui
 ```
 
-If you have downloaded the source but have not installed it, open a terminal in
-the GMXtransplant folder and run:
+To install on Linux or WSL 2 with WSLg, clone the source and choose a Python
+environment:
 
 ```bash
+git clone https://github.com/MidhunkMadhu/GMXtransplant.git
+cd GMXtransplant
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install .
 gmxtransplant-gui
 ```
 
-The next time you open a terminal, return to the GMXtransplant folder, run
-`source .venv/bin/activate`, then run `gmxtransplant-gui`. On Linux, use a
-graphical desktop session. On Windows, use WSL 2 with WSLg. On macOS, open the
-application from a graphical desktop session. See [platform help](#platform-help)
-if the window does not open.
+You can use Conda instead of `venv`: run `conda create -n gmxtransplant python=3.12 pip`,
+`conda activate gmxtransplant`, then `python -m pip install .` from the cloned
+folder. A virtual environment is optional if you already have a suitable
+Python environment. On macOS, use the same commands in Terminal.
+
+The next time you open a terminal, activate the environment you chose, then
+run `gmxtransplant-gui`. On Linux, use a graphical desktop session. On Windows,
+use WSL 2 with WSLg. On macOS, open the application from a graphical desktop
+session. See [platform help](#platform-help) if the window does not open.
 
 ## Try an included example
 
