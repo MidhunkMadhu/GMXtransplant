@@ -27,7 +27,10 @@ git clone https://github.com/MidhunkMadhu/GMXtransplant.git
 cd GMXtransplant
 ```
 
-Choose one Python setup. With `venv`:
+After cloning, choose **one** installation option below. Each block installs
+and starts GMXtransplant; run only one block.
+
+### Option 1: Python `venv`
 
 ```bash
 python3 -m venv .venv
@@ -36,7 +39,9 @@ python -m pip install .
 gmxtransplant-gui
 ```
 
-With Conda, use a separate environment and install GMXtransplant from the same
+### Option 2: Conda
+
+Use Conda to create a Python environment, then install GMXtransplant from the
 cloned source:
 
 ```bash
@@ -49,11 +54,10 @@ gmxtransplant-gui
 On macOS, use the same clone and setup commands in Terminal. The command-line
 tool is `gmxtransplant`; run `gmxtransplant --help` to see its options.
 
-A virtual environment is recommended, but it is not required if you already
-have a suitable Python environment. Conda provides the environment; `pip`
-installs GMXtransplant from this repository. If you downloaded a source archive
-instead of cloning, open its extracted `GMXtransplant` directory and run the
-same `python -m pip install .` command.
+If you already have a suitable Python environment, activate it and run
+`python -m pip install .` from the cloned source; creating another environment
+is optional. If you downloaded a source archive instead of cloning, open its
+extracted `GMXtransplant` directory and use the same installation options.
 
 ### What is installed, and why
 
@@ -153,14 +157,18 @@ gmxtransplant --mode protein -i protein_replace.yaml --output results/
 
 `--output DIR` chooses where the generated files go. Without it they are written to the directory you ran the command from. Either way, the run's closing line names the absolute folder it wrote to.
 
-Use `--show-example lig` or `--show-example chl` for the other modes. Add `--no-comments` to print a compact example with the same active settings.
+Use `--show-example charmprot`, `lig`, `chl`, or `addbinder` for the other modes. Add `--no-comments` to print a compact example with the same active settings.
 
 Source-checkout example configurations are available for
+[two-folder CHARMM-GUI transplantation](examples/charmprot/README.md),
 [protein insertion](examples/protein_insertion/README.md),
-[ligand replacement](examples/ligand_replacement/README.md), and
-[cholesterol restoration](examples/cholesterol_restoration/README.md).
-The ligand and cholesterol examples contain input folders for your own
-structures. Their READMEs list the exact filenames and settings to supply.
+[ligand replacement](examples/ligand_replacement/README.md),
+[cholesterol restoration](examples/cholesterol_restoration/README.md), and
+[adding a binder](examples/addbinder/README.md). The addbinder example includes
+a prepared receptor system, a dopamine ligand, and a G protein; its two
+configurations place the binders on opposite sides of the membrane. See the
+[addbinder guide](ADDBINDER.md) for the inputs and settings to use with your own
+system. Each example README explains its supplied files and how to run it.
 
 ## Prepare your inputs
 

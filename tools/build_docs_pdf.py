@@ -24,6 +24,7 @@ SOURCES = [
     ("Overview", "README.md"),
     ("Desktop application", "GUI_USAGE.md"),
     ("CHARMM-GUI transplant mode", "CHARMPROT.md"),
+    ("Add binder mode", "ADDBINDER.md"),
     ("Comparison views", "VISUALIZATION.md"),
     ("Portable and offline use", "PORTABLE_USAGE.md"),
 ]

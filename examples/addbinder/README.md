@@ -7,16 +7,19 @@ Two examples share one host, the apo D1R membrane build:
 | `addbinder.yaml` | dopamine (ligand) | extracellular (`upper`) |
 | `addbinder_gprotein.yaml` | Gs heterotrimer (protein) | intracellular (`lower`) |
 
-Run either one from any directory:
+From the source checkout root, open the example directory and run either
+configuration:
 
 ```bash
-gmxtransplant --mode addbinder -i addbinder.yaml --output results/
-gmxtransplant --mode addbinder -i addbinder_gprotein.yaml --output results_gprotein/
+cd examples/addbinder
+python -B ../../run_pipeline.py --mode addbinder -i addbinder.yaml --output results/
+python -B ../../run_pipeline.py --mode addbinder -i addbinder_gprotein.yaml --output results_gprotein/
 ```
 
-With an installed package, use the bundled copies in
-`"$(python -c 'import sysconfig;print(sysconfig.get_path("data"))')/share/gmxtransplant/examples/addbinder/"`.
-In the desktop application, both are on the Examples tab.
+The installed package also includes these inputs. In the desktop application,
+both runs are on the Examples tab.
+For your own system, use the [addbinder mode guide](../../ADDBINDER.md) to set
+the host, binder coordinates, ITP files, force field, side, and poses.
 
 ## Inputs
 
@@ -145,4 +148,3 @@ stays at the host's 0.1537 M on the remaining water and the system is neutral
 
 Ions are taken from, and added to, bulk water anywhere in the box (at least
 10 Å from protein, 5 Å from lipids and other ions).
-
