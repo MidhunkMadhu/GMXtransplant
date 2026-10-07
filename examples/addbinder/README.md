@@ -12,13 +12,13 @@ configuration:
 
 ```bash
 cd examples/addbinder
-python -B ../../run_pipeline.py --mode addbinder -i addbinder.yaml --output results/
-python -B ../../run_pipeline.py --mode addbinder -i addbinder_gprotein.yaml --output results_gprotein/
+python -B ../../src/run_pipeline.py --mode addbinder -i addbinder.yaml --output results/
+python -B ../../src/run_pipeline.py --mode addbinder -i addbinder_gprotein.yaml --output results_gprotein/
 ```
 
 The installed package also includes these inputs. In the desktop application,
 both runs are on the Examples tab.
-For your own system, use the [addbinder mode guide](../../ADDBINDER.md) to set
+For your own system, use the [addbinder mode guide](../../docs/guides/ADDBINDER.md) to set
 the host, binder coordinates, ITP files, force field, side, and poses.
 
 ## Inputs

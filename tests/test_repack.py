@@ -13,7 +13,7 @@ from itp import parse_itp
 from repack import make_restrained_cholesterol_itp, restraint_coverage
 from topology import parse_top_molecules
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE = ROOT / "examples" / "cholesterol_restoration"
 TOPPAR = EXAMPLE / "environment" / "toppar"
 

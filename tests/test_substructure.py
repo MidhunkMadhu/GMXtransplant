@@ -57,7 +57,7 @@ class SubstructureTests(unittest.TestCase):
             best_substructure_fit(Atoms(old.names, np.eye(2, 3)), Atoms(new.names, np.eye(3)), old, new)
 
 
-EXAMPLE = Path(__file__).resolve().parent / "examples" / "ligand_replacement"
+EXAMPLE = Path(__file__).resolve().parent.parent / "examples" / "ligand_replacement"
 
 
 @unittest.skipUnless((EXAMPLE / "ligand_replace.yaml").is_file(), "example data not present")

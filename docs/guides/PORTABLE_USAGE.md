@@ -47,4 +47,4 @@ For SLURM, edit and submit either `submit_cpu.slurm` or `submit_gpu.slurm` from
 this folder. Inspect `results/minimized.gro` and the convergence reports before
 continuing. Existing inputs and results are never overwritten.
 
-See [README.md](README.md) for all modes, settings, and limitations.
+See [README.md](../../README.md) for all modes, settings, and limitations.

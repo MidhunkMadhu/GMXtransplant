@@ -67,7 +67,7 @@ good way to learn what a completed run looks like.
    Double-click a report to open it. If PyMOL or VMD is installed, use its
    button to open the generated view.
 
-![The Examples tab](docs/gui-examples.png)
+![The Examples tab](../images/gui-examples.png)
 
 To use an example as a starting point for your own system, click **Open in
 editor**. The form will open with its settings filled in. An example run saves
@@ -88,7 +88,7 @@ Open the **Configuration** tab and choose the task that matches your goal:
 | Minimization preparation | Creates a folder of inputs for a restrained OpenMM minimization. | Assembled coordinates and topology |
 
 For add binder inputs and placement options, see the [addbinder guide](ADDBINDER.md).
-The [included examples](examples/addbinder/README.md) show a ligand above a
+The [included examples](../../examples/addbinder/README.md) show a ligand above a
 receptor and a G protein below it.
 
 Fill in the visible input fields first. Click **Browse…** or **Folder…** to
@@ -98,7 +98,7 @@ composition, or other scientific settings. Help text appears beside each
 setting. You can switch between tasks without losing the edits you made to
 each task during this session.
 
-![The Configuration tab](docs/gui-configuration.png)
+![The Configuration tab](../images/gui-configuration.png)
 
 Before starting a full run:
 
@@ -166,7 +166,7 @@ remembered the next time you open the application.
 
 On **Linux**, launch the application from a graphical desktop session. If you
 are connected to a remote computer without a desktop, use the command-line
-tool described in the [README](README.md).
+tool described in the [README](../../README.md).
 
 On **Windows**, use WSL 2 with WSLg and install GMXtransplant inside the Linux
 environment. Browse using Linux paths, including `/mnt/c/` for the Windows C:

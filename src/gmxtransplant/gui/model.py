@@ -43,14 +43,14 @@ DIAGNOSTICS = {'raw_protonated_pdb_path': 'cholesterol_protonated_raw.pdb',
 
 
 def data_roots():
-    return [Path(__file__).resolve().parents[2],
+    return [Path(__file__).resolve().parents[3],
             Path(sys.prefix) / 'share/gmxtransplant',
             Path(sysconfig.get_path('data')) / 'share/gmxtransplant']
 
 
 def template_path(mode):
     for root in data_roots():
-        for path in [root / TEMPLATES[mode], root / 'examples' / TEMPLATES[mode]]:
+        for path in [root / 'configs' / TEMPLATES[mode], root / 'examples' / TEMPLATES[mode]]:
             if path.is_file():
                 return path
     raise FileNotFoundError('Configuration templates are missing. Reinstall GMXtransplant.')

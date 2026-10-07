@@ -49,7 +49,7 @@ class LigandParameterTests(unittest.TestCase):
         check_ligand_parameters([str(self.root / "LIG.itp")], [str(self.root / "forcefield.itp")])
 
 
-EXAMPLE = Path(__file__).resolve().parent / "examples" / "ligand_replacement"
+EXAMPLE = Path(__file__).resolve().parent.parent / "examples" / "ligand_replacement"
 
 
 @unittest.skipUnless((EXAMPLE / "replacement" / "forcefield.itp").is_file(), "example data not present")

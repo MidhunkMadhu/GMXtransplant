@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       QT_QPA_PLATFORM: offscreen
+      PYTHONPATH: src
     strategy:
       fail-fast: false
       matrix:
@@ -22,12 +23,14 @@ jobs:
       - name: Install package and test tools
         run: python -m pip install --upgrade pip build .
       - name: Run tests
-        run: python -m unittest discover -v
+        run: python -m unittest discover -s tests -v
       - name: Build source and wheel distributions
         run: python -m build
 
   minimization-smoke-test:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -37,7 +40,7 @@ jobs:
       - name: Install package with OpenMM
         run: python -m pip install --upgrade pip '.[minimize]'
       - name: Run minimization smoke test
-        run: python -m unittest -v test_minimization test_minimization_bundle test_minimization_restraints
+        run: python -m unittest -v tests.test_minimization tests.test_minimization_bundle tests.test_minimization_restraints
 
   gui-test:
     strategy:
@@ -47,6 +50,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       QT_QPA_PLATFORM: offscreen
+      PYTHONPATH: src
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -55,4 +59,4 @@ jobs:
       - name: Install package (application and command-line tool)
         run: python -m pip install .
       - name: Test GUI configuration, paths, and widgets
-        run: python -m unittest -v test_gui test_visualization test_charmprot
+        run: python -m unittest -v tests.test_gui tests.test_visualization tests.test_charmprot

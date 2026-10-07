@@ -24,8 +24,8 @@ python -B -m gmxtransplant --mode protein -i protein_replace.yaml
 with the dependencies installed):
 
 ```bash
-python -B ../../run_pipeline.py --mode protein -i protein_replace.yaml --dry-run
-python -B ../../run_pipeline.py --mode protein -i protein_replace.yaml
+python -B ../../src/run_pipeline.py --mode protein -i protein_replace.yaml --dry-run
+python -B ../../src/run_pipeline.py --mode protein -i protein_replace.yaml
 ```
 
 Dry-run checks configuration only; full validation requires your files.

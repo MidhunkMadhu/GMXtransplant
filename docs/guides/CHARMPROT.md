@@ -10,8 +10,8 @@ gmxtransplant --mode charmprot -i charmprot.yaml
 Or from the source checkout:
 
 ```bash
-python -B run_pipeline.py --mode charmprot -i charmprot.yaml --dry-run
-python -B run_pipeline.py --mode charmprot -i charmprot.yaml
+python -B src/run_pipeline.py --mode charmprot -i charmprot.yaml --dry-run
+python -B src/run_pipeline.py --mode charmprot -i charmprot.yaml
 ```
 
 The entire required YAML is:

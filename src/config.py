@@ -153,7 +153,7 @@ def is_output_path(path):
 def _package_roots():
     """Directories in which the installed package keeps its own example inputs."""
     return [
-        Path(__file__).resolve().parent,
+        Path(__file__).resolve().parent.parent,
         Path(sys.prefix) / "share" / "gmxtransplant",
         Path(sysconfig.get_path("data")) / "share" / "gmxtransplant",
     ]

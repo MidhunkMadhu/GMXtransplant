@@ -266,7 +266,7 @@ class CharmProtTests(unittest.TestCase):
         self.assertIn("WARNING: keep_lipids retained 1", out.getvalue())
 
 
-EXAMPLE = Path(__file__).resolve().parent / "examples" / "charmprot"
+EXAMPLE = Path(__file__).resolve().parent.parent / "examples" / "charmprot"
 
 
 @unittest.skipUnless((EXAMPLE / "reference" / "toppar" / "forcefield.itp").is_file(), "example data not present")

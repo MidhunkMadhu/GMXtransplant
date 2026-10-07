@@ -22,11 +22,11 @@ ROOT = Path(__file__).resolve().parent.parent
 # Order matters: this is the reading order of the finished document.
 SOURCES = [
     ("Overview", "README.md"),
-    ("Desktop application", "GUI_USAGE.md"),
-    ("CHARMM-GUI transplant mode", "CHARMPROT.md"),
-    ("Add binder mode", "ADDBINDER.md"),
-    ("Comparison views", "VISUALIZATION.md"),
-    ("Portable and offline use", "PORTABLE_USAGE.md"),
+    ("Desktop application", "docs/guides/GUI_USAGE.md"),
+    ("CHARMM-GUI transplant mode", "docs/guides/CHARMPROT.md"),
+    ("Add binder mode", "docs/guides/ADDBINDER.md"),
+    ("Comparison views", "docs/guides/VISUALIZATION.md"),
+    ("Portable and offline use", "docs/guides/PORTABLE_USAGE.md"),
 ]
 
 PAGE_WIDTH, PAGE_HEIGHT = 595, 842
@@ -559,7 +559,7 @@ def main() -> int:
     parser.add_argument("--output", default=str(ROOT / "docs" / "GMXtransplant.pdf"))
     arguments = parser.parse_args()
     version = re.search(r'__version__\s*=\s*"([^"]+)"',
-                        (ROOT / "gmxtransplant" / "__init__.py").read_text())[1]
+                        (ROOT / "src" / "gmxtransplant" / "__init__.py").read_text())[1]
     path = build(Path(arguments.output), version)
     print(f"Wrote {path} ({path.stat().st_size / 1024:.0f} kB)")
     return 0

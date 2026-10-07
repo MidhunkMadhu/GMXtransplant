@@ -4,7 +4,7 @@ GMXtransplant builds membrane-protein systems from prepared structures and GROMA
 
 Use the desktop application to select inputs, run the included examples, and inspect results. The `gmxtransplant` command-line tool supports the same tasks for scripts and remote computers. Each desktop run saves its configuration as `run.yaml` in the output folder.
 
-All molecular components need compatible parameters before assembly. Inspect the resulting coordinates and topology before simulation. For the two-folder workflow, see the [mode guide](CHARMPROT.md), [example](examples/charmprot/README.md), and [PyMOL/VMD visualization guide](VISUALIZATION.md).
+All molecular components need compatible parameters before assembly. Inspect the resulting coordinates and topology before simulation. For the two-folder workflow, see the [mode guide](docs/guides/CHARMPROT.md), [example](examples/charmprot/README.md), and [PyMOL/VMD visualization guide](docs/guides/VISUALIZATION.md).
 
 ## Choose a task
 
@@ -14,7 +14,7 @@ All molecular components need compatible parameters before assembly. Inspect the
 | Insert a protein or protein-ligand complex into a prepared environment | `--mode protein` | `protein_replace.yaml` |
 | Replace a bound ligand while retaining the protein | `--mode lig` | `ligand_replace.yaml` |
 | Restore experimental cholesterol and adjust leaflet composition | `--mode chl` | `cholesterol_restore.yaml` |
-| Add a ligand or protein binder in the water above/below a membrane protein ([guide](ADDBINDER.md)) | `--mode addbinder` | `addbinder.yaml` |
+| Add a ligand or protein binder in the water above/below a membrane protein ([guide](docs/guides/ADDBINDER.md)) | `--mode addbinder` | `addbinder.yaml` |
 
 Protein mode supports membrane proteins generally, including receptors, channels, and transporters. Any ligands included in the incoming selection move with the protein during alignment.
 
@@ -96,7 +96,7 @@ to its full path.
 
 Only cholesterol restoration needs Open Babel; check with `obabel -V`.
 
-For an editable installation, use `python3 -m pip install -e .`. To run the command line from source without installing the package, use `python3 run_pipeline.py` in place of `gmxtransplant`.
+For an editable installation, use `python3 -m pip install -e .`. To run the command line from source without installing the package, use `python3 src/run_pipeline.py` in place of `gmxtransplant`.
 
 ## Desktop application
 
@@ -118,12 +118,12 @@ Select an output folder first. Runs write directly to `charmprot/`, `protein/`, 
 generated products, including `toppar/`, without timestamped run directories.
 
 Complete example inputs are included in the package for offline use.
-Read the [GUI guide](GUI_USAGE.md) for a first run, input setup, results, and platform help.
+Read the [GUI guide](docs/guides/GUI_USAGE.md) for a first run, input setup, results, and platform help.
 
 The macOS installation has been tested on a MacBook Air.
 
 Use a native Python installation matching your Mac's architecture. See the
-[platform help](GUI_USAGE.md#platform-help) if the window does not open or
+[platform help](docs/guides/GUI_USAGE.md#platform-help) if the window does not open or
 the cholesterol workflow reports that Open Babel is missing.
 
 ## Quick start
@@ -167,7 +167,7 @@ Source-checkout example configurations are available for
 [adding a binder](examples/addbinder/README.md). The addbinder example includes
 a prepared receptor system, a dopamine ligand, and a G protein; its two
 configurations place the binders on opposite sides of the membrane. See the
-[addbinder guide](ADDBINDER.md) for the inputs and settings to use with your own
+[addbinder guide](docs/guides/ADDBINDER.md) for the inputs and settings to use with your own
 system. Each example README explains its supplied files and how to run it.
 
 ## Prepare your inputs
@@ -381,16 +381,6 @@ The commented example files describe box validation, name restoration for trunca
 - Preparation checks input consistency without importing OpenMM. OpenMM parsing and force-field compatibility are checked when the runner executes.
 - Exact overlaps, poor placement, or incorrect parameters may need correction before minimization can succeed.
 
-## Development
-
-```bash
-python3 -m unittest discover -v
-python3 -m pip install build
-python3 -m build
-```
-
-GitHub Actions tests Python 3.10, 3.11, and 3.12, builds the package, and runs OpenMM tests with the optional dependency installed.
-
 ## Runnable protein insertion example
 
 The repository includes a complete input system in
@@ -424,3 +414,23 @@ The example enables name restoration so truncated POP/TIP/CHL names are
 classified correctly before clash removal. Set masks, cutoffs, protection,
 and composition explicitly in YAML. Standalone minimization settings are in
 `minimization.yaml`.
+
+## Development
+
+| Directory | Contents |
+|---|---|
+| `src/` | Python pipeline and desktop application |
+| `configs/` | Configuration templates |
+| `examples/` | Complete example inputs and configurations |
+| `docs/guides/` | User guides |
+| `docs/images/` | Guide screenshots |
+| `tests/` | Regression tests |
+| `tools/` | Documentation builder |
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests -v
+python3 -m pip install build
+python3 -m build
+```
+
+GitHub Actions tests Python 3.10, 3.11, and 3.12, builds the package, and runs OpenMM tests with the optional dependency installed.
