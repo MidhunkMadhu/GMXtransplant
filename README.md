@@ -20,8 +20,14 @@ Protein mode supports membrane proteins generally, including receptors, channels
 
 ## Install
 
-Use Python 3.10 or newer. On Linux or WSL 2 with WSLg, open a terminal in the
-downloaded or cloned source directory and run:
+Use Python 3.10 or newer. On Linux or WSL 2 with WSLg, clone the source:
+
+```bash
+git clone https://github.com/MidhunkMadhu/GMXtransplant.git
+cd GMXtransplant
+```
+
+Choose one Python setup. With `venv`:
 
 ```bash
 python3 -m venv .venv
@@ -30,9 +36,24 @@ python -m pip install .
 gmxtransplant-gui
 ```
 
-On macOS, run the same commands in Terminal from the source directory. The
-command-line tool is `gmxtransplant`; run `gmxtransplant --help` to see its options.
-You can use Conda instead of `venv`: `conda create -n gmxtransplant python=3.12 && conda activate gmxtransplant`.
+With Conda, use a separate environment and install GMXtransplant from the same
+cloned source:
+
+```bash
+conda create -n gmxtransplant python=3.12 pip
+conda activate gmxtransplant
+python -m pip install .
+gmxtransplant-gui
+```
+
+On macOS, use the same clone and setup commands in Terminal. The command-line
+tool is `gmxtransplant`; run `gmxtransplant --help` to see its options.
+
+A virtual environment is recommended, but it is not required if you already
+have a suitable Python environment. Conda provides the environment; `pip`
+installs GMXtransplant from this repository. If you downloaded a source archive
+instead of cloning, open its extracted `GMXtransplant` directory and run the
+same `python -m pip install .` command.
 
 ### What is installed, and why
 
