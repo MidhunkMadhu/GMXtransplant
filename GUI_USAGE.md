@@ -23,9 +23,10 @@ gmxtransplant-gui
 ```
 
 The next time you open a terminal, return to the GMXtransplant folder, run
-`source .venv/bin/activate`, then run `gmxtransplant-gui`. On Windows, use WSL 2
-with WSLg. On macOS or Linux, open the application from a graphical desktop
-session. See [platform help](#platform-help) if the window does not open.
+`source .venv/bin/activate`, then run `gmxtransplant-gui`. On Linux, use a
+graphical desktop session. On Windows, use WSL 2 with WSLg. On macOS, open the
+application from a graphical desktop session. See [platform help](#platform-help)
+if the window does not open.
 
 ## Try an included example
 
@@ -139,6 +140,10 @@ remembered the next time you open the application.
 
 ## Platform help
 
+On **Linux**, launch the application from a graphical desktop session. If you
+are connected to a remote computer without a desktop, use the command-line
+tool described in the [README](README.md).
+
 On **Windows**, use WSL 2 with WSLg and install GMXtransplant inside the Linux
 environment. Browse using Linux paths, including `/mnt/c/` for the Windows C:
 drive. If the application window does not appear, check that graphical Linux
@@ -147,7 +152,3 @@ applications work in your WSL installation.
 On **macOS**, install in a Python environment that matches your Mac. The
 cholesterol workflow also needs Open Babel. Install it separately if
 GMXtransplant reports that it is missing.
-
-On **Linux**, launch the application from a graphical desktop session. If you
-are connected to a remote computer without a desktop, use the command-line
-tool described in the [README](README.md).

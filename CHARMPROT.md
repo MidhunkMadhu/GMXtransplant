@@ -1,6 +1,6 @@
 # Two-folder CHARMM-GUI protein transplantation
 
-This is the first CLI/GUI workflow. Run the installed package:
+Run the installed package:
 
 ```bash
 gmxtransplant --mode charmprot -i charmprot.yaml --dry-run
@@ -166,7 +166,7 @@ successful transplant; it does not run minimization.
 
 ## GUI, examples and visualization
 
-The first mode presents Reference and Transplant folder pickers. All other settings are under Advanced settings; the output folder is selected once at the top of the window. The supplied datasets are in `examples/charmprot/`. Its Examples card runs them in one click.
+In the desktop application, select **CHARMM-GUI protein transplant** and choose the Reference and Transplant folders. Select the output folder at the top of the window. Other settings are under Advanced settings. The Examples card runs the supplied datasets in `examples/charmprot/`.
 
 Canonical configurations use a `charmprot:` section and may use the shared `paths:` registry. The original flat two-folder YAML is still accepted. A root `minimization:` section uses the same settings as other modes; `--prepare-minimization` is also supported.
 
