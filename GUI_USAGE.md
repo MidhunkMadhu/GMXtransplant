@@ -12,22 +12,36 @@ If GMXtransplant is already installed, open a terminal and run:
 gmxtransplant-gui
 ```
 
-To install on Linux or WSL 2 with WSLg, clone the source and choose a Python
-environment:
+To install on Linux or WSL 2 with WSLg, first clone the source:
 
 ```bash
 git clone https://github.com/MidhunkMadhu/GMXtransplant.git
 cd GMXtransplant
+```
+
+Choose **one** of these options; run only one block.
+
+**Option 1: Python `venv`**
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install .
 gmxtransplant-gui
 ```
 
-You can use Conda instead of `venv`: run `conda create -n gmxtransplant python=3.12 pip`,
-`conda activate gmxtransplant`, then `python -m pip install .` from the cloned
-folder. A virtual environment is optional if you already have a suitable
-Python environment. On macOS, use the same commands in Terminal.
+**Option 2: Conda**
+
+```bash
+conda create -n gmxtransplant python=3.12 pip
+conda activate gmxtransplant
+python -m pip install .
+gmxtransplant-gui
+```
+
+If you already have a suitable Python environment, activate it and run
+`python -m pip install .` from the cloned folder. On macOS, use the same
+commands in Terminal.
 
 The next time you open a terminal, activate the environment you chose, then
 run `gmxtransplant-gui`. On Linux, use a graphical desktop session. On Windows,
@@ -72,6 +86,10 @@ Open the **Configuration** tab and choose the task that matches your goal:
 | Cholesterol restoration | Places experimentally resolved cholesterol into a prepared system. | Target system and experimental structure |
 | Add binder | Places a ligand or protein above or below a membrane protein, with a separate system for each pose. | Prepared host system, binder coordinates, and binder parameters |
 | Minimization preparation | Creates a folder of inputs for a restrained OpenMM minimization. | Assembled coordinates and topology |
+
+For add binder inputs and placement options, see the [addbinder guide](ADDBINDER.md).
+The [included examples](examples/addbinder/README.md) show a ligand above a
+receptor and a G protein below it.
 
 Fill in the visible input fields first. Click **Browse…** or **Folder…** to
 select each file or folder. If you type a path, enter its full location. Open

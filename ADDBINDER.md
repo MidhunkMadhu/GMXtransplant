@@ -14,8 +14,9 @@ gmxtransplant --mode addbinder -i addbinder.yaml --dry-run
 gmxtransplant --mode addbinder -i addbinder.yaml --output results/
 ```
 
-Status: first working version (ligand binders tested end to end). See
-[ADDBINDER_ROADMAP.md](ADDBINDER_ROADMAP.md) for what is done and what remains.
+To try the included dopamine and G-protein examples, see the
+[addbinder example guide](examples/addbinder/README.md). The desktop application
+also has a card for each example on its Examples tab.
 
 ## Inputs
 
@@ -26,7 +27,8 @@ Status: first working version (ligand binders tested end to end). See
 | `binder_itp` | The binder's ITP with exactly one `[ moleculetype ]`, or a **list of ITPs, one molecule each**, for a binder made of several molecules (e.g. a G-protein heterotrimer `[PROB.itp, PROC.itp, PROD.itp]`). The molecules are placed as one rigid body. A name that clashes with a different host molecule type (CHARMM-GUI calls protein chains `PROA`, `PROB`, ...) is renamed `<name>_BND`. |
 | `binder_forcefield` | The force field holding the binder's parameters, e.g. the `forcefield.itp` CHARMM-GUI Ligand Reader generated with the ITP. Parameters are merged with the host's; the same key with different values stops the run. Before building, every binder molecule (protein or ligand) is checked: each atom type must be in `[ atomtypes ]`, and each bond, angle, dihedral and CMAP term must have parameters, in the host's force field plus this one. A gap stops the run and names the terms and residues (e.g. a non-standard residue). Note that a CHARMM-GUI `forcefield.itp` holds only what its own system uses, so a protein from a different build usually needs its own. |
 
-All input paths must be absolute, as in every other mode.
+For your own configuration, give input paths in full. The supplied examples
+resolve their relative input paths against the example folder.
 
 ## How placement works
 
@@ -195,7 +197,7 @@ equilibration. Without one, a free binder diffuses away.
 | `output_dir` | `addbinder_output` | inside `--output` |
 | `poses[]` | one pose straight above the tip | `name`, `distance`, `lateral_offset`, `orientation`, `angles`, `flip`, `spin`, `approach`, `centroid`, `from_input_position`, `distance_to`, `reduce_distance_by`, `min_distance` |
 
-## Not available yet
+## Desktop application
 
 In the desktop application, choose **Add binder outside the membrane protein** on
 the Configuration tab, or run one of its two cards on the Examples tab: dopamine
@@ -203,9 +205,10 @@ the Configuration tab, or run one of its two cards on the Examples tab: dopamine
 (examples: `examples/addbinder/` and `examples/addbinder_gprotein/`) in the
 output folder.
 
+## Limitations
+
 These are not supported yet:
+
 - `--prepare-minimization`
 - automatic box extension
 - protein binders build (the Gs example) but have not yet been simulated
-
-See the roadmap.
