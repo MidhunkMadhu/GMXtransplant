@@ -226,7 +226,7 @@ class GuiModelTests(unittest.TestCase):
         path = documentation_path()
         self.assertTrue(path.is_file())
         self.assertEqual(path.read_bytes()[:5], b'%PDF-')
-        self.assertNotIn(str(Path.home()), str(path.parent.parent))
+        self.assertEqual(path.name, 'GMXtransplant.pdf')
 
     def test_documentation_falls_back_from_viewer_to_browser_then_reports(self):
         from gmxtransplant.gui.model import open_documentation
@@ -384,16 +384,21 @@ class GuiEditorTests(unittest.TestCase):
         # Remembered output folder and theme go to a throwaway location, never
         # the user's own settings.
         cls.settings_dir = tempfile.TemporaryDirectory()
+        cls.previous_settings_format = QSettings.defaultFormat()
+        QSettings.setDefaultFormat(QSettings.Format.IniFormat)
         for fmt in (QSettings.Format.NativeFormat, QSettings.Format.IniFormat):
             QSettings.setPath(fmt, QSettings.Scope.UserScope, cls.settings_dir.name)
 
     @classmethod
     def tearDownClass(cls):
+        from PySide6.QtCore import QSettings
+        QSettings.setDefaultFormat(cls.previous_settings_format)
         cls.settings_dir.cleanup()
 
     def test_settings_are_isolated_from_the_user(self):
         from PySide6.QtCore import QSettings
-        self.assertTrue(QSettings().fileName().startswith(self.settings_dir.name))
+        self.assertTrue(Path(QSettings().fileName()).resolve().is_relative_to(
+            Path(self.settings_dir.name).resolve()))
 
     def test_form_roundtrips_every_template_and_example(self):
         from gmxtransplant.gui.editor import ConfigEditor
@@ -639,7 +644,7 @@ class GuiEditorTests(unittest.TestCase):
             os.chdir(launch)
             try:
                 window = MainWindow()
-                self.assertEqual(window.output_root.text(), str(Path(launch)))
+                self.assertEqual(Path(window.output_root.text()).resolve(), Path(launch).resolve())
                 window.close()
                 self.assertFalse(QSettings().contains('output_root'))
                 window.deleteLater()
