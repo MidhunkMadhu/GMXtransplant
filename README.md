@@ -1,13 +1,10 @@
 # GMXtransplant
 
-**New first mode: two-folder CHARMM-GUI protein transplantation.** Supply only reference and transplant folders; proteins and ligands are detected and replaced automatically. The other assembly modes remain available. See [the mode guide](CHARMPROT.md), [supplied example](examples/charmprot/README.md), and [PyMOL/VMD comparisons](VISUALIZATION.md).
+GMXtransplant builds membrane-protein systems from prepared structures and GROMACS topologies. Give it two CHARMM-GUI folders to transplant proteins and bound ligands automatically, or choose a workflow to insert a protein complex, replace a ligand, restore experimental cholesterol, or place a binder near a membrane protein.
 
+Use the desktop application to select inputs, run the included examples, and inspect results. The `gmxtransplant` command-line tool supports the same tasks for scripts and remote computers. Each desktop run saves its configuration as `run.yaml` in the output folder.
 
-GMXtransplant assembles membrane-protein systems using an existing prepared membrane, solvent, and ion environment. You can replace a protein or protein-ligand complex, replace a bound ligand, or restore experimentally resolved cholesterol.
-
-**Two ways to work, one pipeline.** The desktop application is the main way to use GMXtransplant: browse for inputs, adjust settings in a guided form, run the bundled examples in one click, and follow progress and results in one window. For scripts, clusters and remote servers, every mode is also available as a complete command-line tool (`gmxtransplant`). Both run the same pipeline and use the same YAML configurations: every application run saves its setup as `run.yaml` in the output folder, which runs unchanged with `gmxtransplant --mode <mode> -i run.yaml`.
-
-This is a structure-assembly tool and expects every molecular component to be parameterized already. After assembly, inspect the outputs and use them directly, or prepare portable OpenMM inputs for restrained clash relaxation.
+All molecular components need compatible parameters before assembly. Inspect the resulting coordinates and topology before simulation. For the two-folder workflow, see the [mode guide](CHARMPROT.md), [example](examples/charmprot/README.md), and [PyMOL/VMD visualization guide](VISUALIZATION.md).
 
 ## Choose a task
 
@@ -17,25 +14,25 @@ This is a structure-assembly tool and expects every molecular component to be pa
 | Insert a protein or protein-ligand complex into a prepared environment | `--mode protein` | `protein_replace.yaml` |
 | Replace a bound ligand while retaining the protein | `--mode lig` | `ligand_replace.yaml` |
 | Restore experimental cholesterol and adjust leaflet composition | `--mode chl` | `cholesterol_restore.yaml` |
-| Add a ligand or protein binder in the water above/below a membrane protein ([guide](ADDBINDER.md), first version) | `--mode addbinder` | `addbinder.yaml` |
+| Add a ligand or protein binder in the water above/below a membrane protein ([guide](ADDBINDER.md)) | `--mode addbinder` | `addbinder.yaml` |
 
 Protein mode supports membrane proteins generally, including receptors, channels, and transporters. Any ligands included in the incoming selection move with the protein during alignment.
 
 ## Install
 
-Use Python 3.10 or newer on Linux or macOS. From the downloaded or cloned source
-directory, one command installs the desktop application, the command-line tool
-and everything they need:
+Use Python 3.10 or newer. On Linux or WSL 2 with WSLg, open a terminal in the
+downloaded or cloned source directory and run:
 
 ```bash
-python3 -m pip install .
-gmxtransplant-gui        # desktop application
-gmxtransplant --help     # command-line tool
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install .
+gmxtransplant-gui
 ```
 
-A separate environment keeps GMXtransplant's dependencies apart from other
-software: `python3 -m venv .venv && source .venv/bin/activate` before installing
-(or `conda create -n gmxtransplant python=3.12 && conda activate gmxtransplant`).
+On macOS, run the same commands in Terminal from the source directory. The
+command-line tool is `gmxtransplant`; run `gmxtransplant --help` to see its options.
+You can use Conda instead of `venv`: `conda create -n gmxtransplant python=3.12 && conda activate gmxtransplant`.
 
 ### What is installed, and why
 
@@ -61,16 +58,18 @@ to its full path.
 
 ### If a dependency cannot be installed
 
-- **Open Babel on macOS 12 or 13:** no ready-built pip package exists, so it is
-  skipped. Install it with `brew install open-babel` or
-  `conda install -c conda-forge openbabel`. On other systems where the pip package
-  fails, install GMXtransplant with `GMXTRANSPLANT_NO_OPENBABEL=1 python3 -m pip install .`
-  and use one of those commands (or `sudo apt-get install openbabel`). Only
-  cholesterol restoration needs it; check with `obabel -V`.
 - **Qt on older Linux systems or some clusters:** install just the command-line
   tool with `GMXTRANSPLANT_CLI_ONLY=1 python3 -m pip install .`. Every mode, example
   and option remains available through `gmxtransplant`; the application can be
   added later with `python3 -m pip install "PySide6>=6.6,<7"`.
+- **Open Babel on Linux or WSL:** if the pip package fails, install GMXtransplant
+  with `GMXTRANSPLANT_NO_OPENBABEL=1 python3 -m pip install .`, then install Open
+  Babel with your package manager, such as `sudo apt-get install openbabel`.
+- **Open Babel on macOS 12 or 13:** no ready-built pip package exists, so it is
+  skipped. Install it with `brew install open-babel` or
+  `conda install -c conda-forge openbabel`.
+
+Only cholesterol restoration needs Open Babel; check with `obabel -V`.
 
 For an editable installation, use `python3 -m pip install -e .`. To run the command line from source without installing the package, use `python3 run_pipeline.py` in place of `gmxtransplant`.
 
@@ -84,7 +83,7 @@ gmxtransplant-gui
 python -m gmxtransplant.gui
 ```
 
-The desktop application supports macOS, Linux, and WSL 2 with WSLg. It includes an input
+The desktop application supports Linux, WSL 2 with WSLg, and macOS. It includes an input
 editor for all configuration sections, file and folder browsing,
 one-click examples, validation, readable progress summaries, cancellation, and result browsing.
 Detailed logs are collapsed until **View Command Progress** is clicked. YAML is
@@ -96,15 +95,7 @@ generated products, including `toppar/`, without timestamped run directories.
 Complete example inputs are included in the package for offline use.
 Read the [GUI guide](GUI_USAGE.md) for a first run, input setup, results, and platform help.
 
-On a MacBook Air, run these commands in Bash (or zsh) from the repository root:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install .
-gmxtransplant-gui
-```
+The macOS installation has been tested on a MacBook Air.
 
 Use a native Python installation matching your Mac's architecture. See the
 [platform help](GUI_USAGE.md#platform-help) if the window does not open or
@@ -297,8 +288,7 @@ minimization:
   restraint_residue_classes: {}   # e.g. {MYLIP: lipid} for a custom lipid
 ```
 
-Nonbonded, constraint and SLURM `resources` settings remain available in YAML
-for special cases; the GUI shows only the settings above.
+For nonbonded, constraint, and SLURM `resources` settings, edit the YAML file.
 
 Restraints use the input coordinates as references and a default force constant of 1000 kJ/mol/nm². Protein molecules are recognized from their amino-acid residues, including attached caps and modifications. Unrecognized molecules are treated as ligands. Classify custom lipids and unusual residues explicitly, for example `restraint_residue_classes: {MYLIP: lipid}`. Supported classes are `protein`, `ligand`, `lipid`, `water`, and `ion`.
 
@@ -396,12 +386,12 @@ In the generated examples, incoming ligand names and ITP paths are together
 near the top. `charge: from_itp` and `moleculetype` need not be repeated.
 Coordinate `resname` and ITP `[ moleculetype ]` names need not be identical:
 the unique matching `[ atoms ]` residue name determines the type. Ambiguous
-ITPs still require an explicit molecule type. Old detailed YAMLs remain supported.
+ITPs still require an explicit molecule type. Detailed YAMLs can set these fields explicitly.
 
 For protein-mode PDB name restoration, the environment's `topol.top` is found
 beside `environment_toppar_dir`; no separate reference topology is needed.
 A nonstandard layout can still set `name_restoration.reference_topol` explicitly.
 The example enables name restoration so truncated POP/TIP/CHL names are
-classified correctly before clash removal. Scientific choices (masks, cutoffs,
-protection and composition) remain explicit in the YAMLs; inactive/default
-plumbing is omitted. Standalone minimization settings remain in minimization.yaml.
+classified correctly before clash removal. Set masks, cutoffs, protection,
+and composition explicitly in YAML. Standalone minimization settings are in
+`minimization.yaml`.

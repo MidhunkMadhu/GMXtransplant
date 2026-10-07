@@ -400,8 +400,7 @@ def title_page(document: Document, title: str, subtitle: str, version: str):
     document.text(f"Version {version}", LEFT, REGULAR, 11, 0.4)
     document.y = PAGE_HEIGHT - 360
     for line in [
-        "Complete documentation for the command-line interface and the desktop",
-        "application, assembled from the guides shipped with this release.",
+        "Guide to the desktop application and command-line workflows.",
         "",
         f"Generated {date.today().isoformat()}.",
     ]:
