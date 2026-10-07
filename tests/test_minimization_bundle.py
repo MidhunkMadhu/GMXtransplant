@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 from config import ConfigError, MinimizationSpec, load_minimization_config
 from minimization_bundle import BundleError, prepare_minimization, validate_preparation
-from test_minimization import TOP, GRO
+from tests.test_minimization import TOP, GRO
 
 
 class BundleTests(unittest.TestCase):
