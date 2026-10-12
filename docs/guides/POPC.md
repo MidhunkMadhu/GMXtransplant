@@ -125,8 +125,17 @@ MPI build:
 GMX="srun -n 1 gmx_mpi" MDRUN="srun gmx_mpi mdrun" ./sample_run.sh
 ```
 
-Afterwards, continue production from `step6.6_equilibration.gro` with the
-same `topol.top`. To change a stage, e.g. to lengthen the last one, edit
+Then check the stages with `python3 analyze_equilibration.py` (box, area per
+phospholipid, P–P thickness, protein C-alpha RMSD and z drift per stage), and
+continue production from `step6.6_equilibration.gro` with the same `topol.top`.
+`gmxtransplant slurm-script results/popc_output/equilibration --profile dardel
+--account <project>` writes a Slurm job for the whole schedule.
+
+On Dardel (GROMACS 2026.1, one node, 53 ns/day) the D1R example ran the full
+schedule with no LINCS warnings: the box shrank laterally from 12.95 to 12.56 nm
+as the gaps closed, the P–P thickness settled at 3.83 nm, and the receptor
+C-alpha RMSD was 0.09 nm after the restraints were released, its centre
+moving less than 0.1 nm along z. To change a stage, e.g. to lengthen the last one, edit
 `equilibration.stages` in the YAML.
 
 ## All settings

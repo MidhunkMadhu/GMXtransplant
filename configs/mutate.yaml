@@ -1,0 +1,22 @@
+# Point mutations in a prepared system. The backbone (and CB when both residues
+# have one) keeps its coordinates; the new side chain is built from the CHARMM36
+# internal coordinates with the least-clashing rotamer; the protein ITP gets the
+# new residue's atoms and bonded terms; overlapping water/ions (and lipids) are
+# removed and counterions keep the system neutral. Terminal, capped and
+# disulfide-bonded residues cannot be mutated.
+mutate:
+  host: /path/to/membrane_system   # folder with topol.top, toppar/ and step5_input.gro
+  mutations:
+    - molecule: PROA       # protein moleculetype
+      resid: 103           # residue number as in its ITP
+      to: ALA              # CHARMM36 name: ALA ARG ASN ASP ... HSD HSE HSP ... TYR VAL
+  water_clash_distance: 2.5    # A; water/ions this close to a new atom are removed
+  lipid_clash_distance: 2.0    # A; lipids this close to a new heavy atom ...
+  remove_clashing_lipids: true # ... are removed whole (false: only warn)
+  equilibration:
+    enabled: false         # true: write equilibration/ (CHARMM-GUI step6 schedule + sample_run.sh)
+# Replace each /path/to/ placeholder with a full path; none is resolved against the
+# working directory. Generated files use the --output folder, or the directory you
+# run the command from. Optional: host_gro, neutralize, target_net_charge, seed,
+# environment_overrides, output_dir, equilibration.output_dir,
+# equilibration.temperature, equilibration.stages.

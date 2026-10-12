@@ -1,0 +1,13 @@
+# Two D1 receptors in one membrane: a second copy of the apo D1R half the box
+# away along both x and y (a checkerboard lattice: each receptor's four nearest
+# neighbours are copies of the other, 91.6 A apart centre to centre), turned
+# 180 degrees about the membrane normal. Lipids that overlap the copy are
+# removed whole; the lipids close the gaps during the equilibration.
+oligomer:
+  host: ../addbinder/host
+  copies:
+    - shift: [64.76, 64.76]  # A in the membrane plane: half the 129.5 A box in x and y
+      rotation: 180.0        # degrees about the membrane normal through the receptor centre
+  min_protein_gap: 10.0      # A between copies, periodic images included
+  equilibration:
+    enabled: true            # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh

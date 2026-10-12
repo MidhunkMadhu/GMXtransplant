@@ -1,0 +1,21 @@
+# Set the salt of a prepared system: remove the bulk ions and add the chosen
+# salt at a concentration in mol/L, replacing random bulk waters away from the
+# protein and membrane; then neutralize. Ion types the host lacks come from
+# ion_itps or the bundled CHARMM36 ions (SOD POT LIT CES RUB CAL MG BAR ZN2 CD2 CLA).
+salt:
+  host: /path/to/membrane_system   # folder with topol.top, toppar/ and step5_input.gro
+  concentration: 0.15      # mol/L of formula units: NaCl, KCl, CaCl2 (counted once) ...
+  cation: SOD              # e.g. POT for KCl, CAL for CaCl2, MG for MgCl2
+  anion: CLA
+  replace_existing: true   # remove the host's bulk ions first
+  keep_bound_distance: 0.0 # A; > 0 keeps ions bound to the protein (e.g. a structural Na+)
+  solute_distance: 5.0     # A, new ions to protein/ligand heavy atoms
+  membrane_distance: 5.0   # A, new ions to lipid heavy atoms
+  ion_spacing: 5.0         # A between ions
+  equilibration:
+    enabled: false         # true: write equilibration/ (CHARMM-GUI step6 schedule + sample_run.sh)
+# Replace each /path/to/ placeholder with a full path; none is resolved against the
+# working directory. Generated files use the --output folder, or the directory you
+# run the command from. Optional: host_gro, ion_itps, neutralize, target_net_charge,
+# seed, environment_overrides, output_dir, equilibration.output_dir,
+# equilibration.temperature, equilibration.stages.

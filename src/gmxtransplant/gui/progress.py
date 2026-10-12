@@ -64,6 +64,19 @@ class RunProgress:
                         '[water]': 'Hydrating the new bilayer and removing overlapping water',
                         '[salt]': 'Restoring the salt concentration',
                         '[equilibration]': 'Writing the GROMACS equilibration folder'}
+        gromacs = re.match(r'\[gromacs\] (grompp passed|grompp FAILED|check skipped)', line)
+        if gromacs:
+            self.stage = 'Checking the system with GROMACS grompp'
+            self.facts['GROMACS check'] = line[len('[gromacs] '):]
+        from mode_registry import EDIT_MODES
+        if self.mode in EDIT_MODES:
+            charm_stages = {**charm_stages, **EDIT_MODES[self.mode].progress}
+            tag = f'[{self.mode}] '
+            if line.startswith(tag):
+                self.facts[EDIT_MODES[self.mode].title] = line[len(tag):]
+            for prefix, label in (('[charge] ', 'Charge'), ('[salt] ', 'Salt')):
+                if line.startswith(prefix):
+                    self.facts[label] = line[len(prefix):]
         for prefix, description in charm_stages.items():
             if line.startswith(prefix):
                 self.stage = description

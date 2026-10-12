@@ -26,6 +26,7 @@ SOURCES = [
     ("CHARMM-GUI transplant mode", "docs/guides/CHARMPROT.md"),
     ("Add binder mode", "docs/guides/ADDBINDER.md"),
     ("POPC membrane mode", "docs/guides/POPC.md"),
+    ("System-edit modes", "docs/guides/EDIT_MODES.md"),
     ("Comparison views", "docs/guides/VISUALIZATION.md"),
     ("Portable and offline use", "docs/guides/PORTABLE_USAGE.md"),
 ]
@@ -66,6 +67,8 @@ WIDTHS = {
 TRANSLITERATE = {
     "≤": "<=", "≥": ">=", "→": "->", "←": "<-", "≈": "~", "∞": "inf",
     "‑": "-", "−": "-", "─": "-", "│": "|", "├": "+", "└": "+", "•": "•",
+    "⁺": "+", "⁻": "-", "₂": "2", "₃": "3", "▸": ">", "▾": "v", "φ": "phi", "θ": "theta",
+    "↔": "<->", "α": "alpha",
 }
 
 

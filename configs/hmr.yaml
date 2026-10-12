@@ -1,0 +1,15 @@
+# Hydrogen mass repartitioning (HMR): every hydrogen bonded to a heavy atom gets
+# hydrogen_mass, taken from that heavy atom, so each molecule keeps its mass.
+# Allows a 4 fs time step with constraints = h-bonds.
+hmr:
+  host: /path/to/membrane_system   # folder with topol.top, toppar/ and step5_input.gro
+  hydrogen_mass: 3.024     # u; three times the hydrogen mass (CHARMM-GUI's choice)
+  skip_water: true         # rigid water (SETTLE) is left unchanged
+  time_step: 0.004         # ps; written to the copied production (step7) mdp, same simulated length
+  copy_run_inputs: true    # copy the host's mdp files and README
+  equilibration:
+    enabled: false         # true: write equilibration/ (CHARMM-GUI step6 schedule + sample_run.sh)
+# Replace each /path/to/ placeholder with a full path; none is resolved against the
+# working directory. Generated files use the --output folder, or the directory you
+# run the command from. Optional: host_gro, environment_overrides, output_dir,
+# equilibration.output_dir, equilibration.temperature, equilibration.stages.

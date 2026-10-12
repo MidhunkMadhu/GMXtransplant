@@ -17,6 +17,7 @@ from config import ConfigError
 from popc_membrane import (PopcSpec, _anchors, _midplane_shift, _min_image_xy, default_reference_path,
                            load_popc_config, load_reference, measure_host, run_popc, tile)
 from topology import parse_top_molecules
+from tests import slow
 
 HOST = Path(__file__).resolve().parent.parent / "examples" / "addbinder" / "host"
 
@@ -140,6 +141,7 @@ class HostTests(unittest.TestCase):
             measure_host(self.host, PopcSpec(host=str(HOST), max_tilt=0.01))
 
 
+@slow
 class EndToEndTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

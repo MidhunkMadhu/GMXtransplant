@@ -1,6 +1,6 @@
 # GMXtransplant
 
-GMXtransplant builds membrane-protein systems from prepared structures and GROMACS topologies. Give it two CHARMM-GUI folders to transplant proteins and bound ligands automatically, or choose a workflow to insert a protein complex, replace a ligand, restore experimental cholesterol, or place a binder near a membrane protein.
+GMXtransplant builds membrane-protein systems from prepared structures and GROMACS topologies. Give it two CHARMM-GUI folders to transplant proteins and bound ligands automatically, or choose a workflow to insert a protein complex, replace a ligand, restore experimental cholesterol, place a binder near a membrane protein, or replace the membrane with an equilibrated POPC bilayer. Further modes change one prepared system: its membrane composition, salt, protonation states, residues, hydrogen masses, box height, ligand copies in the water, or the number of protein copies.
 
 Use the desktop application to select inputs, run the included examples, and inspect results. The `gmxtransplant` command-line tool supports the same tasks for scripts and remote computers. Each desktop run saves its configuration as `run.yaml` in the output folder.
 
@@ -16,6 +16,22 @@ All molecular components need compatible parameters before assembly. Inspect the
 | Restore experimental cholesterol and adjust leaflet composition | `--mode chl` | `cholesterol_restore.yaml` |
 | Add a ligand or protein binder in the water above/below a membrane protein ([guide](docs/guides/ADDBINDER.md)) | `--mode addbinder` | `addbinder.yaml` |
 | Replace the membrane with a well-equilibrated pure POPC bilayer, keeping the OPM placement ([guide](docs/guides/POPC.md)) | `--mode popc` | `popc.yaml` |
+| Prepare a restrained OpenMM minimization folder for an assembled system | `prepare-minimization` | `minimization.yaml` |
+
+More modes, each changing one prepared system ([guide](docs/guides/EDIT_MODES.md)); in the desktop application they are under **More modes**:
+
+| Task | Command option | Example configuration |
+|---|---|---|
+| Replace the membrane with any equilibrated bilayer (mixed lipids, cholesterol) | `--mode membrane` | `membrane.yaml` |
+| Set the salt type and concentration (NaCl, KCl, CaCl₂ …) | `--mode salt` | `salt.yaml` |
+| Change protonation states (HSD/HSE/HSP, ASPP, GLUP, LSN, CYM) | `--mode protonate` | `protonate.yaml` |
+| Point mutations with a CHARMM36 topology and a clash-free rotamer | `--mode mutate` | `mutate.yaml` |
+| Hydrogen mass repartitioning for 4 fs time steps | `--mode hmr` | `hmr.yaml` |
+| Make the water layer thicker | `--mode resize` | `resize.yaml` |
+| Add many copies of a small molecule to the water (ligand flooding) | `--mode flood` | `flood.yaml` |
+| Add copies of the membrane protein (dimers, oligomers) | `--mode oligomer` | `oligomer.yaml` |
+
+After every run, the built system is checked with `gmx grompp` (no warnings allowed) when GROMACS is installed; `gmxtransplant check-gromacs FOLDER` checks any folder, and `gmxtransplant slurm-script` writes a Slurm job for an equilibration folder.
 
 Protein mode supports membrane proteins generally, including receptors, channels, and transporters. Any ligands included in the incoming selection move with the protein during alignment.
 
@@ -114,8 +130,10 @@ editor for all configuration sections, file and folder browsing,
 one-click examples, validation, readable progress summaries, cancellation, and result browsing.
 Detailed logs are collapsed until **View Command Progress** is clicked. YAML is
 generated automatically in the background; there is no YAML editing tab.
-Select an output folder first. Runs write directly to `charmprot/`, `protein/`, `ligand/`, or
-`cholesterol/`; example runs use `examples/<mode>/`. Repeating a run replaces its
+Select an output folder first. Runs write directly to a folder named after the mode
+(`charmprot/`, `protein/`, `ligand/`, `cholesterol/`, `addbinder/`, `popc/`,
+`minimization/`, and `membrane/`, `salt/` … for the further modes); example runs use
+`examples/<mode>/`. Repeating a run replaces its
 generated products, including `toppar/`, without timestamped run directories.
 
 Complete example inputs are included in the package for offline use.
@@ -158,7 +176,7 @@ gmxtransplant --mode protein -i protein_replace.yaml --output results/
 
 `--output DIR` chooses where the generated files go. Without it they are written to the directory you ran the command from. Either way, the run's closing line names the absolute folder it wrote to.
 
-Use `--show-example charmprot`, `lig`, `chl`, `addbinder`, or `popc` for the other modes. Add `--no-comments` to print a compact example with the same active settings.
+Use `--show-example` with `charmprot`, `lig`, `chl`, `addbinder`, `popc`, `minimize`, `membrane`, `salt`, `protonate`, `mutate`, `hmr`, `resize`, `flood` or `oligomer` for the other modes. Add `--no-comments` to print a compact example with the same active settings.
 
 The source checkout includes a complete example for each mode. Each example
 README explains its supplied files and how to run it:
@@ -172,6 +190,11 @@ README explains its supplied files and how to run it:
   ([guide](docs/guides/ADDBINDER.md))
 - [Equilibrated POPC membrane](examples/popc/README.md): the same receptor
   system with its membrane replaced by pure POPC ([guide](docs/guides/POPC.md))
+- The further modes, each on the same receptor system ([guide](docs/guides/EDIT_MODES.md)):
+  [membrane](examples/membrane/README.md), [salt](examples/salt/README.md),
+  [protonate](examples/protonate/README.md), [mutate](examples/mutate/README.md),
+  [hmr](examples/hmr/README.md), [resize](examples/resize/README.md),
+  [flood](examples/flood/README.md), [oligomer](examples/oligomer/README.md)
 
 ## Prepare your inputs
 
@@ -291,7 +314,7 @@ Harmonic positional restraints keep protein and ligand heavy atoms and lipid hea
 | Assemble and then prepare inputs from that run | `gmxtransplant --mode protein -i protein_replace.yaml --prepare-minimization` |
 | Prepare inputs from an existing matching system | `gmxtransplant prepare-minimization --coordinates step5_input.gro --topology topol.top` |
 
-`--prepare-minimization` is an assembly option and works with all four assembly modes. It requires `topology.enabled: true` and uses the freshly generated GRO and topology. Setting `minimization.enabled: true` in the assembly YAML has the same effect.
+`--prepare-minimization` is an assembly option. It works with the protein, ligand, cholesterol and charmprot modes, and with addbinder, where it writes one folder per built pose (the binder's heavy atoms are restrained like the protein's). It requires `topology.enabled: true` and uses the freshly generated GRO and topology. Setting `minimization.enabled: true` in the assembly YAML has the same effect.
 
 `prepare-minimization` is a separate command for existing files and does not repeat assembly. Use `--include-dir` for an additional topology search directory and `--output` to choose a different destination.
 

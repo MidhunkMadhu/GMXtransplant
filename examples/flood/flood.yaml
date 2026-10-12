@@ -1,0 +1,13 @@
+# Ligand flooding: 10 dopamine molecules (CGenFF residue LDP, +1 e each) at
+# random positions in the water around the apo D1 receptor, at least 10 A from
+# the receptor, 5 A from the membrane and 8 A from each other, for unbiased
+# binding simulations. Counterions keep the system neutral.
+flood:
+  host: ../addbinder/host
+  molecule_coordinates: ../addbinder/dopamine/dopamine.pdb
+  molecule_itp: ../addbinder/dopamine/LDP.itp
+  molecule_forcefield: ../addbinder/dopamine/forcefield.itp
+  copies: 10
+  side: both               # both water layers (upper: extracellular only)
+  equilibration:
+    enabled: true          # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh

@@ -1,0 +1,12 @@
+# Replace the POPC/POPE/cholesterol membrane of the apo D1R build with an
+# equilibrated POPC/cholesterol 70:30 bilayer (CHARMM36, 100 ns at 303 K;
+# J. Melcr, Zenodo 10.5281/zenodo.209362, CC BY 4.0). The receptor keeps its
+# OPM placement. The reference names cholesterol CLOL; resname_map matches it
+# to the host's CHL1 moleculetype (same atoms).
+membrane:
+  host: ../addbinder/host
+  reference_gro: reference/popc_chol_70-30_charmm36_303K_100ns.gro.gz
+  resname_map:
+    CLOL: CHL1
+  equilibration:
+    enabled: true          # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh

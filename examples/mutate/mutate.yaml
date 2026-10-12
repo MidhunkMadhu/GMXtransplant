@@ -1,0 +1,15 @@
+# Two binding-site mutations of the apo D1R build: D3.32A (ASP103 -> ALA), the
+# aspartate that binds the dopamine amine, and S5.42A (SER198 -> ALA). Residue
+# numbers are those of the protein ITP (PROA.itp). The receptor loses a negative
+# charge; counterions keep the system neutral.
+mutate:
+  host: ../addbinder/host
+  mutations:
+    - molecule: PROA
+      resid: 103
+      to: ALA
+    - molecule: PROA
+      resid: 198
+      to: ALA
+  equilibration:
+    enabled: true          # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh

@@ -1,0 +1,20 @@
+# Add copies of the membrane protein (with its ligands) to the same membrane:
+# each copy is turned about the membrane normal through the protein centre,
+# optionally flipped (antiparallel), and shifted in the membrane plane.
+# Overlapping lipids are removed whole; water and ions as needed.
+oligomer:
+  host: /path/to/membrane_system   # folder with topol.top, toppar/ and step5_input.gro
+  copies:
+    - shift: [60.0, 0.0]   # x y in A; leave out for half the box along x
+      rotation: 180.0      # degrees about the membrane normal
+      flip: false          # true: upside down (antiparallel)
+  include_ligands: true    # copy the bound ligands with the protein
+  min_protein_gap: 10.0    # A between copies, periodic images included
+  lipid_clash_distance: 3.0  # A; lipids closer to a copy are removed whole
+  equilibration:
+    enabled: false         # true: write equilibration/ (CHARMM-GUI step6 schedule + sample_run.sh)
+# Replace each /path/to/ placeholder with a full path; none is resolved against the
+# working directory. Generated files use the --output folder, or the directory you
+# run the command from. Optional: host_gro, water_clash_distance, neutralize,
+# target_net_charge, seed, environment_overrides, output_dir,
+# equilibration.output_dir, equilibration.temperature, equilibration.stages.

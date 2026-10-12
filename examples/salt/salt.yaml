@@ -1,0 +1,11 @@
+# Replace the 150 mM NaCl of the apo D1R build with 150 mM KCl. POT is not in
+# the host's toppar: its ITP and parameters (atom type, NBFIX pairs) come from
+# the bundled CHARMM36 ions.
+salt:
+  host: ../addbinder/host
+  concentration: 0.15      # mol/L
+  cation: POT
+  anion: CLA
+  replace_existing: true   # remove the host's Na+/Cl- first
+  equilibration:
+    enabled: true          # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh

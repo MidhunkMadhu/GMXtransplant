@@ -1,0 +1,15 @@
+# Make the water layer of a prepared membrane system thicker. The box grows
+# along z; copies of the host's own bulk water slab (water and ions) fill the
+# new space in the middle of the water layer, so density and salt match the host.
+resize:
+  host: /path/to/membrane_system   # folder with topol.top, toppar/ and step5_input.gro
+  add_water: 20.0          # A added to the box along z
+  slab_margin: 4.0         # A between the copied slab and protein/lipid atoms
+  water_clash_distance: 2.4  # A; copies closer than this to kept atoms are dropped at the seams
+  equilibration:
+    enabled: false         # true: write equilibration/ (CHARMM-GUI step6 schedule + sample_run.sh)
+# Replace each /path/to/ placeholder with a full path; none is resolved against the
+# working directory. Generated files use the --output folder, or the directory you
+# run the command from. Optional: host_gro, target_net_charge, seed,
+# environment_overrides, output_dir, equilibration.output_dir,
+# equilibration.temperature, equilibration.stages.

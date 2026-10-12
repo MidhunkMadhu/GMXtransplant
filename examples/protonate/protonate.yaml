@@ -1,0 +1,16 @@
+# Protonation states of the apo D1R build. CHARMM-GUI built D2.50 (ASP70) and
+# D3.49 (ASP120, DRY motif) protonated (ASPP, residue name kept as ASP). Here
+# D2.50 becomes charged again and histidine 164 is doubly protonated. Residue
+# numbers are those of the protein ITP (PROA.itp). Counterions keep the system
+# neutral.
+protonate:
+  host: ../addbinder/host
+  residues:
+    - molecule: PROA
+      resid: 70
+      state: ASP           # ASPP -> charged aspartate
+    - molecule: PROA
+      resid: 164
+      state: HSP           # HSD -> doubly protonated histidine (+1 e)
+  equilibration:
+    enabled: true          # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh

@@ -25,8 +25,6 @@ from datetime import datetime, timezone
 from importlib.resources import files
 from pathlib import Path
 import json
-import os
-import shutil
 import tempfile
 import warnings
 
@@ -40,6 +38,8 @@ from addbinder import _unwrap_sequential
 from charmprot import (Molecule, inspect_system, write_topology, _heavy, _indices,
                        _publish_directory)
 from config import ConfigError, _UniqueKeySafeLoader, anchor_config_paths
+from equilibration import (EquilibrationSpec, EquilibrationStage, parse_equilibration,  # noqa: F401
+                           write_equilibration as _write_equilibration)
 from ion_selection import select_counterions
 from output import write_outputs
 from topology import audit_final_topology, TopologyError
@@ -60,41 +60,6 @@ GENERATED = {"step5_input.pdb", "step5_input.gro", "topol.top", "toppar", "index
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-
-@dataclass
-class EquilibrationStage:
-    """One stage; restraints in kJ/mol/nm^2 (POSRES_FC_BB, POSRES_FC_SC, POSRES_FC_LIPID/DIHRES_FC)."""
-
-    name: str = ""
-    integrator: str = "npt"      # steep (minimization) | nvt | npt
-    nsteps: int = 0
-    dt: float = 0.002            # ps; not used by steep
-    backbone: float = 0.0
-    sidechain: float = 0.0
-    lipid: float = 0.0
-
-
-def _default_stages():
-    # The CHARMM-GUI Membrane Builder schedule: the protein is released slowly, so it
-    # keeps its OPM placement while the new lipids pack around it; 1.875 ns of MD.
-    return [
-        EquilibrationStage("step6.0_minimization", "steep", 5000, 0.0, 4000.0, 2000.0, 1000.0),
-        EquilibrationStage("step6.1_equilibration", "nvt", 125000, 0.001, 4000.0, 2000.0, 1000.0),
-        EquilibrationStage("step6.2_equilibration", "nvt", 125000, 0.001, 2000.0, 1000.0, 400.0),
-        EquilibrationStage("step6.3_equilibration", "npt", 125000, 0.001, 1000.0, 500.0, 400.0),
-        EquilibrationStage("step6.4_equilibration", "npt", 250000, 0.002, 500.0, 200.0, 200.0),
-        EquilibrationStage("step6.5_equilibration", "npt", 250000, 0.002, 200.0, 50.0, 40.0),
-        EquilibrationStage("step6.6_equilibration", "npt", 250000, 0.002, 50.0, 0.0, 0.0),
-    ]
-
-
-@dataclass
-class EquilibrationSpec:
-    enabled: bool = True
-    output_dir: str = "equilibration"    # folder inside the output folder
-    temperature: float = 310.0           # K
-    stages: list = field(default_factory=_default_stages)
-
 
 @dataclass
 class PopcSpec:
@@ -137,56 +102,7 @@ def _number(value, key, positive=True):
 
 
 def _parse_equilibration(raw):
-    if raw is None:
-        return EquilibrationSpec()
-    if not isinstance(raw, dict):
-        raise ConfigError("popc.equilibration must be a mapping")
-    unknown = set(raw) - set(EquilibrationSpec.__dataclass_fields__)
-    if unknown:
-        raise ConfigError(f"Unknown popc.equilibration options: {sorted(unknown)}")
-    stages = raw.get("stages")
-    spec = EquilibrationSpec(**{k: v for k, v in raw.items() if k != "stages"})
-    if stages is not None:
-        if not isinstance(stages, list) or not stages:
-            raise ConfigError("popc.equilibration.stages must be a nonempty list")
-        parsed = []
-        for number, stage in enumerate(stages):
-            where = f"popc.equilibration.stages[{number}]"
-            if isinstance(stage, EquilibrationStage):
-                stage = asdict(stage)
-            if not isinstance(stage, dict):
-                raise ConfigError(f"{where} must be a mapping")
-            unknown = set(stage) - set(EquilibrationStage.__dataclass_fields__)
-            if unknown:
-                raise ConfigError(f"Unknown {where} options: {sorted(unknown)}")
-            parsed.append(EquilibrationStage(**stage))
-        spec.stages = parsed
-    if type(spec.enabled) is not bool:
-        raise ConfigError("popc.equilibration.enabled must be true or false")
-    if (not isinstance(spec.output_dir, str) or not spec.output_dir
-            or Path(spec.output_dir).name != spec.output_dir or spec.output_dir in (".", "..")):
-        raise ConfigError("popc.equilibration.output_dir must be a simple folder name")
-    spec.temperature = _number(spec.temperature, "equilibration.temperature")
-    names = set()
-    for number, stage in enumerate(spec.stages):
-        where = f"equilibration.stages[{number}]"
-        if not isinstance(stage.name, str) or not stage.name or Path(stage.name).name != stage.name:
-            raise ConfigError(f"popc.{where}.name must be a simple file name")
-        if stage.name in names:
-            raise ConfigError(f"popc.{where}.name {stage.name} is used twice")
-        names.add(stage.name)
-        if stage.integrator not in ("steep", "nvt", "npt"):
-            raise ConfigError(f"popc.{where}.integrator must be steep, nvt or npt")
-        if type(stage.nsteps) is not int or stage.nsteps <= 0:
-            raise ConfigError(f"popc.{where}.nsteps must be a whole number > 0")
-        for key in ("backbone", "sidechain", "lipid"):
-            setattr(stage, key, _number(getattr(stage, key), f"{where}.{key}", positive=False))
-            if getattr(stage, key) < 0:
-                raise ConfigError(f"popc.{where}.{key} must not be negative")
-        stage.dt = _number(stage.dt, f"{where}.dt", positive=False)
-        if stage.integrator != "steep" and not 0 < stage.dt <= 0.004:
-            raise ConfigError(f"popc.{where}.dt must be between 0 and 0.004 ps")
-    return spec
+    return parse_equilibration(raw, "popc")
 
 
 def load_popc_config(path, check_paths=True, output_root=None):
@@ -612,6 +528,15 @@ def _wrapped_dz(z, midplane, height):
     return dz - height * np.round(dz / height)
 
 
+def _lipid_heavy(lipids, definition):
+    """Heavy-atom positions of placed lipids: (k, side, positions) items of one moleculetype,
+    or (k, side, positions, heavy_mask) items of several."""
+    if not lipids:
+        return np.zeros((0, 3))
+    heavy = _heavy_mask(definition) if definition is not None else None
+    return np.concatenate([item[2][item[3] if len(item) > 3 else heavy] for item in lipids])
+
+
 def place_water(cfg, host, frame, reference, lipids, definition, protected, origin):
     """Reference water on the new bilayer and the host solvent kept around it.
 
@@ -620,8 +545,7 @@ def place_water(cfg, host, frame, reference, lipids, definition, protected, orig
     universe = host.universe
     box = universe.dimensions
     host_cell, height = _cell(box)
-    heavy = _heavy_mask(definition)
-    lipid_heavy = np.concatenate([lipid[heavy] for _, _, lipid in lipids]) if lipids else np.zeros((0, 3))
+    lipid_heavy = _lipid_heavy(lipids, definition)
     protected_heavy = _heavy(universe.atoms[_indices(protected)]).positions
     solvent = [m for m in host.molecules if m.category in SOLVENT_CATEGORIES]
     solvent_heavy = [_heavy(universe.atoms[m.start:m.stop]).positions.astype(float) for m in solvent]
@@ -867,51 +791,6 @@ def _write_index(path, ordered, leaflet_of):
 # ---------------------------------------------------------------------------
 # Equilibration
 # ---------------------------------------------------------------------------
-
-def write_equilibration(spec, stage_dir, topology, solute_definitions, index_groups):
-    """A self-contained GROMACS equilibration folder; returns its report."""
-    from repack import _mdp, restraint_coverage
-    bundle = stage_dir / spec.output_dir
-    bundle.mkdir()
-    shutil.copytree(topology.toppar_dir, bundle / "toppar")
-    shutil.copy2(topology.top_path, bundle / "topol.top")
-    shutil.copy2(stage_dir / "step5_input.gro", bundle / "step5_input.gro")
-    shutil.copy2(stage_dir / "index.ndx", bundle / "index.ndx")
-    warnings_, coverage = [], {}
-    for definition in solute_definitions:
-        info = restraint_coverage(definition)
-        coverage[definition.name] = info
-        if info["heavy_atoms"] and info["missing_heavy_atoms"]:
-            warnings_.append(f"{definition.name}: {len(info['missing_heavy_atoms'])} of {info['heavy_atoms']} heavy "
-                             "atoms have no POSRES restraint and move freely during equilibration")
-    groups = ("SOLU_MEMB SOLV", "SOLU_MEMB SOLV") if {"SOLU_MEMB", "SOLV"} <= set(index_groups) else ("System", "System")
-    first_md = next((i for i, s in enumerate(spec.stages) if s.integrator != "steep"), None)
-    for number, stage in enumerate(spec.stages):
-        define = (f"-DPOSRES -DPOSRES_FC_BB={stage.backbone:.1f} -DPOSRES_FC_SC={stage.sidechain:.1f} "
-                  f"-DPOSRES_FC_LIPID={stage.lipid:.1f} -DDIHRES -DDIHRES_FC={stage.lipid:.1f}")
-        (bundle / f"{stage.name}.mdp").write_text(_mdp(stage, spec, number == first_md, groups, define=define))
-    md_ps = sum(s.nsteps * s.dt for s in spec.stages if s.integrator != "steep")
-    script = ["#!/bin/bash",
-              "# Sample run script written by GMXtransplant. Adapt it to your machine, or submit",
-              "# the same grompp/mdrun lines through your scheduler.",
-              f"# Equilibration of the new POPC bilayer, {md_ps / 1000:g} ns of MD. The protein is held and",
-              "# released step by step (CHARMM-GUI schedule), so it keeps its OPM placement while the",
-              "# POPC packs around it. Restraints (kJ/mol/nm^2): backbone / side chains / lipid P z + dihedrals",]
-    script += [f"#   {s.name}: {s.backbone:g} / {s.sidechain:g} / {s.lipid:g}" for s in spec.stages]
-    script += ["# Afterwards, continue production from the last GRO with the same topol.top.",
-               "set -e", 'cd "$(dirname "$0")"', 'GMX=${GMX:-gmx}', 'MDRUN=${MDRUN:-"$GMX mdrun"}',
-               "previous=step5_input.gro"]
-    for stage in spec.stages:
-        script += [f'echo "==> {stage.name}"',
-                   f"$GMX grompp -f {stage.name}.mdp -o {stage.name}.tpr -c $previous -r step5_input.gro "
-                   "-p topol.top -n index.ndx -maxwarn 0",
-                   f"$MDRUN -v -deffnm {stage.name}", f"previous={stage.name}.gro"]
-    (bundle / "sample_run.sh").write_text("\n".join(script) + "\n")
-    os.chmod(bundle / "sample_run.sh", 0o755)
-    return {"directory": spec.output_dir, "md_length_ps": md_ps, "temperature": spec.temperature,
-            "coupling_groups": list(groups), "stages": [asdict(s) for s in spec.stages],
-            "restraint_coverage": coverage, "warnings": warnings_}
-
 
 # ---------------------------------------------------------------------------
 # Report and run
@@ -1173,8 +1052,9 @@ def _run_popc(config_path, dry_run=False, output_root=None):
             report["final_net_charge"] = round(audit["net_charge"], 6)
             if cfg.equilibration.enabled:
                 solute = {mol.name: mol.definition for mol in protected}
-                report["equilibration"] = write_equilibration(cfg.equilibration, stage, topology,
-                                                              list(solute.values()), index_groups)
+                report["equilibration"] = _write_equilibration(
+                    cfg.equilibration, stage, topology, list(solute.values()), index_groups,
+                    purpose="Equilibration of the new POPC bilayer")
                 print(f"[equilibration] {cfg.equilibration.output_dir}/: "
                       f"{report['equilibration']['md_length_ps'] / 1000:g} ns in {len(cfg.equilibration.stages)} "
                       "stages; run sample_run.sh")

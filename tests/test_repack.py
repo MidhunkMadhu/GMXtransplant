@@ -12,6 +12,7 @@ from config import ConfigError, load_config
 from itp import parse_itp
 from repack import make_restrained_cholesterol_itp, restraint_coverage
 from topology import parse_top_molecules
+from tests import slow
 
 ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE = ROOT / "examples" / "cholesterol_restoration"
@@ -75,6 +76,7 @@ class RepackConfigTests(unittest.TestCase):
                 self._load(repack)
 
 
+@slow
 class RepackBundleTests(unittest.TestCase):
     """The cholesterol example, end to end: the bundle next to the restored system."""
 

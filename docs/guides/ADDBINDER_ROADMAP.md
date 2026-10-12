@@ -25,21 +25,15 @@ apply `spin`. This is needed for protein–protein setups.
   setting the tip.
 - `side_check` stops the run if a given residue is on the wrong side.
 
-### 3. Restraint output
-- Write a GROMACS pull-code or flat-bottom `.mdp` fragment between `Host_tip`
-  and `Binder`, so a free binder does not drift away.
-- Add matching restraints to the OpenMM bundle.
-- `--prepare-minimization` is refused for addbinder until this is done.
-
-### 4. Smaller items
+### 3. Smaller items
 - `run.yaml` per pose, so each pose reruns on its own.
 - A distance line (tip → binder) in the PyMOL/VMD scene.
 - A test with a protein binder whose ITP is also named `PROA`, to exercise the
   `_BND` rename and chain IDs.
 
-### 5. Later (v2)
-- Extend the box by replicating a bulk-water slab when it is too short (now
-  the run stops and reports the height needed).
+### 4. Later (v2)
+- Extend the box automatically when it is too short (now the run stops and
+  reports the height needed; the resize mode can extend the host first).
 - Nudge the binder out on a clash.
 - Swap water for ions when the binder's side lacks counterions.
 - Several binder copies.
@@ -55,6 +49,9 @@ apply `spin`. This is needed for protein–protein setups.
   - Both values are in each report.
 
 ## Done
+- 2026-10-13: binder restraint (`restraint:`, flat-bottomed pull between
+  `Host_tip` and `Binder`, appended to the MD mdp files) and
+  `--prepare-minimization` per pose.
 - 2026-10-01: first version.
   - Membrane frame from lipid P atoms; tip = outermost heavy atom.
   - Orientations `flat`, `as_is`, `euler`, plus `spin` and `lateral_offset`.

@@ -17,6 +17,7 @@ from addbinder import (AddBinderSpec, MembraneFrame, PoseSpec, _orientation_matr
 from config import ConfigError
 from scipy.spatial.transform import Rotation
 from topology import parse_top_molecules
+from tests import slow
 
 EXAMPLE = Path(__file__).resolve().parent.parent / "examples" / "addbinder"
 GPROTEIN = Path(__file__).resolve().parent.parent / "examples" / "cholesterol_restoration" / "environment"
@@ -231,6 +232,7 @@ class ConfigTests(unittest.TestCase):
                 load_addbinder_config(str(path), check_paths=False, output_root=tmp)
 
 
+@slow
 class ExampleTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -297,6 +299,9 @@ class ExampleTests(unittest.TestCase):
             self.assertEqual(code, 0)
             shrunk = json.loads((out / "shrinks" / "addbinder_report.json").read_text())
             self.assertEqual(shrunk["status"], "accepted")
+            # 150 A from the tip is beyond half the box: no distance restraint, said so.
+            self.assertIn("half the shortest box length", shrunk["restraint"]["skipped"])
+            self.assertFalse((out / "shrinks" / "binder_restraint.mdp").exists())
             self.assertEqual([a["distance"] for a in shrunk["distance_attempts"]], [170.0, 150.0])
             self.assertTrue(shrunk["distance_attempts"][0]["failures"])
             self.assertEqual(shrunk["pose"]["distance"], 150.0)
@@ -330,8 +335,17 @@ class ExampleTests(unittest.TestCase):
 
     def test_pose_folder_is_ready_for_the_charmm_gui_run_script(self):
         folder = self.out / "binderpose2"
-        for name in ["README", "step6.0_minimization.mdp", "step7_production.mdp"]:
+        for name in ["README", "step6.0_minimization.mdp"]:
             self.assertEqual((folder / name).read_bytes(), (EXAMPLE / "host" / name).read_bytes())
+        # MD stages get the binder restraint appended; minimization does not.
+        production = (folder / "step7_production.mdp").read_text()
+        self.assertTrue(production.startswith((EXAMPLE / "host" / "step7_production.mdp").read_text().rstrip("\n")))
+        self.assertIn("pull-coord1-type         = flat-bottom", production)
+        restraint = (folder / "binder_restraint.mdp").read_text()
+        self.assertIn("pull-group1-name         = Host_tip", restraint)
+        report = json.loads((folder / "addbinder_report.json").read_text())["restraint"]
+        self.assertAlmostEqual(report["flat_until_nm"] - report["start_nm"], 0.5, places=3)
+        self.assertNotIn("step6.0_minimization.mdp", report["applied_to"])
         groups = self._index(folder)
         self.assertEqual(len(groups["SYSTEM"]), sum(len(groups[g]) for g in ("SOLU", "MEMB", "SOLV")))
         self.assertEqual(sorted(groups["SOLU_MEMB"]), sorted(groups["SOLU"] + groups["MEMB"]))
@@ -352,6 +366,7 @@ class ExampleTests(unittest.TestCase):
         return groups
 
 
+@slow
 class MultiMoleculeBinderTests(unittest.TestCase):
     """Binders made of several molecules, taken from the D1R-Gs example system."""
 
@@ -457,6 +472,7 @@ class ParameterCoverageTests(unittest.TestCase):
                                  PARAMETER_ADVICE)
 
 
+@slow
 class GProteinExampleTests(unittest.TestCase):
     """The intracellular example: the Gs trimer pulled straight out from its bound arrangement."""
 

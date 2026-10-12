@@ -59,7 +59,10 @@ good way to learn what a completed run looks like.
 2. Open the **Examples** tab. Choose an example card and click **Run example**.
    The add binder cards demonstrate a ligand above a receptor and a G protein
    below it. Other cards cover protein transplant, protein insertion, ligand
-   replacement, and cholesterol restoration.
+   replacement, cholesterol restoration and the POPC membrane. Click
+   **More examples** for the further modes: membrane, salt, protonation,
+   mutations, hydrogen mass repartitioning, a thicker water layer, ligand
+   flooding and a receptor dimer.
 3. Follow the run in **Run & results**. **Progress at a glance** shows the
    current step and key findings. Click **View Command Progress** for the full
    log if you want more detail.
@@ -76,7 +79,9 @@ mode's folder.
 
 ## Set up your own system
 
-Open the **Configuration** tab and choose the task that matches your goal:
+Open the **Configuration** tab and choose the task that matches your goal. The
+main modes are always shown; click **More modes** for the modes that change one
+prepared system ([guide](EDIT_MODES.md)):
 
 | Task | What it does | Main inputs |
 | --- | --- | --- |

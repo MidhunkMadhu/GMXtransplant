@@ -1,0 +1,21 @@
+# Flood the water of a prepared system with copies of a small molecule: ligand
+# flooding for unbiased binding, or cosolvent probes for mixed-solvent mapping.
+# Copies get random positions and orientations away from the protein, membrane
+# and each other; overlapping water/ions are removed and the charge restored.
+flood:
+  host: /path/to/membrane_system           # folder with topol.top, toppar/ and step5_input.gro
+  molecule_coordinates: /path/to/ligand.pdb  # one molecule with hydrogens; names match the ITP
+  molecule_itp: /path/to/LIG.itp
+  molecule_forcefield: /path/to/forcefield.itp  # the one generated with the ITP (CGenFF ligands)
+  copies: 10               # 0: use concentration (mol/L in the water) instead
+  side: both               # both | upper | lower water layer
+  min_solute_distance: 10.0  # A from protein and ligand heavy atoms
+  min_membrane_distance: 5.0 # A from lipid heavy atoms
+  min_copy_distance: 8.0   # A between copies
+  equilibration:
+    enabled: false         # true: write equilibration/ (CHARMM-GUI step6 schedule + sample_run.sh)
+# Replace each /path/to/ placeholder with a full path; none is resolved against the
+# working directory. Generated files use the --output folder, or the directory you
+# run the command from. Optional: host_gro, concentration, water_clash_distance,
+# attempts, neutralize, target_net_charge, seed, environment_overrides, output_dir,
+# equilibration.output_dir, equilibration.temperature, equilibration.stages.

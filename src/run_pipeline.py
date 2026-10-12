@@ -6,6 +6,13 @@ Usage:
     python3 src/run_pipeline.py --mode lig -i ligand_replace.yaml
     python3 src/run_pipeline.py --mode chl -i cholesterol_restore.yaml
     python3 src/run_pipeline.py --mode popc -i popc.yaml
+    python3 src/run_pipeline.py --mode charmprot -i charmprot.yaml
+    python3 src/run_pipeline.py --mode addbinder -i addbinder.yaml
+    python3 src/run_pipeline.py --mode salt -i salt.yaml      (also membrane, protonate,
+        mutate, hmr, resize, flood, oligomer: see mode_registry.py)
+    python3 src/run_pipeline.py prepare-minimization --coordinates X.gro --topology topol.top
+    python3 src/run_pipeline.py check-gromacs FOLDER
+    python3 src/run_pipeline.py slurm-script FOLDER/equilibration --profile dardel
 
 PROTEIN MODE:
 implements the project's core workflow:
@@ -89,6 +96,7 @@ from minimization_bundle import (
 )
 
 from gmxtransplant import __version__
+from mode_registry import EDIT_MODES
 
 _EXAMPLE_FILES = {
     "charmprot": "charmprot.yaml",
@@ -98,6 +106,7 @@ _EXAMPLE_FILES = {
     "lig": "ligand_replace.yaml",
     "chl": "cholesterol_restore.yaml",
     "minimize": "minimization.yaml",
+    **{key: mode.example_yaml for key, mode in EDIT_MODES.items()},
 }
 
 
@@ -1197,19 +1206,39 @@ def _print_bundle(result):
 
 
 def main(config_path: str, mode: str, dry_run: bool = False,
-         prepare: bool = False, output_root=None) -> int:
-    """Assemble a system and optionally export minimization inputs only."""
+         prepare: bool = False, output_root=None, gromacs_check: str = "never") -> int:
+    """Assemble a system, optionally export minimization inputs, then check it with grompp."""
+    result = _main(config_path, mode, dry_run=dry_run, prepare=prepare, output_root=output_root)
+    if result != 0 or dry_run or gromacs_check == "never":
+        return result
+    return _gromacs_check(config_path, mode, gromacs_check, output_root)
+
+
+def _main(config_path: str, mode: str, dry_run: bool = False,
+          prepare: bool = False, output_root=None) -> int:
     if mode == "addbinder":
         from addbinder import run_addbinder
-        if prepare:
-            print("[CONFIG ERROR] --prepare-minimization is not available for addbinder yet",
-                  file=sys.stderr)
-            return 2
         try:
-            return run_addbinder(config_path, dry_run=dry_run, output_root=output_root)
+            result = run_addbinder(config_path, dry_run=dry_run, output_root=output_root)
         except ConfigError as exc:
             print(f"[CONFIG ERROR] {exc}", file=sys.stderr)
             return 2
+        if result != 0 or not prepare or dry_run:
+            return result
+        # One OpenMM minimization folder per built pose. Every protein and ligand heavy atom,
+        # the binder's included, is restrained, so the binder cannot drift while the rest relaxes.
+        try:
+            for folder, _, _, _ in _gromacs_targets(config_path, mode, output_root):
+                folder = Path(folder)
+                spec = MinimizationSpec(coordinates_path=str(folder / "step5_input.gro"),
+                                        topology_path=str(folder / "topol.top"), include_dir=str(folder),
+                                        output_dir=str(folder / "openmm_minimization"))
+                validate_preparation(spec)
+                _print_bundle(prepare_minimization(spec, assembly_mode=mode))
+        except Exception as exc:
+            print(f"[BUNDLE ERROR] {exc}; the built poses remain available", file=sys.stderr)
+            return 7
+        return 0
     if mode == "popc":
         from popc_membrane import run_popc
         if prepare:
@@ -1218,6 +1247,18 @@ def main(config_path: str, mode: str, dry_run: bool = False,
             return 2
         try:
             return run_popc(config_path, dry_run=dry_run, output_root=output_root)
+        except ConfigError as exc:
+            print(f"[CONFIG ERROR] {exc}", file=sys.stderr)
+            return 2
+    if mode in EDIT_MODES:
+        import importlib
+        if prepare:
+            print(f"[CONFIG ERROR] --prepare-minimization is not available for {mode}; enable its "
+                  "equilibration section for a GROMACS equilibration folder", file=sys.stderr)
+            return 2
+        try:
+            return importlib.import_module(EDIT_MODES[mode].module).run(
+                config_path, dry_run=dry_run, output_root=output_root)
         except ConfigError as exc:
             print(f"[CONFIG ERROR] {exc}", file=sys.stderr)
             return 2
@@ -1252,6 +1293,56 @@ def main(config_path: str, mode: str, dry_run: bool = False,
     except Exception as exc:
         print(f"[BUNDLE ERROR] {exc}; validated assembly outputs remain available", file=sys.stderr)
         return 7
+    return 0
+
+
+def _gromacs_targets(config_path, mode, output_root=None):
+    """(folder, top, gro, index) of every system a finished run wrote."""
+    if mode in EDIT_MODES:
+        import importlib
+        cfg = importlib.import_module(EDIT_MODES[mode].module).load_config(config_path, check_paths=False,
+                                                                           output_root=output_root)
+        return [(cfg.output_dir, None, None, None)]
+    if mode == "popc":
+        from popc_membrane import load_popc_config
+        return [(load_popc_config(config_path, check_paths=False, output_root=output_root).output_dir,
+                 None, None, None)]
+    if mode == "charmprot":
+        from charmprot import load_charmprot_config
+        return [(load_charmprot_config(config_path, check_paths=False, output_root=output_root).output_dir,
+                 None, None, None)]
+    if mode == "addbinder":
+        from addbinder import load_addbinder_config
+        root = Path(load_addbinder_config(config_path, check_paths=False, output_root=output_root).output_dir)
+        return [(p.parent, None, None, None) for p in sorted(root.glob("*/topol.top"))]
+    cfg = load_config(config_path, mode=mode, check_paths=False, output_root=output_root)
+    if not cfg.topology.enabled:
+        return []
+    return [(cfg.topology.output_dir, os.path.join(cfg.topology.output_dir, "topol.top"), cfg.output.gro_path,
+             cfg.ndx.output_path)]
+
+
+def _gromacs_check(config_path, mode, policy, output_root=None, gmx=None):
+    """Run grompp on what the run wrote. Returns an exit code (0 passed or skipped, 8 failed)."""
+    from gromacs_check import check_folder, describe, find_gmx
+    if policy == "never":
+        return 0
+    if find_gmx(gmx) is None:
+        if policy == "always":
+            print("[GROMACS CHECK ERROR] --gromacs-check always, but no GROMACS executable was found; set "
+                  "GMXTRANSPLANT_GMX or put gmx on PATH", file=sys.stderr)
+            return 8
+        print("[gromacs] check skipped: no GROMACS executable found (set GMXTRANSPLANT_GMX to enable it)")
+        return 0
+    failed = False
+    for folder, top, gro, index in _gromacs_targets(config_path, mode, output_root):
+        result = check_folder(folder, gmx, top=top, gro=gro, index=index)
+        print(describe(result))
+        failed |= result["status"] in ("failed", "error")
+    if failed:
+        print("[GROMACS CHECK ERROR] grompp rejected a built system; its files are kept for inspection",
+              file=sys.stderr)
+        return 8
     return 0
 
 
@@ -1290,10 +1381,11 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         description="Modify a prepared molecular-simulation system."
     )
     parser.add_argument(
-        "--mode", choices=("charmprot", "protein", "lig", "chl", "addbinder", "popc"),
+        "--mode", choices=("charmprot", "protein", "lig", "chl", "addbinder", "popc", *EDIT_MODES),
         help=("two-folder CHARMM-GUI transplant, protein replacement, ligand replacement, "
-              "cholesterol restoration, adding a binder above/below a membrane protein, or "
-              "replacing the membrane with equilibrated POPC"),
+              "cholesterol restoration, adding a binder above/below a membrane protein, "
+              "replacing the membrane with equilibrated POPC, or one of: "
+              + "; ".join(f"{key}: {mode.summary}" for key, mode in EDIT_MODES.items())),
     )
     parser.add_argument(
         "-i", "--input", metavar="CONFIG.yaml",
@@ -1316,10 +1408,16 @@ def _build_cli_parser() -> argparse.ArgumentParser:
             "prepare one portable OpenMM minimization folder after assembly; do not run it"
         ),
     )
+    parser.add_argument(
+        "--gromacs-check", choices=("auto", "always", "never"), default="auto",
+        help=("after a successful build, run gmx grompp (no warnings allowed) on every system written: "
+              "auto runs it when GROMACS is found (GMXTRANSPLANT_GMX, GMX, gmx or gmx_mpi), always "
+              "requires it, never skips it"),
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
         "--show-example",
-        choices=("charmprot", "protein", "lig", "chl", "addbinder", "popc", "minimize"),
+        choices=("charmprot", "protein", "lig", "chl", "addbinder", "popc", *EDIT_MODES, "minimize"),
         metavar="MODE",
         help="print a bundled mode-specific YAML example and exit",
     )
@@ -1340,6 +1438,12 @@ def cli(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] == "prepare-minimization":
         return _prepare_existing(argv[1:])
+    if argv and argv[0] == "check-gromacs":
+        from gromacs_check import main as check_main
+        return check_main(argv[1:])
+    if argv and argv[0] == "slurm-script":
+        from slurm_script import main as slurm_main
+        return slurm_main(argv[1:])
     parser = _build_cli_parser()
     cli_args = parser.parse_args(argv)
     if cli_args.show_example:
@@ -1364,6 +1468,7 @@ def cli(argv=None) -> int:
             dry_run=cli_args.dry_run,
             prepare=cli_args.prepare_minimization,
             output_root=cli_args.output,
+            gromacs_check=cli_args.gromacs_check,
         )
     except Exception:
         traceback.print_exc()

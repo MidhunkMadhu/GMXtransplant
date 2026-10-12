@@ -28,7 +28,9 @@ root = Path(__file__).parent
 entries = [('share/gmxtransplant/examples', [
     'configs/charmprot.yaml', 'configs/addbinder.yaml', 'configs/protein_replace.yaml',
     'configs/ligand_replace.yaml', 'configs/cholesterol_restore.yaml', 'configs/minimization.yaml',
-    'configs/popc.yaml'])]
+    'configs/popc.yaml', 'configs/membrane.yaml', 'configs/salt.yaml', 'configs/protonate.yaml',
+    'configs/mutate.yaml', 'configs/hmr.yaml', 'configs/resize.yaml', 'configs/flood.yaml',
+    'configs/oligomer.yaml'])]
 # The documentation the GUI's Documentation button opens, resolved relative to
 # the installed package rather than any location on the user's system.
 if (root / 'docs' / 'GMXtransplant.pdf').is_file():
@@ -36,12 +38,16 @@ if (root / 'docs' / 'GMXtransplant.pdf').is_file():
 for name, config in [('charmprot', 'charmprot.yaml'),
                      ('addbinder', 'addbinder.yaml'),
                      ('popc', 'popc.yaml'),
+                     ('membrane', 'membrane.yaml'), ('salt', 'salt.yaml'), ('protonate', 'protonate.yaml'),
+                     ('mutate', 'mutate.yaml'), ('hmr', 'hmr.yaml'), ('resize', 'resize.yaml'),
+                     ('flood', 'flood.yaml'), ('oligomer', 'oligomer.yaml'),
                      ('protein_insertion', 'protein_replace.yaml'),
                      ('ligand_replacement', 'ligand_replace.yaml'),
                      ('cholesterol_restoration', 'cholesterol_restore.yaml')]:
     base = Path('examples') / name
     configs = [str(path.relative_to(root)) for path in sorted((root / base).glob('*.yaml'))] or [str(base / config)]
-    entries.append((f'share/gmxtransplant/{base}', configs + [str(base / 'README.md')]))
+    readme = [str(base / 'README.md')] if (root / base / 'README.md').is_file() else []
+    entries.append((f'share/gmxtransplant/{base}', configs + readme))
     for role in ['environment', 'replacement', 'experimental', 'reference', 'transplant',
                  'host', 'binder', 'dopamine', 'gprotein']:
         directory = root / base / role
@@ -53,7 +59,7 @@ for name, config in [('charmprot', 'charmprot.yaml'),
             # pose folder) but not its 30 MB step5 PDB, which addbinder never reads.
             if name == 'addbinder' and role == 'host' and path.suffix.lower() == '.pdb':
                 continue
-            if path.is_file() and (path.suffix.lower() in {'.pdb', '.gro', '.top', '.itp', '.mol2', '.md', '.mdp'}
+            if path.is_file() and (path.suffix.lower() in {'.pdb', '.gro', '.top', '.itp', '.mol2', '.md', '.mdp', '.gz'}
                                    or path.name == 'README'):
                 relative = path.relative_to(root)
                 groups.setdefault(f'share/gmxtransplant/{relative.parent}', []).append(str(relative))

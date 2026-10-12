@@ -7,6 +7,7 @@ import types
 from charmprot import CharmProtSpec
 from addbinder import AddBinderSpec
 from popc_membrane import PopcSpec
+from mode_registry import EDIT_MODES
 
 
 @lru_cache(None)
@@ -34,6 +35,9 @@ def annotation_for(path):
             annotation = AddBinderSpec
         elif index == 0 and key == 'popc':
             annotation = PopcSpec
+        elif index == 0 and key in EDIT_MODES:
+            from .model import edit_spec
+            annotation = edit_spec(key)
         elif index == 0 and key == 'paths':
             annotation = Dict[str, Optional[str]]
         elif is_dataclass(annotation):

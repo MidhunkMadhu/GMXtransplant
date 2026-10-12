@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineE
     QSplitter, QFileDialog, QFrame)
 
 from .model import defaults, path_kind, is_output
+from mode_registry import EDIT_MODES
 from .fields import annotation_for, concrete, initial_value, residue_mapping
 
 ENUMS = {
@@ -31,6 +32,7 @@ ENUMS = {
     ('popc', 'equilibration', 'stages', '*', 'integrator'): ['steep', 'nvt', 'npt'],
     ('popc', 'environment_overrides', '*'): ['lipid', 'sterol', 'water', 'ion', 'detergent', 'solvent'],
     ('addbinder', 'lateral_reference'): ['tip', 'host_center'],
+    ('addbinder', 'restraint', 'reference'): ['host_tip', 'host'],
     ('addbinder', 'ion_side'): ['any', 'binder_side'],
     ('addbinder', 'poses', '*', 'distance_to'): ['nearest_atom', 'centroid'],
     ('addbinder', 'poses', '*', 'orientation'): ['auto', 'flat', 'end_on', 'edge', 'as_is', 'euler'],
@@ -175,6 +177,11 @@ PATH_TITLES = {
     ('addbinder', 'random_seed'): 'Random seed',
     ('addbinder', 'same_orientation'): 'Same orientation for every pose',
     ('addbinder', 'copy_run_inputs'): 'Copy the host\'s mdp files and README into each pose',
+    ('addbinder', 'restraint'): 'Keep the binder near the protein (GROMACS pull restraint)',
+    ('addbinder', 'restraint', 'reference'): 'Measured from',
+    ('addbinder', 'restraint', 'margin'): 'Free distance beyond the start (Å)',
+    ('addbinder', 'restraint', 'force_constant'): 'Wall force constant (kJ/mol/nm²)',
+    ('addbinder', 'restraint', 'apply_to_run_inputs'): 'Add it to the copied MD mdp files',
     ('alignment', 'method'): 'Alignment method',
     ('alignment', 'region_mask_original'): 'Fit region in the target',
     ('alignment', 'region_mask_replacement'): 'Fit region in the incoming structure',
@@ -247,6 +254,7 @@ PATH_TITLES = {
 }
 # One line under each setting: what it does and what you can do with it.
 DESCRIPTIONS = {
+    ('addbinder', 'restraint'): 'A flat-bottomed pull restraint between the binder\'s centre of mass and the protein tip: no force up to the starting distance plus the margin, then a harmonic wall. Written as binder_restraint.mdp in each pose and added to the copied MD mdp files, so a free ligand cannot drift into the bulk.',
     ('addbinder', 'host'): 'The prepared membrane system the binder joins: a folder with topol.top, toppar/ and step5_input.gro, e.g. a CHARMM-GUI build. Only its water and ions change.',
     ('addbinder', 'host_gro'): "Tick to use a coordinate file other than the host folder's own step5 GRO, e.g. an MD frame.",
     ('addbinder', 'binder_coordinates'): 'One binder molecule with hydrogens. Atom names must match the ITP. Its position does not matter.',
@@ -552,6 +560,22 @@ REQUIRED = {('charmprot', 'reference'), ('charmprot', 'transplant'),
 NOUNS = {('replacement_ligands',): 'ligand', ('addbinder', 'poses'): 'pose'}
 
 
+ENVIRONMENT_CHOICES = ['lipid', 'sterol', 'water', 'ion', 'detergent', 'solvent']
+# The system-edit modes declare their texts once, in mode_registry.
+for _key, _mode in EDIT_MODES.items():
+    TITLES[_key] = _mode.section_title
+    HELP[_key] = _mode.section_help + ' ' + _mode.description
+    PRIMARY[(_key,)] = list(_mode.primary)
+    REQUIRED |= {(_key, name) for name in _mode.required}
+    ENUMS[(_key, 'environment_overrides', '*')] = ENVIRONMENT_CHOICES
+    ENUMS[(_key, 'equilibration', 'stages', '*', 'integrator')] = ['steep', 'nvt', 'npt']
+    ENUMS.update({(_key, *path): options for path, options in _mode.choices.items()})
+    PATH_TITLES.update({(_key, *name.split('.')): text for name, text in _mode.labels.items()})
+    DESCRIPTIONS.update({(_key, *name.split('.')): text for name, text in _mode.help.items()})
+    for _list in ('residues', 'mutations', 'copies'):
+        NOUNS[(_key, _list)] = {'residues': 'residue', 'mutations': 'mutation', 'copies': 'copy'}[_list]
+OWN_SECTIONS = {'charmprot', 'addbinder', 'popc', *EDIT_MODES}
+
 # Sections whose `enabled` flag is not a user choice: index.ndx is always written.
 ALWAYS_ENABLED = {('ndx',)}
 
@@ -573,7 +597,7 @@ def is_hidden(path, ctx, toggle_parent=False):
         return True
     if toggle_parent and key == 'enabled':
         return True
-    if path in {('charmprot', 'output_dir'), ('addbinder', 'output_dir'), ('popc', 'output_dir')}:
+    if len(path) == 2 and path[0] in OWN_SECTIONS and path[1] == 'output_dir':
         return True
     if path[:1] == ('minimization',) and len(path) == 2:
         shown = MINIMIZATION_FIELDS | (STANDALONE_MINIMIZATION_FIELDS if ctx.mode == 'minimize' else set())
@@ -624,7 +648,8 @@ class ValueEditor(QWidget):
         if self.charge_source:
             return 'Number'
         if isinstance(value, dict):
-            if is_dataclass(hint) or self.path in {('paths',), ('charmprot',), ('addbinder',), ('popc',)} or self.lipid_target():
+            if is_dataclass(hint) or self.path == ('paths',) or (len(self.path) == 1 and self.path[0] in OWN_SECTIONS) \
+                    or self.lipid_target():
                 return 'Group'
             return 'Entries'
         # Residue replacement entries accept one name or a list of names.
@@ -723,9 +748,9 @@ class ValueEditor(QWidget):
         row = QHBoxLayout()
         self.new_key = QLineEdit()
         self.new_key.setPlaceholderText('Residue name, e.g. POPC' if residue_mapping(self.path)
-                                        else 'Molecule type, e.g. MYLIP' if self.path in {
-                                            ('charmprot', 'environment_overrides'), ('addbinder', 'environment_overrides'),
-                                            ('popc', 'environment_overrides')}
+                                        else 'Molecule type, e.g. MYLIP' if (
+                                            len(self.path) == 2 and self.path[0] in OWN_SECTIONS
+                                            and self.path[1] == 'environment_overrides')
                                         else 'Name')
         self.new_key.setMaximumWidth(260)
         self.add_button = QPushButton('Add')
@@ -1037,7 +1062,7 @@ class ConfigEditor(QWidget):
             box.addWidget(help_label)
             # The file registry and the CHARMM-GUI folders are the inputs themselves:
             # always shown and always written, never behind a checkbox.
-            required = key in {'charmprot', 'addbinder', 'popc', 'paths'} or (mode == 'minimize' and key == 'minimization')
+            required = key in OWN_SECTIONS | {'paths'} or (mode == 'minimize' and key == 'minimization')
             field = Field(key, raw.get(key, deepcopy(schema.get(key))), schema.get(key), key in raw, (),
                           ctx, kind='required' if required else None, known=key in schema,
                           label=title(key) if key not in schema or schema.get(key) is None else '')

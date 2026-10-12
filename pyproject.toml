@@ -55,6 +55,8 @@ py-modules = [
   "clashes",
   "classify",
   "config",
+  "config_base",
+  "config_schema",
   "ion_selection",
   "itp",
   "kabsch",
@@ -75,7 +77,23 @@ py-modules = [
   "substructure",
   "viewers",
   "topology",
+  "equilibration",
+  "mode_registry",
+  "system_edit",
+  "hmr",
+  "salt",
+  "resize",
+  "flood",
+  "oligomer",
+  "membrane_replace",
+  "charmm36_library",
+  "protein_edit",
+  "residue_edit",
+  "protonate",
+  "mutate",
+  "gromacs_check",
+  "slurm_script",
 ]
 
 [tool.setuptools.package-data]
-gmxtransplant = ["charmm_environment.json", "data/*.gro.gz", "data/README.md"]
+gmxtransplant = ["charmm_environment.json", "data/*.gro.gz", "data/*.json.gz", "data/README.md"]

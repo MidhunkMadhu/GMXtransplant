@@ -162,14 +162,30 @@ directly above each other. In the bundled D1R example the column is about
   <pose>/index.ndx               System Protein Ligand Host Binder Host_tip Solute Water Ion Membrane Environment
                                  + CHARMM-GUI SOLU MEMB SOLV SOLU_MEMB SYSTEM
   <pose>/*.mdp, README           the host's CHARMM-GUI run inputs (copy_run_inputs)
+  <pose>/binder_restraint.mdp    the binder restraint (restraint.enabled), also appended to the MD mdp files
+  <pose>/openmm_minimization/    with --prepare-minimization: an OpenMM minimization folder per pose
   <pose>/addbinder_report.txt/.json
   view.pml, view.pse, view.vmd   one PyMOL/VMD scene: host, tip atom, every pose's binder
 ```
 
 A rejected pose writes only its report. A pose folder is replaced on reruns
-only if it holds nothing but addbinder's own files. `Host_tip` and `Binder` are
-ready-made groups for a distance restraint or pull coordinate during
-equilibration. Without one, a free binder diffuses away.
+only if it holds nothing but addbinder's own files.
+
+### Keeping the binder near the protein
+
+Without a restraint, a free binder diffuses away. `restraint: {enabled: true}`
+writes `binder_restraint.mdp`: a flat-bottomed GROMACS pull restraint between
+the `Host_tip` atom (or, with `reference: host`, the host proteins' centre of
+mass) and the `Binder` centre of mass. There is no force up to the starting
+distance plus `margin` (5 Å); beyond it a harmonic wall of `force_constant`
+(1000 kJ/mol/nm²) pulls the binder back. With `apply_to_run_inputs` (default)
+it is appended to every copied MD mdp file (step6.1 to step7), not to the
+minimization. A GROMACS distance pull must stay below half the shortest box
+length; a pose farther away gets no restraint, and its report says so.
+
+`--prepare-minimization` writes an OpenMM minimization folder in each built
+pose. Its restraints hold every protein and ligand heavy atom, the binder's
+included, so the binder stays in place while water, ions and lipid tails relax.
 
 ## All options
 
@@ -195,6 +211,7 @@ equilibration. Without one, a free binder diffuses away.
 | `ion_exclusion_distance` / `lipid_ion_exclusion_distance` | 10 / 5 | Å, protected ions |
 | `environment_overrides` | {} | molecule type → water/ion/lipid/sterol/detergent/solvent |
 | `output_dir` | `addbinder_output` | inside `--output` |
+| `restraint` | disabled | `enabled`, `reference` (`host_tip` or `host`), `margin` (Å), `force_constant` (kJ/mol/nm²), `apply_to_run_inputs` |
 | `poses[]` | one pose straight above the tip | `name`, `distance`, `lateral_offset`, `orientation`, `angles`, `flip`, `spin`, `approach`, `centroid`, `from_input_position`, `distance_to`, `reduce_distance_by`, `min_distance` |
 
 ## Desktop application
@@ -209,6 +226,5 @@ output folder.
 
 These are not supported yet:
 
-- `--prepare-minimization`
-- automatic box extension
+- automatic box extension (use the [resize mode](EDIT_MODES.md#resize) on the host first)
 - protein binders build (the Gs example) but have not yet been simulated

@@ -99,6 +99,21 @@ class PoseSpec:
 
 
 @dataclass
+class RestraintSpec:
+    """A flat-bottomed GROMACS pull restraint that keeps a free binder near the host.
+
+    Between the binder's centre of mass and the host tip atom (or the host solute's
+    centre of mass): no force up to the starting distance plus `margin`, then a
+    harmonic wall of `force_constant`.
+    """
+    enabled: bool = False
+    reference: str = "host_tip"          # host_tip | host (centre of mass of the host proteins and ligands)
+    margin: float = 5.0                  # A beyond the starting distance before the wall
+    force_constant: float = 1000.0       # kJ/mol/nm^2
+    apply_to_run_inputs: bool = True     # append to the copied MD mdp files (not the minimization)
+
+
+@dataclass
 class AddBinderSpec:
     host: str
     binder_coordinates: str
@@ -136,6 +151,7 @@ class AddBinderSpec:
     output_dir: str = "addbinder_output"
     environment_overrides: Dict[str, str] = field(default_factory=dict)
     poses: List[PoseSpec] = field(default_factory=list)
+    restraint: RestraintSpec = field(default_factory=RestraintSpec)
 
 
 def _number(value, key, positive=True):
@@ -276,7 +292,20 @@ def load_addbinder_config(path, check_paths=True, output_root=None):
     raw = anchor_config_paths({"addbinder": raw}, config_path=path,
                               output_root=output_root)["addbinder"]
     poses = raw.pop("poses", None)
-    cfg = AddBinderSpec(**raw)
+    restraint = raw.pop("restraint", None) or {}
+    if isinstance(restraint, RestraintSpec):
+        restraint = restraint.__dict__
+    if not isinstance(restraint, dict) or set(restraint) - set(RestraintSpec.__dataclass_fields__):
+        raise ConfigError("restraint must be a mapping of: " + ", ".join(RestraintSpec.__dataclass_fields__))
+    cfg = AddBinderSpec(**raw, restraint=RestraintSpec(**restraint))
+    if type(cfg.restraint.enabled) is not bool or type(cfg.restraint.apply_to_run_inputs) is not bool:
+        raise ConfigError("restraint.enabled and restraint.apply_to_run_inputs must be true or false")
+    if cfg.restraint.reference not in ("host_tip", "host"):
+        raise ConfigError("restraint.reference must be host_tip or host")
+    cfg.restraint.margin = _number(cfg.restraint.margin, "restraint.margin", False)
+    cfg.restraint.force_constant = _number(cfg.restraint.force_constant, "restraint.force_constant")
+    if cfg.restraint.margin < 0:
+        raise ConfigError("restraint.margin must not be negative")
     if cfg.side not in ("upper", "lower"):
         raise ConfigError("side must be upper (+z) or lower (-z)")
     if cfg.lateral_reference not in ("tip", "host_center"):
@@ -1025,7 +1054,8 @@ class BuildSystemStub:
 # ---------------------------------------------------------------------------
 
 GENERATED = {"step5_input.pdb", "step5_input.gro", "topol.top", "toppar", "index.ndx",
-             "addbinder_report.json", "addbinder_report.txt", "README"}
+             "addbinder_report.json", "addbinder_report.txt", "README", "binder_restraint.mdp",
+             "openmm_minimization"}
 
 
 def _run_inputs(host_folder):
@@ -1125,6 +1155,14 @@ def _write_report(folder, report):
             lines += ["", f"{key}:", json.dumps(report[key], indent=2)]
     if report.get("run_inputs_copied"):
         lines += ["", "Copied from the host to run this pose: " + ", ".join(report["run_inputs_copied"])]
+    if report.get("restraint", {}).get("skipped"):
+        lines += ["", f"Restraint: not written, {report['restraint']['skipped']}"]
+    elif report.get("restraint"):
+        r = report["restraint"]
+        lines += ["", f"Restraint ({RESTRAINT_MDP}): {r['reference']} to Binder centre of mass, flat-bottomed: no force "
+                      f"up to {r['flat_until_nm']:.3f} nm (starting distance {r['start_nm']:.3f} nm), then "
+                      f"{r['force_constant']:g} kJ/mol/nm^2",
+                  "  appended to: " + (", ".join(r["applied_to"]) or "no mdp file; add it to your MD mdp")]
     if "error" in report:
         lines += ["", f"Error: {report['error']}"]
     (folder / "addbinder_report.txt").write_text("\n".join(lines) + "\n")
@@ -1250,10 +1288,82 @@ def _build_pose(pose, cfg, host, frame, solute, environment, host_heavy,
         for source in _run_inputs(cfg.host):
             shutil.copy2(source, stage / source.name)
         report["run_inputs_copied"] = [p.name for p in _run_inputs(cfg.host)]
+    if cfg.restraint.enabled:
+        try:
+            report["restraint"] = write_restraint(stage, final, index_groups, cfg.restraint,
+                                                  cfg.copy_run_inputs and cfg.restraint.apply_to_run_inputs)
+        except _NoRestraint as exc:
+            report["restraint"] = {"skipped": str(exc)}
+            print(f"WARNING [{pose.name}]: no binder restraint written: {exc}")
     report["final_molecules"] = result.molecules_written
     report["final_net_charge"] = round(audit["net_charge"], 6)
     report["status"] = "accepted"
     return final, index_groups
+
+
+def _pbc_atom(universe, ids):
+    """1-based id of the group atom nearest its centre (GROMACS pull-group pbcatom)."""
+    positions = universe.atoms[[i - 1 for i in ids]].positions.astype(float)
+    lengths = universe.dimensions[:3].astype(float)
+    whole = _unwrap_sequential(positions, lengths) if len(positions) > 1 else positions
+    centre = whole.mean(axis=0)
+    return ids[int(np.argmin(np.linalg.norm(whole - centre, axis=1)))], whole, centre
+
+
+RESTRAINT_MDP = "binder_restraint.mdp"
+
+
+class _NoRestraint(Exception):
+    """The pose is too far from the host for a GROMACS distance restraint."""
+
+
+def write_restraint(stage, final, groups, spec, apply_to_run_inputs):
+    """binder_restraint.mdp: a flat-bottomed pull restraint between the binder and the host."""
+    reference = "Host_tip" if spec.reference == "host_tip" else "Host"
+    pbc_ref, _, ref_centre = _pbc_atom(final, groups[reference])
+    pbc_binder, _, binder_centre = _pbc_atom(final, groups["Binder"])
+    lengths = final.dimensions[:3].astype(float)
+    delta = binder_centre - ref_centre
+    delta -= lengths * np.round(delta / lengths)
+    start = float(np.linalg.norm(delta))
+    wall = (start + spec.margin) / 10.0
+    if wall >= 0.49 * float(lengths.min()) / 10.0:
+        raise _NoRestraint(f"its distance {wall:.2f} nm is not below half the shortest box length "
+                           f"({float(lengths.min()) / 20:.2f} nm), which a GROMACS distance pull needs")
+    text = "\n".join([
+        f"; GMXtransplant addbinder: flat-bottomed restraint, {reference} to Binder centre of mass.",
+        f"; Starting distance {start / 10:.3f} nm; no force below {wall:.3f} nm, then k = {spec.force_constant:g} "
+        "kJ/mol/nm^2.",
+        "pull                     = yes",
+        "pull-ngroups             = 2",
+        "pull-ncoords             = 1",
+        f"pull-group1-name         = {reference}",
+        f"pull-group1-pbcatom      = {pbc_ref}",
+        "pull-group2-name         = Binder",
+        f"pull-group2-pbcatom      = {pbc_binder}",
+        "pull-pbc-ref-prev-step-com = yes",
+        "pull-coord1-type         = flat-bottom",
+        "pull-coord1-geometry     = distance",
+        "pull-coord1-groups       = 1 2",
+        "pull-coord1-dim          = Y Y Y",
+        "pull-coord1-start        = no",
+        f"pull-coord1-init         = {wall:.4f}",
+        f"pull-coord1-k            = {spec.force_constant:g}",
+        "pull-nstxout             = 1000",
+        "pull-nstfout             = 1000", ""])
+    (stage / RESTRAINT_MDP).write_text(text)
+    applied = []
+    if apply_to_run_inputs:
+        for path in sorted(stage.glob("*.mdp")):
+            if path.name == RESTRAINT_MDP:
+                continue
+            content = path.read_text()
+            if re.search(r"^\s*integrator\s*=\s*(steep|cg|l-bfgs)", content, re.M | re.I):
+                continue
+            path.write_text(content.rstrip("\n") + "\n\n" + text)
+            applied.append(path.name)
+    return {"reference": reference, "start_nm": round(start / 10, 4), "flat_until_nm": round(wall, 4),
+            "force_constant": spec.force_constant, "pbcatoms": [pbc_ref, pbc_binder], "applied_to": applied}
 
 
 def _is_heavy(atom):

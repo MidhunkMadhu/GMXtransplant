@@ -418,6 +418,42 @@ class PopcGuiTests(unittest.TestCase):
         self.assertIn('equilibration/', MODE_DESCRIPTIONS['popc'])
 
 
+class EditModeGuiTests(unittest.TestCase):
+    """The system-edit modes are declared once in mode_registry and appear everywhere in the GUI."""
+
+    def test_modes_examples_jobs_and_templates(self):
+        from mode_registry import EDIT_MODES
+        from gmxtransplant.gui.model import EXAMPLE_KEYS
+        from gmxtransplant.gui.window import MODE_DESCRIPTIONS, EXAMPLE_TITLES
+        from gmxtransplant.gui.icons import PICTOGRAMS
+        for key, mode in EDIT_MODES.items():
+            with self.subTest(mode=key):
+                self.assertEqual(MODES[key], mode.title)
+                self.assertIn(key, EXAMPLE_KEYS)
+                self.assertIn(key, PICTOGRAMS)
+                self.assertEqual(MODE_DESCRIPTIONS[key], mode.description)
+                self.assertEqual(EXAMPLE_TITLES[key], mode.example_title)
+                path = example_path(key)
+                with tempfile.TemporaryDirectory() as tmp:
+                    job = build_job(load_yaml(path), tmp, key, example_base=path.parent)
+                    self.assertEqual(job['config'][key]['output_dir'], job['directory'])
+                    self.assertIn(f'{key}_report.txt', job['artifacts'])
+                    validate_job(job, check_paths=True)
+                    with self.assertRaises(Exception):
+                        validate_job(build_job(template_document(key), tmp, key), check_paths=True)
+                self.assertIn(key, defaults(key))
+
+    def test_edit_mode_progress_facts(self):
+        from gmxtransplant.gui.progress import RunProgress
+        progress = RunProgress('salt')
+        progress.feed('[salt] removed 614 bulk ion(s): 300 SOD, 314 CLA\n'
+                      '[charge] +14.000 e -> +0.000 e\n'
+                      '[gromacs] grompp passed for /x/salt_output (0 warnings, 0 notes)\n')
+        self.assertIn('614', progress.facts['Change the salt'])
+        self.assertEqual(progress.facts['Charge'], '+14.000 e -> +0.000 e')
+        self.assertIn('grompp passed', progress.facts['GROMACS check'])
+
+
 class GuiEditorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -699,7 +735,7 @@ class GuiEditorTests(unittest.TestCase):
         from gmxtransplant.gui.window import MainWindow, MODE_DESCRIPTIONS
         window = MainWindow()
         # Every mode is a visible tile; exactly the chosen one is marked.
-        self.assertEqual(list(window.mode_buttons), list(MODES))
+        self.assertEqual(set(window.mode_buttons), set(MODES))
         for mode, name in MODES.items():
             window.mode_buttons[mode].mousePressEvent(_left_click())
             self.assertEqual(window.mode, mode)
@@ -783,7 +819,18 @@ class GuiEditorTests(unittest.TestCase):
         self.app.processEvents()
         from PySide6.QtWidgets import QScrollArea
         scroll = window.examples_tab.findChild(QScrollArea)
+        # The main examples fit; the system-edit examples wait under "More examples".
         self.assertFalse(scroll.verticalScrollBar().isVisible())
+        self.assertFalse(window.more_examples.isVisible())
+        window.more_examples_toggle.setChecked(True)
+        self.app.processEvents()
+        self.assertTrue(window.more_examples.isVisible())
+        self.assertFalse(scroll.horizontalScrollBar().isVisible())
+        window.show_page(0)
+        self.assertFalse(window.more_modes.isVisible())
+        window.select_mode('salt')
+        self.app.processEvents()
+        self.assertTrue(window.more_modes.isVisible())
         window.deleteLater()
 
 if __name__ == '__main__':

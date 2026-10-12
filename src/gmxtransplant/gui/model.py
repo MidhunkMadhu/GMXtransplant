@@ -16,25 +16,33 @@ import webbrowser
 import yaml
 import config as pipeline_config
 from config import path_kind, is_output_path as is_output, PLACEHOLDER_PATH_PREFIX
+from mode_registry import EDIT_MODES
 
 MODES = {'charmprot': 'CHARMM-GUI protein transplant', 'protein': 'Protein insertion', 'lig': 'Ligand replacement',
          'chl': 'Cholesterol restoration', 'addbinder': 'Add binder outside the membrane protein',
-         'popc': 'Replace the membrane with equilibrated POPC', 'minimize': 'Minimization preparation'}
+         'popc': 'Replace the membrane with equilibrated POPC',
+         **{key: mode.title for key, mode in EDIT_MODES.items()}, 'minimize': 'Minimization preparation'}
 FOLDERS = {'charmprot': 'charmprot', 'protein': 'protein', 'lig': 'ligand', 'chl': 'cholesterol',
-           'addbinder': 'addbinder', 'popc': 'popc', 'minimize': 'minimization'}
+           'addbinder': 'addbinder', 'popc': 'popc', **{key: key for key in EDIT_MODES}, 'minimize': 'minimization'}
 EXAMPLES = {'charmprot': ('charmprot', 'charmprot.yaml'), 'protein': ('protein_insertion', 'protein_replace.yaml'),
             'lig': ('ligand_replacement', 'ligand_replace.yaml'),
             'chl': ('cholesterol_restoration', 'cholesterol_restore.yaml'),
-            'addbinder': ('addbinder', 'addbinder.yaml'), 'popc': ('popc', 'popc.yaml')}
+            'addbinder': ('addbinder', 'addbinder.yaml'), 'popc': ('popc', 'popc.yaml'),
+            **{key: (mode.example_dir, mode.example_yaml) for key, mode in EDIT_MODES.items()}}
 # Further examples of a mode: key -> (mode, example directory, YAML, output folder).
 EXTRA_EXAMPLES = {'addbinder_gprotein': ('addbinder', 'addbinder', 'addbinder_gprotein.yaml', 'addbinder_gprotein')}
 # Every example card, in display order.
 EXAMPLE_KEYS = [k for mode in EXAMPLES
                 for k in (mode, *(key for key, extra in EXTRA_EXAMPLES.items() if extra[0] == mode))]
 # A folder every complete example ships with, proving its inputs are installed.
-EXAMPLE_INPUT_FOLDER = {'charmprot': 'reference', 'addbinder': 'host', 'popc': '../addbinder/host'}
+EXAMPLE_INPUT_FOLDER = {'charmprot': 'reference', 'addbinder': 'host', 'popc': '../addbinder/host',
+                        **{key: '../addbinder/host' for key in EDIT_MODES}}
 # Sections that are a mode's own self-contained configuration.
-OWN_SECTION_MODES = ('charmprot', 'addbinder', 'popc')
+OWN_SECTION_MODES = ('charmprot', 'addbinder', 'popc', *EDIT_MODES)
+# Files a system-edit mode writes besides its report and system (copied run inputs).
+EDIT_EXTRA_ARTIFACTS = {'hmr': ('README', 'step6.0_minimization.mdp', 'step6.1_equilibration.mdp',
+                                'step6.2_equilibration.mdp', 'step6.3_equilibration.mdp', 'step6.4_equilibration.mdp',
+                                'step6.5_equilibration.mdp', 'step6.6_equilibration.mdp', 'step7_production.mdp')}
 TEMPLATES = {**{k: v[1] for k, v in EXAMPLES.items()}, 'minimize': 'minimization.yaml'}
 DIAGNOSTICS = {'raw_protonated_pdb_path': 'cholesterol_protonated_raw.pdb',
                'converted_pdb_path': 'cholesterol_charmm36.pdb',
@@ -172,6 +180,8 @@ def defaults(mode):
     if mode == 'popc':
         from popc_membrane import PopcSpec
         return {'popc': asdict(PopcSpec(host=''))}
+    if mode in EDIT_MODES:
+        return {mode: asdict(edit_spec(mode)(host=''))}
     if mode == 'minimize':
         return {'paths': {}, 'minimization': asdict(pipeline_config.MinimizationSpec())}
     values = asdict(pipeline_config.Config())
@@ -181,6 +191,12 @@ def defaults(mode):
             selected[section] = {k: v for k, v in value.items()
                                  if k in pipeline_config._SECTION_KEYS[section]}
     return {'paths': {}, **selected}
+
+
+def edit_spec(mode):
+    """The dataclass of a system-edit mode's YAML section."""
+    import importlib
+    return getattr(importlib.import_module(EDIT_MODES[mode].module), EDIT_MODES[mode].spec)
 
 
 def resolve_inputs(raw, example_base=None):
@@ -338,6 +354,16 @@ def build_job(raw, output_root, mode, example_base=None, prepare=False, example_
                 'inputs': [str(p) for p in inputs],
                 'artifacts': ['run.yaml', 'run.log', 'run-status.json', 'summary.txt', 'summary.json',
                               'visualization', 'view.pml', 'view.vmd', 'view.pse', *dict.fromkeys(names)]}
+    if mode in EDIT_MODES:
+        from system_edit import generated
+        section = values.get(mode)
+        if not isinstance(section, dict):
+            raise ValueError(f'{mode} must be a mapping of settings.')
+        section['output_dir'] = str(out)
+        return {'id': uuid.uuid4().hex, 'mode': mode, 'directory': str(out), 'config': values,
+                'inputs': [str(p) for p in inputs],
+                'artifacts': ['run.yaml', 'run.log', 'run-status.json', *sorted(generated(mode)),
+                              *EDIT_EXTRA_ARTIFACTS.get(mode, ())]}
     if mode == 'popc':
         from popc_membrane import GENERATED
         section = values.get('popc')
@@ -424,6 +450,10 @@ def validate_job(job, check_paths=False):
         if job['mode'] == 'popc':
             from popc_membrane import load_popc_config
             return load_popc_config(path, check_paths=check_paths)
+        if job['mode'] in EDIT_MODES:
+            import importlib
+            module = importlib.import_module(EDIT_MODES[job['mode']].module)
+            return module.load_config(path, check_paths=check_paths)
         if job['mode'] == 'minimize':
             cfg = pipeline_config.load_minimization_config(str(path), check_paths=check_paths)
             from minimization_bundle import validate_preparation

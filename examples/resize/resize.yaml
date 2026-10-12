@@ -1,0 +1,8 @@
+# Make the water layer of the apo D1R build 20 A thicker: copies of the host's
+# own bulk water and ions fill the new space; the membrane and protein are
+# unchanged and the bilayer is centred in the taller box.
+resize:
+  host: ../addbinder/host
+  add_water: 20.0          # A added along z
+  equilibration:
+    enabled: true          # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh

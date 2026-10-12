@@ -30,3 +30,11 @@ addbinder:
   random_min_angle: 25.0       # degrees between any two approach directions
   random_min_separation: 10.0  # A between dopamine centres of any two poses
   random_seed: 1               # change for a different set; the reports record every value
+  # Keep the free dopamine near the receptor during MD: a flat-bottomed pull restraint
+  # between the receptor tip atom and the dopamine centre of mass, no force up to the
+  # starting distance + margin. Written as binder_restraint.mdp and appended to the
+  # copied step6.1-6.6/step7 mdp files.
+  restraint:
+    enabled: true
+    margin: 5.0                # A beyond the starting distance
+    force_constant: 1000.0     # kJ/mol/nm^2

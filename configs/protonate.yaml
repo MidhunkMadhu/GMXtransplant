@@ -1,0 +1,19 @@
+# Change residue protonation states in a prepared system: histidine HSD/HSE/HSP,
+# ASP/ASPP, GLU/GLUP, LYS/LSN, CYS/CYM. The protein ITP gets the CHARMM36 atoms,
+# charges and bonded terms of the new state; hydrogens are placed from the CHARMM
+# internal coordinates; counterions keep the system neutral. A residue's current
+# state is read from its atoms (CHARMM-GUI keeps ASP as the name of ASPP).
+protonate:
+  host: /path/to/membrane_system   # folder with topol.top, toppar/ and step5_input.gro
+  residues:
+    - molecule: PROA       # protein moleculetype
+      resid: 164           # residue number as in its ITP
+      state: HSP           # HSD HSE HSP ASP ASPP GLU GLUP LYS LSN CYS CYM
+  water_clash_distance: 2.0  # A; water/ions this close to a new atom are removed
+  equilibration:
+    enabled: false         # true: write equilibration/ (CHARMM-GUI step6 schedule + sample_run.sh)
+# Replace each /path/to/ placeholder with a full path; none is resolved against the
+# working directory. Generated files use the --output folder, or the directory you
+# run the command from. Optional: host_gro, neutralize, target_net_charge, seed,
+# environment_overrides, output_dir, equilibration.output_dir,
+# equilibration.temperature, equilibration.stages.

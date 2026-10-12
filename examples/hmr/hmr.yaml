@@ -1,0 +1,9 @@
+# Hydrogen mass repartitioning of the apo D1R build (POPC/POPE/cholesterol,
+# 150 mM NaCl): every hydrogen gets 3.024 u from its heavy atom; water is rigid
+# and left unchanged. The production mdp is copied with a 4 fs time step.
+hmr:
+  host: ../addbinder/host
+  hydrogen_mass: 3.024
+  time_step: 0.004
+  equilibration:
+    enabled: true          # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh

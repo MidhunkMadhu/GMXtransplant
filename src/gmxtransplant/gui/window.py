@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, Q
     QFrame, QProgressBar, QListWidget, QScrollArea)
 
 from viewers import find_viewer, launch as launch_viewer
+from mode_registry import EDIT_MODES
 from .editor import ConfigEditor, choose_path
 from .model import (MODES, FOLDERS, EXAMPLE_KEYS, build_job, load_yaml, example_mode, example_folder,
                     example_path, destination, example_document,
@@ -50,6 +51,7 @@ MODE_DESCRIPTIONS = {
             'CHARMM36). The protein keeps its OPM placement; overlapping lipids, water and ions are removed, '
             'and the run writes equilibration/, a GROMACS system set up for the CHARMM-GUI step6 equilibration '
             'with a sample run script.',
+    **{key: mode.description for key, mode in EDIT_MODES.items()},
     'minimize': 'Prepare a restrained OpenMM minimization folder for a system you have already assembled.',
 }
 
@@ -289,7 +291,8 @@ def repolish(widget):
 # Example cards: the original titles and descriptions.
 EXAMPLE_TITLES = {'popc': 'Equilibrated POPC membrane: D1R',
                   'addbinder': 'Add binder: dopamine (extracellular)',
-                  'addbinder_gprotein': 'Add binder: G protein (intracellular)'}
+                  'addbinder_gprotein': 'Add binder: G protein (intracellular)',
+                  **{key: mode.example_title for key, mode in EDIT_MODES.items()}}
 EXAMPLE_DETAILS = {
     'charmprot': 'Choose reference and transplant folders. Replace proteins and ligands automatically while retaining the reference environment.',
     'protein': 'Insert a protein and its bound ligands into a prepared membrane system using matching topology inputs.',
@@ -297,9 +300,24 @@ EXAMPLE_DETAILS = {
     'chl': 'Restore five experimental cholesterol molecules into the prepared D1R system. Uses Open Babel, installed with GMXtransplant.',
     'popc': 'Replace the POPC/POPE/cholesterol membrane of the apo D1 receptor build with equilibrated pure POPC; the receptor keeps its OPM placement. Writes the system and a GROMACS equilibration folder.',
     'addbinder': 'Extracellular ligand: place dopamine above the apo D1 receptor, once straight above at 20 Å and three times from random directions at 20–25 Å; one run-ready folder each.',
+    **{key: mode.example_description for key, mode in EDIT_MODES.items()},
     'addbinder_gprotein': 'Intracellular protein: place the Gs heterotrimer below the apo D1 receptor in its receptor-bound arrangement: pulled straight out to 20 Å (shorter if the box needs it) and towards two random sides at 15 Å, one of them also randomly rotated; one run-ready folder each.',
 }
 PAGES = ['Configuration', 'Examples', 'Run & results']
+
+
+def disclosure(text, panel):
+    """A '▸ text' button that shows and hides `panel` (collapsed at first)."""
+    toggle = QPushButton('▸  ' + text)
+    toggle.setObjectName('disclosure')
+    toggle.setCheckable(True)
+    panel.hide()
+
+    def expand(shown):
+        panel.setVisible(shown)
+        toggle.setText(('▾  ' if shown else '▸  ') + text)
+    toggle.toggled.connect(expand)
+    return toggle
 
 
 class Tile(QFrame):
@@ -558,19 +576,20 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(self.config_tab)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
-        tiles = QGridLayout()
-        tiles.setSpacing(10)
         self.pictograms = []
         self.mode_buttons = {}
-        for index, mode in enumerate(MODES):
-            tile = Tile(MODES[mode], lambda m=mode: self.select_mode(m))
-            self.pictograms.append((tile.icon, mode))
-            tile.setToolTip(MODE_DESCRIPTIONS[mode])
-            self.mode_buttons[mode] = tile
-            tiles.addWidget(tile, index // 4, index % 4)
-        for column in range(4):
-            tiles.setColumnStretch(column, 1)
-        layout.addLayout(tiles)
+        # The main modes are always shown; the system-edit modes sit under "More modes".
+        main = [m for m in MODES if m not in EDIT_MODES]
+        more = [m for m in MODES if m in EDIT_MODES]
+        layout.addLayout(self.tile_grid(main))
+        self.more_modes = QWidget()
+        self.more_modes.setObjectName('transparent')
+        more_box = QVBoxLayout(self.more_modes)
+        more_box.setContentsMargins(0, 0, 0, 0)
+        more_box.addLayout(self.tile_grid(more))
+        self.more_modes_toggle = disclosure('More modes', self.more_modes)
+        layout.addWidget(self.more_modes_toggle, 0, Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(self.more_modes)
         strip = QFrame()
         strip.setObjectName('strip')
         strip_box = QHBoxLayout(strip)
@@ -596,6 +615,19 @@ class MainWindow(QMainWindow):
         layout.addLayout(actions)
         self.tabs.addWidget(self.config_tab)
 
+    def tile_grid(self, modes):
+        tiles = QGridLayout()
+        tiles.setSpacing(10)
+        for index, mode in enumerate(modes):
+            tile = Tile(MODES[mode], lambda m=mode: self.select_mode(m))
+            self.pictograms.append((tile.icon, mode))
+            tile.setToolTip(MODE_DESCRIPTIONS[mode])
+            self.mode_buttons[mode] = tile
+            tiles.addWidget(tile, index // 4, index % 4)
+        for column in range(4):
+            tiles.setColumnStretch(column, 1)
+        return tiles
+
     def build_examples_tab(self):
         self.examples_tab = QWidget()
         outer = QVBoxLayout(self.examples_tab)
@@ -611,7 +643,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 4, 0)
         layout.setSpacing(12)
         self.example_buttons = []
-        cards = []
+        cards, more_cards = [], []
         for key in EXAMPLE_KEYS:
             mode = example_mode(key)
             card = QFrame()
@@ -641,8 +673,13 @@ class MainWindow(QMainWindow):
             self.example_buttons.append(run)
             row.addWidget(run)
             box.addLayout(row)
-            cards.append(card)
+            (more_cards if mode in EDIT_MODES else cards).append(card)
         layout.addWidget(ResponsiveGrid(cards, 235, 4, viewport=scroll.viewport()))
+        # Examples of the system-edit modes, under "More examples".
+        self.more_examples = ResponsiveGrid(more_cards, 235, 4, viewport=scroll.viewport())
+        self.more_examples_toggle = disclosure('More examples', self.more_examples)
+        layout.addWidget(self.more_examples_toggle, 0, Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(self.more_examples)
         layout.addWidget(label('Rerunning replaces generated files in that example’s folder. Source inputs stay unchanged.', 'muted'))
         layout.addStretch()
         self.tabs.addWidget(self.examples_tab)
@@ -787,6 +824,8 @@ class MainWindow(QMainWindow):
                 self.install_document(raw)
             except Exception as exc:
                 self.error(exc)
+        if new_mode in EDIT_MODES and not self.more_modes_toggle.isChecked():
+            self.more_modes_toggle.setChecked(True)
         self.mark_mode()
         self.update_destination()
 
