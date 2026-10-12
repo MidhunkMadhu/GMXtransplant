@@ -374,6 +374,13 @@ class ProgressTests(unittest.TestCase):
 
 
 @unittest.skipUnless(importlib.util.find_spec('PySide6'), 'Optional GUI dependencies are not installed')
+def _left_click():
+    from PySide6.QtCore import QPointF, Qt
+    from PySide6.QtGui import QMouseEvent
+    return QMouseEvent(QMouseEvent.Type.MouseButtonPress, QPointF(5, 5), QPointF(5, 5),
+                       Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+
+
 class PopcGuiTests(unittest.TestCase):
     def test_popc_mode_example_and_job(self):
         from gmxtransplant.gui.model import EXAMPLE_KEYS
@@ -667,8 +674,8 @@ class GuiEditorTests(unittest.TestCase):
         self.assertIn('output folder', window.banner_text.text())
         self.assertFalse(hasattr(window, 'base'))
         before = window.current_raw()
-        window.mode_combo.setCurrentIndex(window.mode_combo.findData('chl'))
-        window.mode_combo.setCurrentIndex(window.mode_combo.findData('charmprot'))
+        window.select_mode('chl')
+        window.select_mode('charmprot')
         self.assertEqual(window.current_raw(), before)
         window.deleteLater()
 
@@ -688,11 +695,15 @@ class GuiEditorTests(unittest.TestCase):
             finally:
                 os.chdir(previous)
 
-    def test_current_mode_is_described_under_the_mode_selector(self):
+    def test_current_mode_is_described_under_the_mode_tiles(self):
         from gmxtransplant.gui.window import MainWindow, MODE_DESCRIPTIONS
         window = MainWindow()
+        # Every mode is a visible tile; exactly the chosen one is marked.
+        self.assertEqual(list(window.mode_buttons), list(MODES))
         for mode, name in MODES.items():
-            window.mode_combo.setCurrentIndex(window.mode_combo.findData(mode))
+            window.mode_buttons[mode].mousePressEvent(_left_click())
+            self.assertEqual(window.mode, mode)
+            self.assertEqual([m for m, t in window.mode_buttons.items() if t.property('selected') == 'true'], [mode])
             self.assertIn(name, window.mode_info.text())
             self.assertIn(MODE_DESCRIPTIONS[mode], window.mode_info.text())
             self.assertFalse(window.output_hint.isVisibleTo(window))
@@ -723,7 +734,7 @@ class GuiEditorTests(unittest.TestCase):
         window.resize(1200, 800)
         window.show()
         for name in THEMES:
-            window.theme_combo.setCurrentText(name)
+            window.theme_buttons[name].click()
             for control in (window.cancel_button, window.run_button):
                 colours = []
                 for enabled in (True, False):
@@ -732,18 +743,47 @@ class GuiEditorTests(unittest.TestCase):
                     image = control.grab().toImage()
                     colours.append(image.pixelColor(image.width() // 6, image.height() // 2).name())
                 self.assertNotEqual(colours[0], colours[1], f'{control.text()} in {name}')
-        window.theme_combo.setCurrentText('Teal')
+        window.set_theme('Light')
         window.deleteLater()
 
     def test_themes_apply_to_the_whole_application(self):
         from gmxtransplant.gui.window import MainWindow, THEMES
         window = MainWindow()
         self.assertEqual(len(THEMES), 3)
+        self.assertEqual(list(THEMES), ['Light', 'Dark', 'Aurora'])
         for name, theme in THEMES.items():
-            window.theme_combo.setCurrentText(name)
+            window.theme_buttons[name].click()
+            self.assertTrue(window.theme_buttons[name].isChecked())
             self.assertIn(theme['accent'], self.app.styleSheet())
             self.assertEqual(self.app.palette().window().color().name(), theme['bg'])
-        window.theme_combo.setCurrentText('Teal')
+        window.set_theme('Light')
+        window.deleteLater()
+
+    def test_legacy_theme_setting_maps_to_a_current_theme(self):
+        from PySide6.QtCore import QSettings
+        from gmxtransplant.gui.window import MainWindow
+        QSettings().setValue('theme', 'Midnight')
+        window = MainWindow()
+        self.assertEqual(window.theme, 'Dark')
+        self.assertTrue(window.theme_buttons['Dark'].isChecked())
+        window.set_theme('Light')
+        window.deleteLater()
+
+    def test_pages_and_examples_fit_without_scrolling(self):
+        from gmxtransplant.gui.window import MainWindow, PAGES
+        window = MainWindow()
+        window.resize(1320, 900)
+        window.show()
+        for number in range(len(PAGES)):
+            window.show_page(number)
+            self.app.processEvents()
+            self.assertTrue(window.nav_buttons[number].isChecked())
+            self.assertEqual(window.nav_buttons[number].text().replace('&&', '&').split('   ')[1], PAGES[number])
+        window.show_page(1)
+        self.app.processEvents()
+        from PySide6.QtWidgets import QScrollArea
+        scroll = window.examples_tab.findChild(QScrollArea)
+        self.assertFalse(scroll.verticalScrollBar().isVisible())
         window.deleteLater()
 
 if __name__ == '__main__':

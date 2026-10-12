@@ -10,11 +10,11 @@ import shutil
 import sys
 import tempfile
 
-from PySide6.QtCore import Qt, QProcess, QProcessEnvironment, QSettings, QTimer
-from PySide6.QtGui import QTextCursor
-from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QLineEdit, QComboBox, QTabWidget, QPlainTextEdit,
-    QFrame, QProgressBar, QListWidget, QScrollArea, QSizePolicy)
+from PySide6.QtCore import Qt, QEvent, QProcess, QProcessEnvironment, QSettings, QTimer
+from PySide6.QtGui import QKeySequence, QShortcut, QTextCursor
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QLabel, QPushButton, QLineEdit, QStackedWidget, QPlainTextEdit, QButtonGroup,
+    QFrame, QProgressBar, QListWidget, QScrollArea)
 
 from viewers import find_viewer, launch as launch_viewer
 from .editor import ConfigEditor, choose_path
@@ -53,97 +53,175 @@ MODE_DESCRIPTIONS = {
     'minimize': 'Prepare a restrained OpenMM minimization folder for a system you have already assembled.',
 }
 
+SANS = '"Inter", "SF Pro Text", "Helvetica Neue", "Segoe UI", "DejaVu Sans", sans-serif'
+MONO = '"Menlo", "SF Mono", "DejaVu Sans Mono", "Consolas", monospace'
+
+# Three themes: a clean light one, a dark one in black, graphite and brushed
+# silver, and a colourful one.
 THEMES = {
-    'Teal': dict(bg='#f4f7f8', surface='#ffffff', text='#203443', muted='#536d7a', border='#dce6ea',
-                 input_border='#bdcdd4', accent='#087f72', accent_hover='#066b60', on_accent='#ffffff',
-                 accent_soft='#d8eee8', accent_soft_text='#075f56', sidebar='#142e3b', sidebar_text='#bacdd4',
-                 brand='#f5fbfc', badge='#7de0c5', hero='#173b48', button='#eaf1f4', button_border='#c7d7de',
-                 button_hover='#dceaef', button_pressed='#c8dfe3', disabled_bg='#edf1f3', disabled_text='#83959e',
-                 console_bg='#142e3b', console_text='#dbedea', list_bg='#f5f8fa', tab='#e7eef1',
-                 notice='#975522', danger='#a43c40', danger_bg='#fff1f0', danger_border='#e4bab9',
-                 info_bg='#e6f4f1', info_border='#a9d8cd', scroll='#b8cbd3', dark=False),
-    'Midnight': dict(bg='#11161c', surface='#1a212a', text='#dbe4ea', muted='#8fa1ad', border='#2a3440',
-                     input_border='#3a4756', accent='#3fb8a4', accent_hover='#5cc9b7', on_accent='#0b1f1c',
-                     accent_soft='#1f3a37', accent_soft_text='#8fe3d3', sidebar='#0b0f14', sidebar_text='#93a4b0',
-                     brand='#eef6f8', badge='#5fd3b8', hero='#eef3f6', button='#232c37', button_border='#354251',
-                     button_hover='#2c3845', button_pressed='#34424f', disabled_bg='#1c232b', disabled_text='#5f6f7b',
-                     console_bg='#0b0f14', console_text='#cfe3df', list_bg='#161c23', tab='#1f2731',
-                     notice='#e0a458', danger='#f08a8d', danger_bg='#3a1f22', danger_border='#6b3437',
-                     info_bg='#16302c', info_border='#2f5f57', scroll='#3a4756', dark=True),
-    'Sand': dict(bg='#f7f3ec', surface='#fffdf9', text='#3b2f24', muted='#7a6a58', border='#e6dccd',
-                 input_border='#d3c4ae', accent='#b5562b', accent_hover='#9a4722', on_accent='#ffffff',
-                 accent_soft='#f3dfd1', accent_soft_text='#83391a', sidebar='#3a2a1f', sidebar_text='#d9c8b4',
-                 brand='#fff6ea', badge='#f2b37c', hero='#4a3222', button='#f1e9dd', button_border='#dccdb8',
-                 button_hover='#e8dccb', button_pressed='#dfcfb9', disabled_bg='#f1ece4', disabled_text='#a8998a',
-                 console_bg='#3a2a1f', console_text='#f3e6d6', list_bg='#faf6f0', tab='#efe7da',
-                 notice='#9a5a12', danger='#a43c40', danger_bg='#fbeceb', danger_border='#e4bab9',
-                 info_bg='#f6ece0', info_border='#e2c9ab', scroll='#d3c4ae', dark=False),
+    'Light': dict(
+        bg='#f4f6fa', surface='#ffffff', list_bg='#f7f8fb', text='#1b2230', muted='#5f6b7d',
+        border='#e3e7ee', input_border='#cfd6e1', accent='#3b6cf6', accent_hover='#2f5be0',
+        on_accent='#ffffff', accent_soft='#e8eeff', accent_soft_text='#2347b8',
+        sidebar='#ffffff', sidebar_border='#e3e7ee', sidebar_text='#3a4456', sidebar_muted='#97a1b2',
+        nav_hover='#f0f3f9', nav_active_bg='#e8eeff', nav_active_text='#2347b8',
+        brand='#111827', badge='#3b6cf6', hero='#111827',
+        button='#ffffff', button_border='#d6dce6', button_hover='#f3f5f9', button_pressed='#e8ecf3',
+        primary='#3b6cf6', primary_hover='#2f5be0', disabled_bg='#eef1f5', disabled_text='#9aa3b2',
+        console_bg='#0f172a', console_text='#d6e2ff', tile_bg='#ffffff', tile_selected_bg='#f1f5ff',
+        notice='#b45309', danger='#c03a3a', danger_bg='#fdeeee', danger_border='#f2c4c4',
+        info_bg='#eef4ff', info_border='#c9d8fb', scroll='#cdd4df',
+        tooltip_bg='#111827', tooltip_text='#f9fafb', font=SANS, heading_font=SANS,
+        icon_fill='#dbe5ff', swatch=('#ffffff', '#3b6cf6'), dark=False),
+    'Dark': dict(
+        bg='#141414', surface='#1d1d1e', list_bg='#18181a', text='#e6e6e6', muted='#9c9c9c',
+        border='#343434', input_border='#4b4b4d', accent='#c3c7cd', accent_hover='#e2e4e8',
+        on_accent='#121212', accent_soft='#2c2d30', accent_soft_text='#eceef1',
+        sidebar='qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2c2c2d, stop:1 #0c0c0c)',
+        sidebar_border='#3b3b3c', sidebar_text='#d2d2d2', sidebar_muted='#7c7c7c',
+        nav_hover='#262627',
+        nav_active_bg='qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4c4d50, stop:1 #303133)',
+        nav_active_text='#ffffff', brand='#ededed', badge='#b9bdc3', hero='#f2f2f2',
+        button='qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b3b3c, stop:1 #262627)',
+        button_solid='#303031', button_border='#505052', button_hover='#424244', button_pressed='#2a2a2b',
+        primary='qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f4f5f7, stop:0.48 #c9cdd2, stop:0.52 #b8bcc2, stop:1 #9da2a9)',
+        primary_hover='qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:0.48 #dcdfe3, stop:0.52 #caced3, stop:1 #b0b5bb)',
+        disabled_bg='#1f1f20', disabled_text='#5c5c5c',
+        console_bg='#0a0a0a', console_text='#d4d4d4', tile_bg='#1a1a1b', tile_selected_bg='#2a2b2d',
+        notice='#d6b98c', danger='#dd7a72', danger_bg='#2b1a19', danger_border='#5c302d',
+        info_bg='#26272a', info_border='#4b4d51', scroll='#4b4b4d',
+        tooltip_bg='#000000', tooltip_text='#e2e2e2', font=SANS,
+        heading_font='"Baskerville", "Georgia", "DejaVu Serif", "Times New Roman", serif',
+        icon_fill='#3b3d41', swatch=('#1d1d1e', '#c3c7cd'), dark=True),
+    'Aurora': dict(
+        bg='#120f24', surface='#1b1733', list_bg='#16122b', text='#ece9f9', muted='#a59fc7',
+        border='#2d2752', input_border='#3d3570', accent='#f472b6', accent_hover='#f9a8d4',
+        on_accent='#ffffff', accent_soft='#3a1f45', accent_soft_text='#fbcfe8',
+        sidebar='qlineargradient(x1:0, y1:0, x2:0.35, y2:1, stop:0 #3b1d6e, stop:0.55 #1e1a4d, stop:1 #0d3b4f)',
+        sidebar_border='#2d2752', sidebar_text='#ddd8f5', sidebar_muted='#8f86c0',
+        nav_hover='rgba(255, 255, 255, 18)', nav_active_bg='rgba(244, 114, 182, 60)', nav_active_text='#ffffff',
+        brand='#ffffff', badge='#67e8f9', hero='#ffffff',
+        button='#231e42', button_border='#3d3570', button_hover='#2b2550', button_pressed='#342d60',
+        primary='qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #ec4899, stop:1 #8b5cf6)',
+        primary_hover='qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f472b6, stop:1 #a78bfa)',
+        disabled_bg='#1f1b38', disabled_text='#5f5888',
+        console_bg='#0b0918', console_text='#c4b5fd', tile_bg='#1f1a3a', tile_selected_bg='#2a1d48',
+        notice='#fcd34d', danger='#fb7185', danger_bg='#3a1626', danger_border='#6b2442',
+        info_bg='#1c2a4a', info_border='#35508a', scroll='#3d3570',
+        tooltip_bg='#0b0918', tooltip_text='#f5f3ff', font=SANS, heading_font=SANS,
+        icon_fill='#4a2353', swatch=('#3b1d6e', '#f472b6'), dark=True),
 }
-DEFAULT_THEME = 'Teal'
+DEFAULT_THEME = 'Light'
+# Themes of earlier versions, kept in user settings.
+LEGACY_THEMES = {'Teal': 'Light', 'Sand': 'Light', 'Midnight': 'Dark', 'VMD Classic': 'Dark', 'Vintage': 'Dark'}
 
 STYLE = """
-QWidget {{ font-family: "Inter", "Segoe UI", "DejaVu Sans", sans-serif; font-size: 13px; color: {text}; }}
-QMainWindow, QDialog, QWidget#workspace {{ background: {bg}; }}
+QWidget {{ font-family: {font}; font-size: 13px; color: {text}; }}
+QMainWindow, QDialog, QWidget#workspace, QStackedWidget#pages {{ background: {bg}; }}
 QWidget#page {{ background: {surface}; }}
-QFrame#sidebar {{ background: {sidebar}; border-radius: 16px; }}
-QFrame#sidebar QLabel {{ background: transparent; }}
-QLabel#brand {{ color: {brand}; font-size: 23px; font-weight: 700; }}
-QLabel#sidebarText {{ color: {sidebar_text}; font-size: 13px; }}
-QLabel#badge {{ color: {badge}; font-size: 11px; font-weight: 700; }}
-QLabel#hero {{ font-size: 27px; font-weight: 700; color: {hero}; }}
-QLabel#sectionTitle {{ font-size: 19px; font-weight: 650; margin: 6px 0; }}
+QWidget#transparent {{ background: transparent; }}
+QFrame#rail {{ background: {sidebar}; border: 1px solid {sidebar_border}; border-radius: 18px; }}
+QFrame#rail QLabel {{ background: transparent; }}
+QLabel#brand {{ color: {brand}; font-family: {heading_font}; font-size: 19px; font-weight: 800; }}
+QLabel#brandSub {{ color: {badge}; font-size: 10px; font-weight: 700; letter-spacing: 2px; }}
+QLabel#railHeading {{ color: {sidebar_muted}; font-size: 10px; font-weight: 700; letter-spacing: 2px; }}
+QPushButton#nav {{ background: transparent; color: {sidebar_text}; border: none; border-radius: 10px;
+    padding: 11px 14px; text-align: left; font-size: 14px; font-weight: 600; }}
+QPushButton#nav:hover {{ background: {nav_hover}; }}
+QPushButton#nav:checked {{ background: {nav_active_bg}; color: {nav_active_text}; }}
+QPushButton#swatch {{ background: transparent; color: {sidebar_text}; border: 1px solid transparent;
+    border-radius: 9px; padding: 6px 10px; text-align: left; font-weight: 600; }}
+QPushButton#swatch:hover {{ background: {nav_hover}; }}
+QPushButton#swatch:checked {{ border: 1px solid {badge}; color: {brand}; }}
+QPushButton#railButton {{ background: {nav_hover}; color: {sidebar_text}; border: 1px solid {sidebar_border};
+    border-radius: 10px; padding: 9px; font-weight: 600; }}
+QPushButton#railButton:hover {{ color: {brand}; border-color: {badge}; }}
+QLabel#hero {{ font-family: {heading_font}; font-size: 23px; font-weight: 750; color: {hero}; }}
+QLabel#subtitle {{ color: {muted}; font-size: 13px; }}
+QFrame#outputBar {{ background: {surface}; border: 1px solid {border}; border-radius: 12px; }}
+QFrame#outputBar QLineEdit {{ border: none; background: transparent; padding: 6px 2px; }}
+QLabel#overline {{ color: {muted}; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; }}
+QFrame#panel, QFrame#card {{ background: {surface}; border: 1px solid {border}; border-radius: 14px; }}
+QFrame#strip {{ background: {accent_soft}; border: none; border-radius: 10px; }}
+QFrame#strip QLabel {{ color: {accent_soft_text}; background: transparent; }}
+QFrame#tile {{ background: {tile_bg}; border: 1px solid {border}; border-radius: 12px; }}
+QFrame#tile:hover {{ border: 1px solid {accent}; }}
+QFrame#tile[selected="true"] {{ background: {tile_selected_bg}; border: 2px solid {accent}; }}
+QFrame#tile QLabel {{ background: transparent; }}
+QLabel#tileGlyph {{ font-size: 19px; color: {accent}; font-weight: 700; }}
+QLabel#tileTitle {{ font-weight: 700; font-size: 13px; }}
+QLabel#tileText {{ color: {muted}; font-size: 11px; }}
+QFrame#exampleCard {{ background: {surface}; border: 1px solid {border}; border-radius: 14px; }}
+QFrame#exampleCard:hover {{ border: 1px solid {accent}; }}
+QFrame#exampleCard QLabel {{ background: transparent; }}
+QLabel#cardTitle {{ font-family: {heading_font}; font-size: 15px; font-weight: 700; }}
+QLabel#chip {{ background: {accent_soft}; color: {accent_soft_text}; border-radius: 7px; padding: 2px 8px;
+    font-size: 10px; font-weight: 700; letter-spacing: 1px; }}
+QLabel#path {{ color: {muted}; font-family: {heading_font}; font-size: 11px; }}
+QLabel#sectionTitle {{ font-family: {heading_font}; font-size: 18px; font-weight: 700; margin: 4px 0; }}
+QLabel#runTitle {{ font-family: {heading_font}; font-size: 21px; font-weight: 750; color: {hero}; }}
 QLabel#fieldLabel {{ font-weight: 600; }}
 QCheckBox#fieldToggle {{ font-weight: 600; }}
 QLabel#muted {{ color: {muted}; }}
 QLabel#notice {{ color: {notice}; }}
-QFrame#card {{ background: {surface}; border: 1px solid {border}; border-radius: 10px; }}
 QFrame#fieldRow {{ background: transparent; border: none; }}
-QFrame#banner {{ border-radius: 8px; padding: 2px; }}
+QFrame#banner {{ border-radius: 10px; padding: 2px; }}
 QFrame#banner[level="error"] {{ background: {danger_bg}; border: 1px solid {danger_border}; }}
 QFrame#banner[level="error"] QLabel {{ color: {danger}; }}
 QFrame#banner[level="info"] {{ background: {info_bg}; border: 1px solid {info_border}; }}
-QLineEdit, QComboBox, QPlainTextEdit {{ background: {surface}; border: 1px solid {input_border}; border-radius: 6px; padding: 7px; selection-background-color: {accent_soft}; selection-color: {text}; }}
+QLineEdit, QComboBox, QPlainTextEdit {{ background: {surface}; border: 1px solid {input_border}; border-radius: 8px;
+    padding: 7px 9px; selection-background-color: {accent_soft}; selection-color: {text}; }}
 QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus {{ border: 1px solid {accent}; }}
 QComboBox::drop-down {{ width: 26px; border: none; }}
 QComboBox::down-arrow {{ image: url("{arrow_icon}"); width: 10px; height: 10px; }}
-QComboBox QAbstractItemView {{ background: {surface}; color: {text}; selection-background-color: {accent_soft}; selection-color: {text}; }}
-QPushButton {{ background: {button}; border: 1px solid {button_border}; border-radius: 7px; padding: 8px 13px; font-weight: 600; }}
+QComboBox QAbstractItemView {{ background: {surface}; color: {text}; selection-background-color: {accent_soft};
+    selection-color: {text}; }}
+QPushButton {{ background: {button}; border: 1px solid {button_border}; border-radius: 9px; padding: 8px 14px;
+    font-weight: 600; }}
 QPushButton:hover {{ background: {button_hover}; }}
 QPushButton:pressed {{ background: {button_pressed}; }}
-QPushButton#primary {{ background: {accent}; color: {on_accent}; border-color: {accent}; }}
-QPushButton#primary:hover {{ background: {accent_hover}; }}
+QPushButton#primary {{ background: {primary}; color: {on_accent}; border: 1px solid {accent}; padding: 8px 18px; }}
+QPushButton#primary:hover {{ background: {primary_hover}; }}
 QPushButton#danger {{ color: {danger}; background: {danger_bg}; border-color: {danger_border}; }}
 QPushButton#quiet, QPushButton#disclosure {{ background: transparent; color: {muted}; border: none; padding: 4px 8px; }}
 QPushButton#disclosure {{ color: {accent}; font-weight: 700; padding-left: 0; }}
 QPushButton#quiet:hover, QPushButton#disclosure:hover {{ color: {accent}; }}
-QPushButton:disabled, QLineEdit:disabled, QComboBox:disabled {{ color: {disabled_text}; background: {disabled_bg}; border-color: {border}; }}
-QPushButton#primary:disabled, QPushButton#danger:disabled {{ color: {disabled_text}; background: {disabled_bg}; border-color: {border}; }}
+QPushButton:disabled, QLineEdit:disabled, QComboBox:disabled {{ color: {disabled_text}; background: {disabled_bg};
+    border-color: {border}; }}
+QPushButton#primary:disabled, QPushButton#danger:disabled {{ color: {disabled_text}; background: {disabled_bg};
+    border-color: {border}; }}
 QCheckBox {{ spacing: 8px; padding: 3px; background: transparent; }}
-QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {input_border}; border-radius: 4px; background: {surface}; }}
+QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {input_border}; border-radius: 5px;
+    background: {surface}; }}
 QCheckBox::indicator:hover {{ border-color: {accent}; }}
 QCheckBox::indicator:checked {{ background: {accent}; border-color: {accent}; image: url("{check_icon}"); }}
 QCheckBox::indicator:disabled {{ background: {disabled_bg}; border-color: {border}; }}
-QTabWidget::pane {{ border: 1px solid {border}; background: {surface}; border-radius: 10px; }}
-QTabBar::tab {{ background: {tab}; padding: 12px 22px; margin-right: 5px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: 600; }}
-QTabBar::tab:selected {{ background: {surface}; color: {accent}; border-bottom: 3px solid {accent}; }}
-QListWidget {{ background: {list_bg}; border: none; border-radius: 8px; padding: 5px; outline: none; }}
-QListWidget::item {{ padding: 10px 8px; border-radius: 6px; margin-bottom: 3px; }}
+QListWidget {{ background: {list_bg}; border: none; border-radius: 10px; padding: 6px; outline: none; }}
+QListWidget::item {{ padding: 9px 10px; border-radius: 7px; margin-bottom: 2px; }}
+QListWidget::item:hover {{ background: {button_hover}; }}
 QListWidget::item:selected {{ background: {accent_soft}; color: {accent_soft_text}; }}
-QScrollArea {{ border: none; background: {surface}; }}
-QScrollBar:vertical {{ background: {list_bg}; width: 10px; }}
-QScrollBar::handle:vertical {{ background: {scroll}; border-radius: 5px; min-height: 30px; }}
+QScrollArea {{ border: none; background: transparent; }}
+QScrollArea > QWidget > QWidget#transparent {{ background: transparent; }}
+QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
+QScrollBar::handle:vertical {{ background: {scroll}; border-radius: 4px; min-height: 30px; }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
-QProgressBar {{ background: {border}; border: none; border-radius: 4px; height: 7px; }}
-QProgressBar::chunk {{ background: {accent}; border-radius: 4px; }}
-QPlainTextEdit#console {{ background: {console_bg}; color: {console_text}; border: none; font-family: "DejaVu Sans Mono", monospace; font-size: 12px; padding: 14px; }}
-QToolTip {{ background: {sidebar}; color: {brand}; padding: 6px; border: none; }}
+QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px; }}
+QScrollBar::handle:horizontal {{ background: {scroll}; border-radius: 4px; min-width: 30px; }}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0px; }}
+QProgressBar {{ background: {border}; border: none; border-radius: 3px; }}
+QProgressBar::chunk {{ background: {primary}; border-radius: 3px; }}
+QPlainTextEdit#console {{ background: {console_bg}; color: {console_text}; border: none; border-radius: 12px;
+    font-family: {mono}; font-size: 12px; padding: 14px; }}
+QSplitter::handle {{ background: transparent; }}
+QToolTip {{ background: {tooltip_bg}; color: {tooltip_text}; padding: 7px; border: none; border-radius: 6px; }}
+QStatusBar {{ background: {bg}; color: {muted}; }}
 QFileDialog QListView, QFileDialog QTreeView {{ background: {surface}; color: {text}; }}
 """
 
 
 def theme_icons(name, theme):
     """Check-mark and drop-down arrow drawn in the theme's colours."""
-    folder = Path(tempfile.gettempdir()) / f'gmxtransplant-{os.getuid() if hasattr(os, "getuid") else 0}' / name
+    folder = Path(tempfile.gettempdir()) / f'gmxtransplant-{os.getuid() if hasattr(os, "getuid") else 0}' / name.replace(' ', '_')
     folder.mkdir(parents=True, exist_ok=True)
     icons = {
         'check_icon': ('check.svg', f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" '
@@ -166,22 +244,24 @@ def apply_theme(name):
     """Style every window of the application (main window and dialogs alike)."""
     from PySide6.QtGui import QPalette, QColor
     from PySide6.QtWidgets import QApplication
-    theme = THEMES.get(name, THEMES[DEFAULT_THEME])
+    name = name if name in THEMES else DEFAULT_THEME
+    theme = THEMES[name]
     try:
-        icons = theme_icons(name if name in THEMES else DEFAULT_THEME, theme)
+        icons = theme_icons(name, theme)
     except OSError:
         icons = {'check_icon': '', 'arrow_icon': ''}  # Plain indicators still show state.
     app = QApplication.instance()
     palette = QPalette()
     for role, key in [(QPalette.ColorRole.Window, 'bg'), (QPalette.ColorRole.WindowText, 'text'),
                       (QPalette.ColorRole.Base, 'surface'), (QPalette.ColorRole.AlternateBase, 'list_bg'),
-                      (QPalette.ColorRole.Text, 'text'), (QPalette.ColorRole.Button, 'button'),
+                      (QPalette.ColorRole.Text, 'text'), (QPalette.ColorRole.Button, 'button_solid'),
                       (QPalette.ColorRole.ButtonText, 'text'), (QPalette.ColorRole.Highlight, 'accent'),
-                      (QPalette.ColorRole.HighlightedText, 'on_accent'), (QPalette.ColorRole.ToolTipBase, 'sidebar'),
-                      (QPalette.ColorRole.ToolTipText, 'brand'), (QPalette.ColorRole.PlaceholderText, 'muted')]:
-        palette.setColor(role, QColor(theme[key]))
+                      (QPalette.ColorRole.HighlightedText, 'on_accent'),
+                      (QPalette.ColorRole.ToolTipBase, 'tooltip_bg'),
+                      (QPalette.ColorRole.ToolTipText, 'tooltip_text'), (QPalette.ColorRole.PlaceholderText, 'muted')]:
+        palette.setColor(role, QColor(theme.get(key, theme.get('button'))))
     app.setPalette(palette)
-    app.setStyleSheet(STYLE.format(**theme, **icons))
+    app.setStyleSheet(STYLE.format(**theme, **icons, mono=MONO))
 
 
 def label(text, name=None):
@@ -200,14 +280,114 @@ def button(text, callback, primary=False):
     return result
 
 
+def repolish(widget):
+    widget.style().unpolish(widget)
+    widget.style().polish(widget)
+
+
+
+# Example cards: the original titles and descriptions.
+EXAMPLE_TITLES = {'popc': 'Equilibrated POPC membrane: D1R',
+                  'addbinder': 'Add binder: dopamine (extracellular)',
+                  'addbinder_gprotein': 'Add binder: G protein (intracellular)'}
+EXAMPLE_DETAILS = {
+    'charmprot': 'Choose reference and transplant folders. Replace proteins and ligands automatically while retaining the reference environment.',
+    'protein': 'Insert a protein and its bound ligands into a prepared membrane system using matching topology inputs.',
+    'lig': 'Replace one bound ligand (LI1) with another (LI2) using explicit heavy-atom correspondence, its ITP and its force field.',
+    'chl': 'Restore five experimental cholesterol molecules into the prepared D1R system. Uses Open Babel, installed with GMXtransplant.',
+    'popc': 'Replace the POPC/POPE/cholesterol membrane of the apo D1 receptor build with equilibrated pure POPC; the receptor keeps its OPM placement. Writes the system and a GROMACS equilibration folder.',
+    'addbinder': 'Extracellular ligand: place dopamine above the apo D1 receptor, once straight above at 20 Å and three times from random directions at 20–25 Å; one run-ready folder each.',
+    'addbinder_gprotein': 'Intracellular protein: place the Gs heterotrimer below the apo D1 receptor in its receptor-bound arrangement: pulled straight out to 20 Å (shorter if the box needs it) and towards two random sides at 15 Å, one of them also randomly rotated; one run-ready folder each.',
+}
+PAGES = ['Configuration', 'Examples', 'Run & results']
+
+
+class Tile(QFrame):
+    """A clickable card: a mode on the Build page."""
+
+    def __init__(self, title, callback, parent=None):
+        super().__init__(parent)
+        self.setObjectName('tile')
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.callback = callback
+        box = QHBoxLayout(self)
+        box.setContentsMargins(12, 10, 12, 10)
+        box.setSpacing(10)
+        self.icon = QLabel()
+        self.icon.setFixedSize(40, 40)
+        box.addWidget(self.icon)
+        box.addWidget(label(title, 'tileTitle'), 1)
+        self.set_selected(False)
+
+    def set_selected(self, selected):
+        self.setProperty('selected', 'true' if selected else 'false')
+        repolish(self)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.callback()
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key.Key_Space, Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.callback()
+        else:
+            super().keyPressEvent(event)
+
+
+class ResponsiveGrid(QWidget):
+    """Cards in as many columns as fit, so the examples need no scrolling."""
+
+    def __init__(self, widgets, minimum_width, maximum_columns, viewport=None, parent=None):
+        super().__init__(parent)
+        # Columns follow the visible width (a scroll area's viewport), never the cards' own minimum.
+        self.viewport = viewport
+        if viewport is not None:
+            viewport.installEventFilter(self)
+        self.setObjectName('transparent')
+        self.widgets, self.minimum_width, self.maximum_columns = widgets, minimum_width, maximum_columns
+        self.grid = QGridLayout(self)
+        self.grid.setContentsMargins(0, 0, 0, 0)
+        self.grid.setSpacing(14)
+        self.columns = 0
+        self.arrange(maximum_columns)
+
+    def arrange(self, columns):
+        if columns == self.columns:
+            return
+        self.columns = columns
+        for widget in self.widgets:
+            self.grid.removeWidget(widget)
+        for index, widget in enumerate(self.widgets):
+            self.grid.addWidget(widget, index // columns, index % columns)
+        for column in range(self.maximum_columns):
+            self.grid.setColumnStretch(column, 1 if column < columns else 0)
+
+    def fit(self, width):
+        self.arrange(max(1, min(self.maximum_columns, width // self.minimum_width)))
+
+    def eventFilter(self, watched, event):
+        if watched is self.viewport and event.type() == QEvent.Type.Resize:
+            self.fit(event.size().width())
+        return False
+
+    def resizeEvent(self, event):
+        if self.viewport is None:
+            self.fit(event.size().width())
+        super().resizeEvent(event)
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(APPLICATION_TITLE)
         self.resize(1320, 900)
-        self.setMinimumSize(960, 680)
+        self.setMinimumSize(980, 700)
         self.settings = QSettings()
-        self.theme = str(self.settings.value('theme', DEFAULT_THEME))
+        saved = str(self.settings.value('theme', DEFAULT_THEME))
+        self.theme = LEGACY_THEMES.get(saved, saved)
         if self.theme not in THEMES:
             self.theme = DEFAULT_THEME
         apply_theme(self.theme)
@@ -225,45 +405,13 @@ class MainWindow(QMainWindow):
         central.setObjectName('workspace')
         self.setCentralWidget(central)
         shell = QHBoxLayout(central)
-        shell.setContentsMargins(18, 18, 18, 18)
-        shell.setSpacing(22)
-        sidebar = QFrame()
-        sidebar.setObjectName('sidebar')
-        sidebar.setFixedWidth(210)
-        side = QVBoxLayout(sidebar)
-        side.setContentsMargins(21, 27, 21, 22)
-        side.addWidget(label('GMX\nTRANSPLANT', 'brand'))
-        side.addWidget(label('MD SYSTEM BUILDER', 'badge'))
-        side.addSpacing(38)
-        for heading, detail in [('01  Choose your inputs', 'Browse coordinates and matching parameters.'),
-                                ('02  Shape your system', 'Edit selections and scientific settings.'),
-                                ('03  Review & run', 'Check configuration, run, inspect results.')]:
-            side.addWidget(label(heading, 'badge'))
-            side.addWidget(label(detail, 'sidebarText'))
-            side.addSpacing(18)
-        side.addStretch()
-        self.documentation_button = button('Documentation', self.open_documentation)
-        self.documentation_button.setToolTip('Open the PDF documentation shipped with GMXtransplant.')
-        side.addWidget(self.documentation_button)
-        shell.addWidget(sidebar)
+        shell.setContentsMargins(16, 16, 16, 8)
+        shell.setSpacing(18)
+        shell.addWidget(self.build_rail())
         body = QVBoxLayout()
         body.setSpacing(12)
         shell.addLayout(body, 1)
-        header = QHBoxLayout()
-        titles = QVBoxLayout()
-        titles.addWidget(label('Molecular System Editor', 'hero'))
-        header.addLayout(titles, 1)
-        theme_box = QVBoxLayout()
-        theme_box.addWidget(label('Theme', 'muted'))
-        self.theme_combo = QComboBox()
-        self.theme_combo.addItems(list(THEMES))
-        self.theme_combo.setCurrentText(self.theme)
-        self.theme_combo.setToolTip('Colour theme for every window')
-        self.theme_combo.currentTextChanged.connect(self.set_theme)
-        theme_box.addWidget(self.theme_combo)
-        theme_box.addStretch()
-        header.addLayout(theme_box)
-        body.addLayout(header)
+        body.addLayout(self.build_top_bar())
         # Messages appear here, inside the window: a modal pop-up can open
         # behind the main window under WSLg and leave it unresponsive.
         self.banner = QFrame()
@@ -279,65 +427,174 @@ class MainWindow(QMainWindow):
         banner_row.addWidget(dismiss, 0, Qt.AlignmentFlag.AlignTop)
         self.banner.hide()
         body.addWidget(self.banner)
-        output_card = QFrame()
-        output_card.setObjectName('card')
-        out_box = QVBoxLayout(output_card)
-        out_box.addWidget(label('Output folder  ·  required before running'))
-        out_row = QHBoxLayout()
-        # The output folder starts as the folder gmxtransplant-gui was launched
-        # from, like the command-line tool; it is not carried over between sessions.
-        self.settings.remove('output_root')
-        self.output_root = QLineEdit(str(Path.cwd()))
-        self.output_root.setPlaceholderText('Choose where generated systems and example results will be written')
-        out_row.addWidget(self.output_root, 1)
-        self.output_browse = button('Choose folder…', self.choose_output)
-        out_row.addWidget(self.output_browse)
-        out_box.addLayout(out_row)
-        self.output_hint = label('', 'muted')
-        self.output_hint.hide()
-        out_box.addWidget(self.output_hint)
-        body.addWidget(output_card)
-        self.output_root.textChanged.connect(self.update_destination)
-        self.tabs = QTabWidget()
+        self.tabs = QStackedWidget()
+        self.tabs.setObjectName('pages')
         body.addWidget(self.tabs, 1)
         self.build_configuration_tab()
         self.build_examples_tab()
         self.build_run_tab()
+        for number in range(len(PAGES)):
+            shortcut = QShortcut(QKeySequence(f'Ctrl+{number + 1}'), self)
+            shortcut.activated.connect(lambda n=number: self.show_page(n))
+        self.paint_pictograms()
         self.install_document(template_document(self.mode))
+        self.select_mode(self.mode)
+        self.show_page(0)
         self.update_destination()
         self.statusBar().showMessage('Ready')
 
+    # -- frame --------------------------------------------------------------
+    def build_rail(self):
+        rail = QFrame()
+        rail.setObjectName('rail')
+        rail.setFixedWidth(208)
+        side = QVBoxLayout(rail)
+        side.setContentsMargins(16, 24, 16, 18)
+        side.setSpacing(4)
+        side.addWidget(label('GMX\nTRANSPLANT', 'brand'))
+        side.addWidget(label('MD SYSTEM BUILDER', 'brandSub'))
+        side.addSpacing(26)
+        self.nav_group = QButtonGroup(self)
+        self.nav_group.setExclusive(True)
+        self.nav_buttons = []
+        for number, name in enumerate(PAGES):
+            control = QPushButton(f'{number + 1:02d}   {name}'.replace('&', '&&'))
+            control.setObjectName('nav')
+            control.setCheckable(True)
+            control.setCursor(Qt.CursorShape.PointingHandCursor)
+            control.setToolTip(f'{name}  (Ctrl+{number + 1})')
+            control.clicked.connect(lambda checked=False, n=number: self.show_page(n))
+            self.nav_group.addButton(control, number)
+            self.nav_buttons.append(control)
+            side.addWidget(control)
+        side.addStretch()
+        side.addWidget(label('THEME', 'railHeading'))
+        side.addSpacing(4)
+        self.theme_group = QButtonGroup(self)
+        self.theme_group.setExclusive(True)
+        self.theme_buttons = {}
+        for name, theme in THEMES.items():
+            control = QPushButton(name)
+            control.setObjectName('swatch')
+            control.setCheckable(True)
+            control.setCursor(Qt.CursorShape.PointingHandCursor)
+            control.setIcon(self.swatch_icon(*theme['swatch']))
+            control.setChecked(name == self.theme)
+            control.clicked.connect(lambda checked=False, n=name: self.set_theme(n))
+            self.theme_group.addButton(control)
+            self.theme_buttons[name] = control
+            side.addWidget(control)
+        side.addSpacing(14)
+        self.documentation_button = button('Documentation', self.open_documentation)
+        self.documentation_button.setObjectName('railButton')
+        self.documentation_button.setToolTip('Open the PDF documentation shipped with GMXtransplant.')
+        side.addWidget(self.documentation_button)
+        return rail
+
+    def paint_pictograms(self):
+        from .icons import pictogram
+        theme = THEMES[self.theme]
+        cache = {}
+        for target, mode in self.pictograms:
+            if mode not in cache:
+                cache[mode] = pictogram(mode, theme['accent'], theme['muted'], theme['icon_fill'])
+            target.setPixmap(cache[mode])
+
+    @staticmethod
+    def swatch_icon(fill, accent):
+        from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
+        pixmap = QPixmap(36, 36)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(QColor('#8a94a0'))
+        painter.setBrush(QColor(fill))
+        painter.drawEllipse(2, 2, 32, 32)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(accent))
+        painter.drawEllipse(11, 11, 14, 14)
+        painter.end()
+        return QIcon(pixmap)
+
+    def build_top_bar(self):
+        bar = QHBoxLayout()
+        bar.setSpacing(18)
+        titles = QVBoxLayout()
+        titles.setSpacing(2)
+        titles.addWidget(label('Molecular System Editor', 'hero'))
+        titles.addStretch()
+        bar.addLayout(titles, 1)
+        output = QFrame()
+        output.setObjectName('outputBar')
+        output.setMinimumWidth(430)
+        box = QVBoxLayout(output)
+        box.setContentsMargins(14, 8, 8, 8)
+        box.setSpacing(0)
+        box.addWidget(label('Output folder  ·  required before running', 'muted'))
+        row = QHBoxLayout()
+        # The output folder starts as the folder gmxtransplant-gui was launched
+        # from, like the command-line tool; it is not carried over between sessions.
+        self.settings.remove('output_root')
+        self.output_root = QLineEdit(str(Path.cwd()))
+        self.output_root.setPlaceholderText('Where generated systems and example results are written')
+        self.output_root.textChanged.connect(self.update_destination)
+        row.addWidget(self.output_root, 1)
+        self.output_browse = button('Choose folder…', self.choose_output)
+        row.addWidget(self.output_browse)
+        box.addLayout(row)
+        self.output_hint = label('', 'notice')
+        self.output_hint.hide()
+        box.addWidget(self.output_hint)
+        bar.addWidget(output, 1)
+        return bar
+
+    def show_page(self, number):
+        self.tabs.setCurrentIndex(number)
+        self.nav_buttons[number].setChecked(True)
+
+    # -- pages --------------------------------------------------------------
     def build_configuration_tab(self):
         self.config_tab = QWidget()
         layout = QVBoxLayout(self.config_tab)
-        row = QHBoxLayout()
-        self.mode_combo = QComboBox()
-        for key, name in MODES.items():
-            self.mode_combo.addItem(name, key)
-        self.mode_combo.currentIndexChanged.connect(self.change_mode)
-        row.addWidget(self.mode_combo, 1)
-        layout.addLayout(row)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        tiles = QGridLayout()
+        tiles.setSpacing(10)
+        self.pictograms = []
+        self.mode_buttons = {}
+        for index, mode in enumerate(MODES):
+            tile = Tile(MODES[mode], lambda m=mode: self.select_mode(m))
+            self.pictograms.append((tile.icon, mode))
+            tile.setToolTip(MODE_DESCRIPTIONS[mode])
+            self.mode_buttons[mode] = tile
+            tiles.addWidget(tile, index // 4, index % 4)
+        for column in range(4):
+            tiles.setColumnStretch(column, 1)
+        layout.addLayout(tiles)
+        strip = QFrame()
+        strip.setObjectName('strip')
+        strip_box = QHBoxLayout(strip)
+        strip_box.setContentsMargins(14, 9, 14, 9)
         self.mode_info = label('')
         self.mode_info.setTextFormat(Qt.TextFormat.RichText)
-        layout.addSpacing(10)
-        layout.addWidget(self.mode_info)
-        layout.addWidget(label('Input editor', 'sectionTitle'))
-        layout.addWidget(label('Every input is a complete path. Browse for each one; nothing is '
-                               'resolved against a shared folder.', 'muted'))
-        self.form_page = QWidget()
+        strip_box.addWidget(self.mode_info)
+        layout.addWidget(strip)
+        self.form_page = QFrame()
+        self.form_page.setObjectName('panel')
         self.form_layout = QVBoxLayout(self.form_page)
-        self.form_layout.setContentsMargins(0, 4, 0, 0)
+        self.form_layout.setContentsMargins(6, 6, 6, 6)
         layout.addWidget(self.form_page, 1)
         actions = QHBoxLayout()
+        actions.addStretch()
         self.schema_button = button('Check configuration', lambda: self.start_current('schema'))
         self.paths_button = button('Check input paths', lambda: self.start_current('paths'))
         self.run_button = button('Run pipeline', lambda: self.start_current('run'), True)
         actions.addWidget(self.schema_button)
         actions.addWidget(self.paths_button)
-        actions.addStretch()
+        actions.addSpacing(6)
         actions.addWidget(self.run_button)
         layout.addLayout(actions)
-        self.tabs.addTab(self.config_tab, 'Configuration')
+        self.tabs.addWidget(self.config_tab)
 
     def build_examples_tab(self):
         self.examples_tab = QWidget()
@@ -345,104 +602,120 @@ class MainWindow(QMainWindow):
         outer.setContentsMargins(0, 0, 0, 0)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         content = QWidget()
+        content.setObjectName('transparent')
         scroll.setWidget(content)
         outer.addWidget(scroll)
         layout = QVBoxLayout(content)
-        layout.setContentsMargins(24, 20, 24, 20)
-        layout.addWidget(label('Start with a complete example', 'sectionTitle'))
-        layout.addWidget(label('Ready-to-run inputs are included. Select your output folder above, then run an example in one click.', 'muted'))
-        descriptions = {
-            'charmprot': 'Choose reference and transplant folders. Replace proteins and ligands automatically while retaining the reference environment.',
-            'protein': 'Insert a protein and its bound ligands into a prepared membrane system using matching topology inputs.',
-            'lig': 'Replace one bound ligand (LI1) with another (LI2) using explicit heavy-atom correspondence, its ITP and its force field.',
-            'chl': 'Restore five experimental cholesterol molecules into the prepared D1R system. Uses Open Babel, installed with GMXtransplant.',
-            'popc': 'Replace the POPC/POPE/cholesterol membrane of the apo D1 receptor build with equilibrated pure POPC; the receptor keeps its OPM placement. Writes the system and a GROMACS equilibration folder.',
-            'addbinder': 'Extracellular ligand: place dopamine above the apo D1 receptor, once straight above at 20 Å and three times from random directions at 20–25 Å; one run-ready folder each.',
-            'addbinder_gprotein': 'Intracellular protein: place the Gs heterotrimer below the apo D1 receptor in its receptor-bound arrangement: pulled straight out to 20 Å (shorter if the box needs it) and towards two random sides at 15 Å, one of them also randomly rotated; one run-ready folder each.',
-        }
-        titles = {'popc': 'Equilibrated POPC membrane: D1R',
-                  'addbinder': 'Add binder: dopamine (extracellular)',
-                  'addbinder_gprotein': 'Add binder: G protein (intracellular)'}
+        layout.setContentsMargins(0, 0, 4, 0)
+        layout.setSpacing(12)
         self.example_buttons = []
+        cards = []
         for key in EXAMPLE_KEYS:
             mode = example_mode(key)
             card = QFrame()
-            card.setObjectName('card')
+            card.setObjectName('exampleCard')
+            card.setAttribute(Qt.WidgetAttribute.WA_Hover)
             box = QVBoxLayout(card)
-            box.setContentsMargins(20, 15, 20, 15)
-            box.addWidget(label(titles.get(key, MODES[mode]), 'sectionTitle'))
-            box.addWidget(label(descriptions[key], 'muted'))
-            box.addWidget(label(f'Outputs: examples/{example_folder(key)}/', 'muted'))
+            box.setContentsMargins(16, 15, 16, 13)
+            box.setSpacing(7)
+            heading = QHBoxLayout()
+            heading.setSpacing(8)
+            icon = QLabel()
+            icon.setFixedSize(40, 40)
+            self.pictograms.append((icon, mode))
+            heading.addWidget(icon, 0, Qt.AlignmentFlag.AlignTop)
+            heading.addWidget(label(EXAMPLE_TITLES.get(key, MODES[mode]), 'cardTitle'), 1)
+            box.addLayout(heading)
+            box.addWidget(label(EXAMPLE_DETAILS[key], 'muted'))
+            box.addStretch()
+            box.addWidget(label(f'Outputs: examples/{example_folder(key)}/', 'path'))
             row = QHBoxLayout()
+            row.setSpacing(8)
+            open_button = button('Open in editor', lambda checked=False, k=key: self.open_example(k))
+            open_button.setObjectName('disclosure')
+            row.addWidget(open_button)
             row.addStretch()
-            row.addWidget(button('Open in editor', lambda checked=False, k=key: self.open_example(k)))
             run = button('Run example', lambda checked=False, k=key: self.run_example(k), True)
             self.example_buttons.append(run)
             row.addWidget(run)
             box.addLayout(row)
-            layout.addWidget(card)
-        layout.addStretch()
+            cards.append(card)
+        layout.addWidget(ResponsiveGrid(cards, 235, 4, viewport=scroll.viewport()))
         layout.addWidget(label('Rerunning replaces generated files in that example’s folder. Source inputs stay unchanged.', 'muted'))
-        self.tabs.addTab(self.examples_tab, 'Examples')
+        layout.addStretch()
+        self.tabs.addWidget(self.examples_tab)
 
     def build_run_tab(self):
         page = QWidget()
         layout = QVBoxLayout(page)
-        self.run_title = label('Ready when you are', 'sectionTitle')
-        layout.addWidget(self.run_title)
-        self.run_detail = label('Configuration checks do not process coordinates. Full runs validate the assembled system.', 'muted')
-        layout.addWidget(self.run_detail)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        head = QFrame()
+        head.setObjectName('panel')
+        head_box = QVBoxLayout(head)
+        head_box.setContentsMargins(20, 16, 20, 16)
+        top = QHBoxLayout()
+        words = QVBoxLayout()
+        words.setSpacing(2)
+        self.run_title = label('Ready when you are', 'runTitle')
+        words.addWidget(self.run_title)
+        self.run_detail = label('Configuration checks do not process coordinates. Full runs validate the '
+                                'assembled system.', 'muted')
+        self.run_detail.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        words.addWidget(self.run_detail)
+        top.addLayout(words, 1)
+        self.cancel_button = button('Cancel run', self.cancel_run)
+        self.cancel_button.setObjectName('danger')
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.setToolTip('Stops the run in progress. Available only while a run is going.')
+        top.addWidget(self.cancel_button, 0, Qt.AlignmentFlag.AlignTop)
+        head_box.addLayout(top)
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
-        self.progress.setFixedHeight(8)
+        self.progress.setFixedHeight(6)
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
-        layout.addWidget(self.progress)
+        head_box.addSpacing(8)
+        head_box.addWidget(self.progress)
+        layout.addWidget(head)
         self.progress_model = RunProgress()
+        columns = QHBoxLayout()
+        columns.setSpacing(12)
         summary_card = QFrame()
-        summary_card.setObjectName('card')
-        summary_card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        summary_card.setObjectName('panel')
         summary_layout = QVBoxLayout(summary_card)
         summary_layout.setContentsMargins(20, 16, 20, 16)
-        summary_layout.addWidget(label('Progress at a glance', 'sectionTitle'))
-        self.summary_stage = label('Ready to start')
+        summary_layout.addWidget(label('AT A GLANCE', 'overline'))
+        self.summary_stage = label('Ready to start', 'cardTitle')
         self.summary_stage.setTextFormat(Qt.TextFormat.PlainText)
         summary_layout.addWidget(self.summary_stage)
         self.summary_facts = label('', 'muted')
         self.summary_facts.setTextFormat(Qt.TextFormat.PlainText)
+        self.summary_facts.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         summary_layout.addWidget(self.summary_facts)
         self.summary_notices = label('')
         self.summary_notices.setTextFormat(Qt.TextFormat.PlainText)
         self.summary_notices.setObjectName('notice')
         summary_layout.addWidget(self.summary_notices)
         self.summary_notices.hide()
-        layout.addWidget(summary_card)
-        self.command_toggle = QPushButton('View Command Progress')
-        self.command_toggle.setCheckable(True)
-        self.command_toggle.toggled.connect(self.toggle_command_progress)
-        layout.addWidget(self.command_toggle, 0, Qt.AlignmentFlag.AlignLeft)
-        self.console = QPlainTextEdit()
-        self.console.setReadOnly(True)
-        self.console.setObjectName('console')
-        self.console.setMaximumBlockCount(20000)
-        layout.addWidget(self.console, 3)
-        self.console.hide()
-        self.output_location = label('', 'muted')
+        summary_layout.addStretch()
+        columns.addWidget(summary_card, 3)
+        results_card = QFrame()
+        results_card.setObjectName('panel')
+        results_layout = QVBoxLayout(results_card)
+        results_layout.setContentsMargins(20, 16, 20, 16)
+        results_layout.addWidget(label('REPORTS  ·  DOUBLE-CLICK TO OPEN', 'overline'))
+        self.output_location = label('', 'path')
         self.output_location.setTextFormat(Qt.TextFormat.PlainText)
         self.output_location.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        layout.addWidget(self.output_location)
-        layout.addWidget(label('Reports · double-click to open', 'muted'))
+        results_layout.addWidget(self.output_location)
         self.results = QListWidget()
         self.results.setMinimumHeight(95)
         self.results.itemDoubleClicked.connect(self.open_result)
-        layout.addWidget(self.results, 1)
+        results_layout.addWidget(self.results, 1)
         row = QHBoxLayout()
-        self.cancel_button = button('Cancel run', self.cancel_run)
-        self.cancel_button.setObjectName('danger')
-        self.cancel_button.setEnabled(False)
-        self.cancel_button.setToolTip('Stops the run in progress. Available only while a run is going.')
-        row.addWidget(self.cancel_button)
         row.addStretch()
         self.viewer_buttons = {}
         self.viewers = {name: find_viewer(name) for name in ('pymol', 'vmd')}
@@ -454,8 +727,21 @@ class MainWindow(QMainWindow):
             control.setToolTip('Available after a completed run.')
             self.viewer_buttons[viewer] = control
             row.addWidget(control)
-        layout.addLayout(row)
-        self.tabs.addTab(page, 'Run && results')
+        results_layout.addLayout(row)
+        columns.addWidget(results_card, 2)
+        layout.addLayout(columns, 2)
+        self.command_toggle = QPushButton('View command progress')
+        self.command_toggle.setObjectName('disclosure')
+        self.command_toggle.setCheckable(True)
+        self.command_toggle.toggled.connect(self.toggle_command_progress)
+        layout.addWidget(self.command_toggle, 0, Qt.AlignmentFlag.AlignLeft)
+        self.console = QPlainTextEdit()
+        self.console.setReadOnly(True)
+        self.console.setObjectName('console')
+        self.console.setMaximumBlockCount(20000)
+        layout.addWidget(self.console, 3)
+        self.console.hide()
+        self.tabs.addWidget(page)
 
     def show_message(self, text, level='error'):
         self.banner.setProperty('level', level)
@@ -471,6 +757,10 @@ class MainWindow(QMainWindow):
         if name in THEMES:
             self.theme = name
             apply_theme(name)
+            self.theme_buttons[name].setChecked(True)
+            self.paint_pictograms()
+            for tile in self.mode_buttons.values():
+                repolish(tile)
             self.settings.setValue('theme', name)
 
     def install_document(self, raw):
@@ -483,21 +773,22 @@ class MainWindow(QMainWindow):
     def current_raw(self):
         return self.editor.value()
 
-    def change_mode(self):
-        new_mode = self.mode_combo.currentData()
-        if new_mode == self.mode:
-            return
-        try:
-            self.documents[self.mode] = self.current_raw()
-            raw = self.documents.get(new_mode) or template_document(new_mode)
-            self.mode = new_mode
-            self.install_document(raw)
-            self.update_destination()
-        except Exception as exc:
-            self.mode_combo.blockSignals(True)
-            self.mode_combo.setCurrentIndex(self.mode_combo.findData(self.mode))
-            self.mode_combo.blockSignals(False)
-            self.error(exc)
+    def mark_mode(self):
+        for mode, tile in self.mode_buttons.items():
+            tile.set_selected(mode == self.mode)
+
+    def select_mode(self, new_mode):
+        """Switch the Build page to another mode, keeping unsaved edits of the current one."""
+        if new_mode != self.mode:
+            try:
+                self.documents[self.mode] = self.current_raw()
+                raw = self.documents.get(new_mode) or template_document(new_mode)
+                self.mode = new_mode
+                self.install_document(raw)
+            except Exception as exc:
+                self.error(exc)
+        self.mark_mode()
+        self.update_destination()
 
     def choose_output(self):
         choose_path(self, 'directory', self.output_root.text() or str(Path.home()),
@@ -527,12 +818,10 @@ class MainWindow(QMainWindow):
             mode = example_mode(key)
             self.documents[self.mode] = self.current_raw()
             self.mode = mode
-            self.mode_combo.blockSignals(True)
-            self.mode_combo.setCurrentIndex(self.mode_combo.findData(mode))
-            self.mode_combo.blockSignals(False)
             # The example's own inputs, written out as the full paths they are.
             self.install_document(example_document(key))
-            self.tabs.setCurrentIndex(0)
+            self.mark_mode()
+            self.show_page(0)
             self.banner.hide()
             self.update_destination()
             self.statusBar().showMessage('Example opened for customization. Editor runs use the normal mode output folder.')
@@ -601,12 +890,12 @@ class MainWindow(QMainWindow):
         self.output_browse.setEnabled(False)
         self.cancel_button.setEnabled(True)
         self.update_destination()
-        self.tabs.setCurrentIndex(2)
+        self.show_page(2)
         process.start(sys.executable, ['-u', '-B', '-m', 'gmxtransplant.gui.worker', str(request), action])
 
     def toggle_command_progress(self, expanded):
         self.console.setVisible(expanded)
-        self.command_toggle.setText('Hide Command Progress' if expanded else 'View Command Progress')
+        self.command_toggle.setText('Hide command progress' if expanded else 'View command progress')
 
     def update_summary(self):
         model = self.progress_model
