@@ -1,0 +1,6 @@
+# Replace the membrane of the apo D1R build (POPC/POPE/cholesterol) with
+# equilibrated pure POPC. The receptor keeps its OPM placement.
+popc:
+  host: ../addbinder/host
+  equilibration:
+    enabled: true          # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh

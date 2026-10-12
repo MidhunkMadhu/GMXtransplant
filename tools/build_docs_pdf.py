@@ -25,6 +25,7 @@ SOURCES = [
     ("Desktop application", "docs/guides/GUI_USAGE.md"),
     ("CHARMM-GUI transplant mode", "docs/guides/CHARMPROT.md"),
     ("Add binder mode", "docs/guides/ADDBINDER.md"),
+    ("POPC membrane mode", "docs/guides/POPC.md"),
     ("Comparison views", "docs/guides/VISUALIZATION.md"),
     ("Portable and offline use", "docs/guides/PORTABLE_USAGE.md"),
 ]
@@ -64,7 +65,7 @@ WIDTHS = {
 # Characters the docs use that Windows-1252 cannot represent.
 TRANSLITERATE = {
     "≤": "<=", "≥": ">=", "→": "->", "←": "<-", "≈": "~", "∞": "inf",
-    "‑": "-", "─": "-", "│": "|", "├": "+", "└": "+", "•": "•",
+    "‑": "-", "−": "-", "─": "-", "│": "|", "├": "+", "└": "+", "•": "•",
 }
 
 
@@ -117,7 +118,8 @@ INLINE = [
     (re.compile(r"\*\*(.+?)\*\*"), r"\1"),
     (re.compile(r"(?<!\w)_(.+?)_(?!\w)"), r"\1"),
     (re.compile(r"`([^`]+)`"), r"\1"),
-    (re.compile(r"<[^>]+>"), ""),
+    # Only real HTML tags; placeholders such as <output> are text.
+    (re.compile(r"</?(?:br|img|sub|sup|p|div|span|a|b|i|em|strong|details|summary)\b[^>]*>", re.I), ""),
 ]
 
 
@@ -179,8 +181,15 @@ def parse(markdown: str):
         if bullet:
             flush()
             marker = "•" if bullet[2] in "-*+" else bullet[2]
-            blocks.append(("item", len(bullet[1]) // 2, marker, inline(bullet[3])))
+            text = [bullet[3]]
             index += 1
+            # Indented lines that are not themselves list items continue this item.
+            while (index < len(lines) and lines[index].strip() and lines[index][:1] in " \t"
+                   and len(lines[index]) - len(lines[index].lstrip()) > len(bullet[1])
+                   and not re.match(r"\s*([-*+]|\d+[.)])\s+", lines[index])):
+                text.append(lines[index].strip())
+                index += 1
+            blocks.append(("item", len(bullet[1]) // 2, marker, inline(" ".join(text))))
             continue
         if stripped.startswith(">"):
             flush()
@@ -303,22 +312,39 @@ class Document:
         columns = max(len(row) for row in rows)
         rows = [row + [""] * (columns - len(row)) for row in rows]
         size = CODE_SIZE
-        widths = [max(len(row[c]) for row in rows) for c in range(columns)]
-        while sum(widths) * 0.6 * size + 3 * size * (columns - 1) > BODY_WIDTH and size > 5.4:
+        gap = 3 * size
+        widths = [max(text_width(row[c], MONO, size) for row in rows) for c in range(columns)]
+        while sum(widths) + gap * (columns - 1) > BODY_WIDTH and size > 6.0:
             size -= 0.3
+            gap = 3 * size
+            widths = [max(text_width(row[c], MONO, size) for row in rows) for c in range(columns)]
+        available = BODY_WIDTH - 6 - gap * (columns - 1)
+        if sum(widths) > available:
+            # Narrow columns keep their width; the wide ones share the rest and wrap.
+            share = available / columns
+            narrow = [w for w in widths if w <= share]
+            wide = [c for c, w in enumerate(widths) if w > share]
+            rest = (available - sum(narrow)) / max(len(wide), 1)
+            widths = [w if w <= share else rest for w in widths]
         lead = size + 3.4
         self.space(6)
         for index, row in enumerate(rows):
-            self.room(lead)
-            self.y -= lead
-            x = LEFT + 3
             font = BOLD if index == 0 else MONO
-            for column, cell in enumerate(row):
-                self.text(cell, x, font if index == 0 else MONO, size, 0.12)
-                x += widths[column] * 0.6 * size + 3 * size
+            cells = [wrap(cell, font, size, widths[c]) or [""] for c, cell in enumerate(row)]
+            height = max(len(lines) for lines in cells)
+            self.room(lead * height)
+            for number in range(height):
+                self.y -= lead
+                x = LEFT + 3
+                for column, lines in enumerate(cells):
+                    if number < len(lines):
+                        self.text(lines[number], x, font, size, 0.12)
+                    x += widths[column] + gap
             if index == 0:
                 self.line(LEFT, self.y - 3, RIGHT, self.y - 3, 0.7)
                 self.y -= 3
+            elif height > 1:
+                self.y -= 2
         self.y -= 8
 
     def rule(self):

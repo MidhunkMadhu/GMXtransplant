@@ -59,7 +59,11 @@ class RunProgress:
                         '[VISUALIZATION]': 'Preparing molecular comparison views',
                         '[host]': 'Reading and classifying the host system',
                         '[frame]': 'Locating the membrane and the protein tip',
-                        '[binder]': 'Reading the binder and checking its parameters'}
+                        '[binder]': 'Reading the binder and checking its parameters',
+                        '[popc]': 'Placing the equilibrated POPC bilayer',
+                        '[water]': 'Hydrating the new bilayer and removing overlapping water',
+                        '[salt]': 'Restoring the salt concentration',
+                        '[equilibration]': 'Writing the GROMACS equilibration folder'}
         for prefix, description in charm_stages.items():
             if line.startswith(prefix):
                 self.stage = description
@@ -70,6 +74,16 @@ class RunProgress:
         rmsd = re.search(r'(?:RMSD.*?:|Alignment RMSD:)\s*([\d.]+)\s*A\b', line)
         if rmsd:
             self.facts['Alignment'] = f'Fit RMSD: {rmsd[1]} Å.'
+        if self.mode == 'popc':
+            placed = re.match(r'\[popc\] (\d+) upper / (\d+) lower placed', line)
+            if placed:
+                self.facts['POPC'] = f'{placed[1]} upper / {placed[2]} lower leaflet placed.'
+            membrane = re.match(r'\[host\] midplane z ([\d.]+) A; removing (.+)$', line)
+            if membrane:
+                self.facts['Host membrane'] = f'Midplane z {membrane[1]} Å; removed {membrane[2]}.'
+            salt = re.match(r'\[salt\] (.+)$', line)
+            if salt:
+                self.facts['Salt'] = salt[1]
         tip = re.match(r'\[frame\] .*tip (\S+) ([\d.]+) A beyond the (\w+) plane', line)
         if tip:
             self.facts['Protein tip'] = f'{tip[1]}, {tip[2]} Å beyond the {tip[3]} headgroup plane.'

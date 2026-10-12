@@ -6,6 +6,7 @@ import config
 import types
 from charmprot import CharmProtSpec
 from addbinder import AddBinderSpec
+from popc_membrane import PopcSpec
 
 
 @lru_cache(None)
@@ -31,6 +32,8 @@ def annotation_for(path):
             annotation = CharmProtSpec
         elif index == 0 and key == 'addbinder':
             annotation = AddBinderSpec
+        elif index == 0 and key == 'popc':
+            annotation = PopcSpec
         elif index == 0 and key == 'paths':
             annotation = Dict[str, Optional[str]]
         elif is_dataclass(annotation):

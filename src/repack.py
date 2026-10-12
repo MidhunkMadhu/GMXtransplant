@@ -138,12 +138,14 @@ def make_restrained_cholesterol_itp(source_path: str, mtype: str, new_name: str)
     return (header + text.rstrip("\n") + f"\n\n#ifdef POSRES\n[ position_restraints ]\n{rows}\n#endif\n")
 
 
-def _mdp(stage, cfg, first_dynamics: bool, groups) -> str:
-    restraint = float(stage.restraint)
-    lipid = float(cfg.lipid_restraint)
-    define = (f"-DPOSRES -DPOSRES_FC_BB={restraint:.1f} -DPOSRES_FC_SC={restraint:.1f} "
-              f"-DPOSRES_FC_LIPID={lipid:.1f} -DDIHRES -DDIHRES_FC={lipid:.1f} "
-              f"-DPOSRES_FC_{cfg.moleculetype}={restraint:.1f}")
+def _mdp(stage, cfg, first_dynamics: bool, groups, define: Optional[str] = None) -> str:
+    """One stage's mdp; `define` replaces the cholesterol-repack restraint defines."""
+    if define is None:
+        restraint = float(stage.restraint)
+        lipid = float(cfg.lipid_restraint)
+        define = (f"-DPOSRES -DPOSRES_FC_BB={restraint:.1f} -DPOSRES_FC_SC={restraint:.1f} "
+                  f"-DPOSRES_FC_LIPID={lipid:.1f} -DDIHRES -DDIHRES_FC={lipid:.1f} "
+                  f"-DPOSRES_FC_{cfg.moleculetype}={restraint:.1f}")
     common = ["cutoff-scheme           = Verlet", "rlist                   = 1.2",
               "vdwtype                 = Cut-off", "vdw-modifier            = Force-switch",
               "rvdw_switch             = 1.0", "rvdw                    = 1.2",

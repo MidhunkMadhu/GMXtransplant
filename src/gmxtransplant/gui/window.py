@@ -46,6 +46,10 @@ MODE_DESCRIPTIONS = {
            'also saved.',
     'addbinder': 'Place a ligand or protein in the water above or below a membrane protein, a set distance from '
                  'its outermost atom, and build one complete system per pose.',
+    'popc': 'Replace the membrane of a prepared system with a well-equilibrated pure POPC bilayer (500 ns, '
+            'CHARMM36). The protein keeps its OPM placement; overlapping lipids, water and ions are removed, '
+            'and the run writes equilibration/, a GROMACS system set up for the CHARMM-GUI step6 equilibration '
+            'with a sample run script.',
     'minimize': 'Prepare a restrained OpenMM minimization folder for a system you have already assembled.',
 }
 
@@ -353,10 +357,12 @@ class MainWindow(QMainWindow):
             'protein': 'Insert a protein and its bound ligands into a prepared membrane system using matching topology inputs.',
             'lig': 'Replace one bound ligand (LI1) with another (LI2) using explicit heavy-atom correspondence, its ITP and its force field.',
             'chl': 'Restore five experimental cholesterol molecules into the prepared D1R system. Uses Open Babel, installed with GMXtransplant.',
+            'popc': 'Replace the POPC/POPE/cholesterol membrane of the apo D1 receptor build with equilibrated pure POPC; the receptor keeps its OPM placement. Writes the system and a GROMACS equilibration folder.',
             'addbinder': 'Extracellular ligand: place dopamine above the apo D1 receptor, once straight above at 20 Å and three times from random directions at 20–25 Å; one run-ready folder each.',
             'addbinder_gprotein': 'Intracellular protein: place the Gs heterotrimer below the apo D1 receptor in its receptor-bound arrangement: pulled straight out to 20 Å (shorter if the box needs it) and towards two random sides at 15 Å, one of them also randomly rotated; one run-ready folder each.',
         }
-        titles = {'addbinder': 'Add binder: dopamine (extracellular)',
+        titles = {'popc': 'Equilibrated POPC membrane: D1R',
+                  'addbinder': 'Add binder: dopamine (extracellular)',
                   'addbinder_gprotein': 'Add binder: G protein (intracellular)'}
         self.example_buttons = []
         for key in EXAMPLE_KEYS:

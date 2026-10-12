@@ -27,13 +27,15 @@ requirements = CORE + ([] if cli_only else APPLICATION) + ([] if _flag("GMXTRANS
 root = Path(__file__).parent
 entries = [('share/gmxtransplant/examples', [
     'configs/charmprot.yaml', 'configs/addbinder.yaml', 'configs/protein_replace.yaml',
-    'configs/ligand_replace.yaml', 'configs/cholesterol_restore.yaml', 'configs/minimization.yaml'])]
+    'configs/ligand_replace.yaml', 'configs/cholesterol_restore.yaml', 'configs/minimization.yaml',
+    'configs/popc.yaml'])]
 # The documentation the GUI's Documentation button opens, resolved relative to
 # the installed package rather than any location on the user's system.
 if (root / 'docs' / 'GMXtransplant.pdf').is_file():
     entries.append(('share/gmxtransplant/docs', ['docs/GMXtransplant.pdf']))
 for name, config in [('charmprot', 'charmprot.yaml'),
                      ('addbinder', 'addbinder.yaml'),
+                     ('popc', 'popc.yaml'),
                      ('protein_insertion', 'protein_replace.yaml'),
                      ('ligand_replacement', 'ligand_replace.yaml'),
                      ('cholesterol_restoration', 'cholesterol_restore.yaml')]:

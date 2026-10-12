@@ -5,6 +5,7 @@ Usage:
     python3 src/run_pipeline.py --mode protein -i protein_replace.yaml
     python3 src/run_pipeline.py --mode lig -i ligand_replace.yaml
     python3 src/run_pipeline.py --mode chl -i cholesterol_restore.yaml
+    python3 src/run_pipeline.py --mode popc -i popc.yaml
 
 PROTEIN MODE:
 implements the project's core workflow:
@@ -92,6 +93,7 @@ from gmxtransplant import __version__
 _EXAMPLE_FILES = {
     "charmprot": "charmprot.yaml",
     "addbinder": "addbinder.yaml",
+    "popc": "popc.yaml",
     "protein": "protein_replace.yaml",
     "lig": "ligand_replace.yaml",
     "chl": "cholesterol_restore.yaml",
@@ -1208,6 +1210,17 @@ def main(config_path: str, mode: str, dry_run: bool = False,
         except ConfigError as exc:
             print(f"[CONFIG ERROR] {exc}", file=sys.stderr)
             return 2
+    if mode == "popc":
+        from popc_membrane import run_popc
+        if prepare:
+            print("[CONFIG ERROR] --prepare-minimization is not available for popc; it writes its own "
+                  "GROMACS equilibration folder", file=sys.stderr)
+            return 2
+        try:
+            return run_popc(config_path, dry_run=dry_run, output_root=output_root)
+        except ConfigError as exc:
+            print(f"[CONFIG ERROR] {exc}", file=sys.stderr)
+            return 2
     if mode == "charmprot":
         from charmprot import run_charmprot
         try:
@@ -1277,9 +1290,10 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         description="Modify a prepared molecular-simulation system."
     )
     parser.add_argument(
-        "--mode", choices=("charmprot", "protein", "lig", "chl", "addbinder"),
+        "--mode", choices=("charmprot", "protein", "lig", "chl", "addbinder", "popc"),
         help=("two-folder CHARMM-GUI transplant, protein replacement, ligand replacement, "
-              "cholesterol restoration, or adding a binder above/below a membrane protein"),
+              "cholesterol restoration, adding a binder above/below a membrane protein, or "
+              "replacing the membrane with equilibrated POPC"),
     )
     parser.add_argument(
         "-i", "--input", metavar="CONFIG.yaml",
@@ -1305,7 +1319,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
         "--show-example",
-        choices=("charmprot", "protein", "lig", "chl", "addbinder", "minimize"),
+        choices=("charmprot", "protein", "lig", "chl", "addbinder", "popc", "minimize"),
         metavar="MODE",
         help="print a bundled mode-specific YAML example and exit",
     )

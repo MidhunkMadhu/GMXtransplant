@@ -85,11 +85,13 @@ Open the **Configuration** tab and choose the task that matches your goal:
 | Ligand replacement | Replaces one bound ligand while keeping the rest of the system. | Prepared system, incoming ligand structure, GROMACS ITP parameter file, and force field |
 | Cholesterol restoration | Places experimentally resolved cholesterol into a prepared system. | Target system and experimental structure |
 | Add binder | Places a ligand or protein above or below a membrane protein, with a separate system for each pose. | Prepared host system, binder coordinates, and binder parameters |
+| Equilibrated POPC membrane | Replaces the membrane with pure POPC from a 500 ns equilibrated bilayer, keeping the protein's OPM placement, and writes a GROMACS equilibration folder. | Prepared host system whose membrane contains POPC |
 | Minimization preparation | Creates a folder of inputs for a restrained OpenMM minimization. | Assembled coordinates and topology |
 
 For add binder inputs and placement options, see the [addbinder guide](ADDBINDER.md).
 The [included examples](../../examples/addbinder/README.md) show a ligand above a
-receptor and a G protein below it.
+receptor and a G protein below it. For the POPC membrane mode, see the
+[popc guide](POPC.md).
 
 Fill in the visible input fields first. Click **Browse…** or **Folder…** to
 select each file or folder. If you type a path, enter its full location. Open

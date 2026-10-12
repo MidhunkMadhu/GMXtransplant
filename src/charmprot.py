@@ -632,14 +632,14 @@ GENERATED = {"step5_input.pdb", "step5_input.gro", "topol.top", "toppar", "index
              "visualization", "view.pml", "view.vmd", "view.pse"}
 
 
-def _publish_directory(source, destination):
+def _publish_directory(source, destination, generated=GENERATED):
     """Transactionally replace owned artifacts while preserving GUI locks and user files."""
     destination.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".charmprot-backup-", dir=destination.parent) as tmp:
         backup = Path(tmp)
         moved, installed = [], []
         try:
-            for name in GENERATED:
+            for name in generated:
                 old = destination / name
                 if old.exists() or old.is_symlink():
                     old.rename(backup / name)

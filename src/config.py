@@ -109,7 +109,7 @@ CHOLESTEROL_DIAGNOSTIC_PATHS = frozenset({
 
 # Names of files or folders written inside an output folder that is itself anchored.
 _UNANCHORED_OUTPUTS = {("minimization", "output_gro_path"), ("minimization", "report_path"),
-                       ("cholesterol", "repack", "output_dir")}
+                       ("cholesterol", "repack", "output_dir"), ("popc", "equilibration", "output_dir")}
 
 
 def path_kind(path):
@@ -123,8 +123,10 @@ def path_kind(path):
         return "directory"
     if path[:1] == ("charmprot",) and key in {"reference_gro", "transplant_gro"}:
         return "file"
-    if path[:1] == ("addbinder",) and key == "host":
+    if path[:1] in (("addbinder",), ("popc",)) and key == "host":
         return "directory"
+    if path[:1] == ("popc",) and key in {"host_gro", "reference_gro"}:
+        return "file"
     if path[:1] == ("addbinder",) and key in {
             "host_gro", "binder_coordinates", "binder_itp", "binder_forcefield"}:
         return "file"
@@ -142,7 +144,7 @@ def is_output_path(path):
     """True when this field names something the pipeline writes."""
     if not path:
         return False
-    return (path[:2] in (("charmprot", "output_dir"), ("addbinder", "output_dir"))
+    return (path[:2] in (("charmprot", "output_dir"), ("addbinder", "output_dir"), ("popc", "output_dir"))
             or path[0] == "output" or path[:2] in [
         ("topology", "output_dir"), ("ndx", "output_path"),
         ("minimization", "output_dir"), ("minimization", "output_gro_path"),

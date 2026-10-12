@@ -374,6 +374,43 @@ class ProgressTests(unittest.TestCase):
 
 
 @unittest.skipUnless(importlib.util.find_spec('PySide6'), 'Optional GUI dependencies are not installed')
+class PopcGuiTests(unittest.TestCase):
+    def test_popc_mode_example_and_job(self):
+        from gmxtransplant.gui.model import EXAMPLE_KEYS
+        self.assertIn('popc', MODES)
+        self.assertEqual(EXAMPLE_KEYS.index('addbinder_gprotein'), EXAMPLE_KEYS.index('addbinder') + 1)
+        self.assertIn('popc', EXAMPLE_KEYS)
+        path = example_path('popc')
+        with tempfile.TemporaryDirectory() as tmp:
+            job = build_job(load_yaml(path), tmp, 'popc', example_base=path.parent)
+            self.assertEqual(job['directory'], str(Path(tmp).resolve() / 'examples' / 'popc'))
+            self.assertEqual(job['config']['popc']['output_dir'], job['directory'])
+            self.assertTrue(Path(job['config']['popc']['host']).is_dir())
+            self.assertIn('equilibration', job['artifacts'])
+            cfg = validate_job(job, check_paths=True)
+            self.assertEqual(cfg.equilibration.output_dir, 'equilibration')
+
+    def test_popc_template_and_defaults(self):
+        self.assertEqual(defaults('popc')['popc']['protein_clash_distance'], 3.0)
+        raw = template_document('popc')
+        self.assertIn('popc', raw)
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(Exception):
+                validate_job(build_job(raw, tmp, 'popc'), check_paths=True)
+
+    def test_popc_progress_facts(self):
+        from gmxtransplant.gui.progress import RunProgress
+        from gmxtransplant.gui.window import MODE_DESCRIPTIONS
+        progress = RunProgress('popc')
+        progress.feed('[host] midplane z 122.99 A; removing 105 CHL1, 261 POPC, 156 POPE\n'
+                      '[popc] 228 upper / 229 lower placed (best of 16 lateral registrations)\n'
+                      '[salt] host 0.1537 M -> final 0.1537 M; 30 pair(s) added in the bulk water\n')
+        self.assertEqual(progress.facts['POPC'], '228 upper / 229 lower leaflet placed.')
+        self.assertIn('105 CHL1', progress.facts['Host membrane'])
+        self.assertIn('0.1537 M', progress.facts['Salt'])
+        self.assertIn('equilibration/', MODE_DESCRIPTIONS['popc'])
+
+
 class GuiEditorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

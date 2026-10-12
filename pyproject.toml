@@ -64,6 +64,7 @@ py-modules = [
   "minimization_bundle",
   "minimization_restraints",
   "namefix",
+  "popc_membrane",
   "ndx",
   "output",
   "repack",
@@ -77,4 +78,4 @@ py-modules = [
 ]
 
 [tool.setuptools.package-data]
-gmxtransplant = ["charmm_environment.json"]
+gmxtransplant = ["charmm_environment.json", "data/*.gro.gz", "data/README.md"]

@@ -19,21 +19,22 @@ from config import path_kind, is_output_path as is_output, PLACEHOLDER_PATH_PREF
 
 MODES = {'charmprot': 'CHARMM-GUI protein transplant', 'protein': 'Protein insertion', 'lig': 'Ligand replacement',
          'chl': 'Cholesterol restoration', 'addbinder': 'Add binder outside the membrane protein',
-         'minimize': 'Minimization preparation'}
+         'popc': 'Replace the membrane with equilibrated POPC', 'minimize': 'Minimization preparation'}
 FOLDERS = {'charmprot': 'charmprot', 'protein': 'protein', 'lig': 'ligand', 'chl': 'cholesterol',
-           'addbinder': 'addbinder', 'minimize': 'minimization'}
+           'addbinder': 'addbinder', 'popc': 'popc', 'minimize': 'minimization'}
 EXAMPLES = {'charmprot': ('charmprot', 'charmprot.yaml'), 'protein': ('protein_insertion', 'protein_replace.yaml'),
             'lig': ('ligand_replacement', 'ligand_replace.yaml'),
             'chl': ('cholesterol_restoration', 'cholesterol_restore.yaml'),
-            'addbinder': ('addbinder', 'addbinder.yaml')}
+            'addbinder': ('addbinder', 'addbinder.yaml'), 'popc': ('popc', 'popc.yaml')}
 # Further examples of a mode: key -> (mode, example directory, YAML, output folder).
 EXTRA_EXAMPLES = {'addbinder_gprotein': ('addbinder', 'addbinder', 'addbinder_gprotein.yaml', 'addbinder_gprotein')}
 # Every example card, in display order.
-EXAMPLE_KEYS = [*EXAMPLES, *EXTRA_EXAMPLES]
+EXAMPLE_KEYS = [k for mode in EXAMPLES
+                for k in (mode, *(key for key, extra in EXTRA_EXAMPLES.items() if extra[0] == mode))]
 # A folder every complete example ships with, proving its inputs are installed.
-EXAMPLE_INPUT_FOLDER = {'charmprot': 'reference', 'addbinder': 'host'}
+EXAMPLE_INPUT_FOLDER = {'charmprot': 'reference', 'addbinder': 'host', 'popc': '../addbinder/host'}
 # Sections that are a mode's own self-contained configuration.
-OWN_SECTION_MODES = ('charmprot', 'addbinder')
+OWN_SECTION_MODES = ('charmprot', 'addbinder', 'popc')
 TEMPLATES = {**{k: v[1] for k, v in EXAMPLES.items()}, 'minimize': 'minimization.yaml'}
 DIAGNOSTICS = {'raw_protonated_pdb_path': 'cholesterol_protonated_raw.pdb',
                'converted_pdb_path': 'cholesterol_charmm36.pdb',
@@ -168,6 +169,9 @@ def defaults(mode):
     if mode == 'addbinder':
         from addbinder import AddBinderSpec
         return {'addbinder': asdict(AddBinderSpec(host='', binder_coordinates='', binder_itp=''))}
+    if mode == 'popc':
+        from popc_membrane import PopcSpec
+        return {'popc': asdict(PopcSpec(host=''))}
     if mode == 'minimize':
         return {'paths': {}, 'minimization': asdict(pipeline_config.MinimizationSpec())}
     values = asdict(pipeline_config.Config())
@@ -334,6 +338,15 @@ def build_job(raw, output_root, mode, example_base=None, prepare=False, example_
                 'inputs': [str(p) for p in inputs],
                 'artifacts': ['run.yaml', 'run.log', 'run-status.json', 'summary.txt', 'summary.json',
                               'visualization', 'view.pml', 'view.vmd', 'view.pse', *dict.fromkeys(names)]}
+    if mode == 'popc':
+        from popc_membrane import GENERATED
+        section = values.get('popc')
+        if not isinstance(section, dict):
+            raise ValueError('popc must be a mapping of settings.')
+        section['output_dir'] = str(out)
+        return {'id': uuid.uuid4().hex, 'mode': mode, 'directory': str(out), 'config': values,
+                'inputs': [str(p) for p in inputs],
+                'artifacts': ['run.yaml', 'run.log', 'run-status.json', *sorted(GENERATED)]}
     if mode == 'charmprot':
         from charmprot import GENERATED
         values['charmprot']['output_dir'] = str(out)
@@ -408,6 +421,9 @@ def validate_job(job, check_paths=False):
         if job['mode'] == 'addbinder':
             from addbinder import load_addbinder_config
             return load_addbinder_config(path, check_paths=check_paths)
+        if job['mode'] == 'popc':
+            from popc_membrane import load_popc_config
+            return load_popc_config(path, check_paths=check_paths)
         if job['mode'] == 'minimize':
             cfg = pipeline_config.load_minimization_config(str(path), check_paths=check_paths)
             from minimization_bundle import validate_preparation

@@ -21,3 +21,5 @@ recursive-include examples/charmprot *.md *.yaml *.gro *.pdb *.top *.itp
 recursive-include examples/addbinder *.md *.yaml *.gro *.pdb *.top *.itp *.mdp README
 exclude examples/addbinder/host/step5_input.pdb
 include src/gmxtransplant/charmm_environment.json
+include src/gmxtransplant/data/*.gro.gz src/gmxtransplant/data/README.md
+recursive-include examples/popc *.md *.yaml

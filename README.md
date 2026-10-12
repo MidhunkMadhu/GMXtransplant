@@ -15,6 +15,7 @@ All molecular components need compatible parameters before assembly. Inspect the
 | Replace a bound ligand while retaining the protein | `--mode lig` | `ligand_replace.yaml` |
 | Restore experimental cholesterol and adjust leaflet composition | `--mode chl` | `cholesterol_restore.yaml` |
 | Add a ligand or protein binder in the water above/below a membrane protein ([guide](docs/guides/ADDBINDER.md)) | `--mode addbinder` | `addbinder.yaml` |
+| Replace the membrane with a well-equilibrated pure POPC bilayer, keeping the OPM placement ([guide](docs/guides/POPC.md)) | `--mode popc` | `popc.yaml` |
 
 Protein mode supports membrane proteins generally, including receptors, channels, and transporters. Any ligands included in the incoming selection move with the protein during alignment.
 
@@ -157,18 +158,20 @@ gmxtransplant --mode protein -i protein_replace.yaml --output results/
 
 `--output DIR` chooses where the generated files go. Without it they are written to the directory you ran the command from. Either way, the run's closing line names the absolute folder it wrote to.
 
-Use `--show-example charmprot`, `lig`, `chl`, or `addbinder` for the other modes. Add `--no-comments` to print a compact example with the same active settings.
+Use `--show-example charmprot`, `lig`, `chl`, `addbinder`, or `popc` for the other modes. Add `--no-comments` to print a compact example with the same active settings.
 
-Source-checkout example configurations are available for
-[two-folder CHARMM-GUI transplantation](examples/charmprot/README.md),
-[protein insertion](examples/protein_insertion/README.md),
-[ligand replacement](examples/ligand_replacement/README.md),
-[cholesterol restoration](examples/cholesterol_restoration/README.md), and
-[adding a binder](examples/addbinder/README.md). The addbinder example includes
-a prepared receptor system, a dopamine ligand, and a G protein; its two
-configurations place the binders on opposite sides of the membrane. See the
-[addbinder guide](docs/guides/ADDBINDER.md) for the inputs and settings to use with your own
-system. Each example README explains its supplied files and how to run it.
+The source checkout includes a complete example for each mode. Each example
+README explains its supplied files and how to run it:
+
+- [Two-folder CHARMM-GUI transplantation](examples/charmprot/README.md)
+- [Protein insertion](examples/protein_insertion/README.md)
+- [Ligand replacement](examples/ligand_replacement/README.md)
+- [Cholesterol restoration](examples/cholesterol_restoration/README.md)
+- [Adding a binder](examples/addbinder/README.md): a prepared receptor system,
+  a dopamine ligand and a G protein, placed on opposite sides of the membrane
+  ([guide](docs/guides/ADDBINDER.md))
+- [Equilibrated POPC membrane](examples/popc/README.md): the same receptor
+  system with its membrane replaced by pure POPC ([guide](docs/guides/POPC.md))
 
 ## Prepare your inputs
 
