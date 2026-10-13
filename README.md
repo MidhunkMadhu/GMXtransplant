@@ -18,7 +18,7 @@ All molecular components need compatible parameters before assembly. Inspect the
 | Replace the membrane with a well-equilibrated bilayer, keeping the OPM placement: pure POPC by default, or any bilayer GRO you give ([guide](docs/guides/MEMBRANE.md)) | `--mode membrane` | `membrane.yaml` |
 | Prepare a restrained OpenMM minimization folder for an assembled system | `prepare-minimization` | `minimization.yaml` |
 
-More modes, each changing one prepared system ([guide](docs/guides/EDIT_MODES.md)); in the desktop application they are under **More modes**:
+More modes, each changing one prepared system ([guide](docs/guides/EDIT_MODES.md)); in the desktop application protonate is a main mode and the others are under **More modes**:
 
 | Task | Command option | Example configuration |
 |---|---|---|

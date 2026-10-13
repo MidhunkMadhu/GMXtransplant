@@ -59,8 +59,8 @@ good way to learn what a completed run looks like.
 2. Open the **Examples** tab. Choose an example card and click **Run example**.
    The add binder cards demonstrate a ligand above a receptor and a G protein
    below it. Other cards cover protein transplant, protein insertion, ligand
-   replacement, cholesterol restoration and the POPC membrane. Click
-   **More examples** for the further modes: membrane, salt, protonation,
+   replacement, cholesterol restoration, the POPC membrane and protonation
+   states. Click **More examples** for a POPC/cholesterol membrane, salt,
    mutations, hydrogen mass repartitioning, a thicker water layer, ligand
    flooding and a receptor dimer.
 3. Follow the run in **Run & results**. **Progress at a glance** shows the
@@ -91,6 +91,7 @@ prepared system ([guide](EDIT_MODES.md)):
 | Cholesterol restoration | Places experimentally resolved cholesterol into a prepared system. | Target system and experimental structure |
 | Binder placement | Places a ligand or protein above or below a membrane protein, with a separate system for each pose. | Prepared host system, binder coordinates, and binder parameters |
 | Membrane replacement | Replaces the membrane with equilibrated POPC, or any bilayer GRO you give, keeping the OPM placement; writes a GROMACS equilibration folder. | Prepared host system; optionally a bilayer GRO |
+| Protonation states | Changes residue protonation states (HSD/HSE/HSP, ASPP, GLUP, LSN, CYM) and rebuilds the topology. | Prepared host system and the residues to change |
 | Minimization preparation | Creates a folder of inputs for a restrained OpenMM minimization. | Assembled coordinates and topology |
 
 For add binder inputs and placement options, see the [addbinder guide](ADDBINDER.md).

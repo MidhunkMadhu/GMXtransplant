@@ -837,6 +837,10 @@ class GuiEditorTests(unittest.TestCase):
         self.assertFalse(scroll.horizontalScrollBar().isVisible())
         window.show_page(0)
         self.assertFalse(window.more_modes.isVisible())
+        window.select_mode('protonate')  # a main mode: stays visible without expanding
+        self.app.processEvents()
+        self.assertTrue(window.mode_buttons['protonate'].isVisible())
+        self.assertFalse(window.more_modes.isVisible())
         window.select_mode('salt')
         self.app.processEvents()
         self.assertTrue(window.more_modes.isVisible())

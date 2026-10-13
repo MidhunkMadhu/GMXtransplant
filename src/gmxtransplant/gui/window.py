@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, Q
 from viewers import find_viewer, launch as launch_viewer
 from mode_registry import EDIT_MODES
 from .editor import ConfigEditor, choose_path
-from .model import (MODES, FOLDERS, EXAMPLE_KEYS, MORE_EXAMPLE_KEYS, build_job, load_yaml, example_mode, example_folder,
+from .model import (MODES, FOLDERS, EXAMPLE_KEYS, MORE_EXAMPLE_KEYS, in_more, build_job, load_yaml, example_mode, example_folder,
                     example_path, destination, example_document,
                     template_document, open_documentation, open_with_default_app)
 from .progress import RunProgress
@@ -584,9 +584,9 @@ class MainWindow(QMainWindow):
         layout.setSpacing(10)
         self.pictograms = []
         self.mode_buttons = {}
-        # The main modes are always shown; the system-edit modes sit under "More modes".
-        main = [m for m in MODES if m not in EDIT_MODES]
-        more = [m for m in MODES if m in EDIT_MODES]
+        # The main modes are always shown; the other system-edit modes sit under "More modes".
+        main = [m for m in MODES if not in_more(m)]
+        more = [m for m in MODES if in_more(m)]
         layout.addLayout(self.tile_grid(main))
         self.more_modes = QWidget()
         self.more_modes.setObjectName('transparent')
@@ -679,7 +679,7 @@ class MainWindow(QMainWindow):
             self.example_buttons.append(run)
             row.addWidget(run)
             box.addLayout(row)
-            (more_cards if mode in EDIT_MODES or key in MORE_EXAMPLE_KEYS else cards).append(card)
+            (more_cards if in_more(mode) or key in MORE_EXAMPLE_KEYS else cards).append(card)
         layout.addWidget(ResponsiveGrid(cards, 235, 4, viewport=scroll.viewport()))
         # Examples of the system-edit modes, under "More examples".
         self.more_examples = ResponsiveGrid(more_cards, 235, 4, viewport=scroll.viewport())
@@ -830,7 +830,7 @@ class MainWindow(QMainWindow):
                 self.install_document(raw)
             except Exception as exc:
                 self.error(exc)
-        if new_mode in EDIT_MODES and not self.more_modes_toggle.isChecked():
+        if in_more(new_mode) and not self.more_modes_toggle.isChecked():
             self.more_modes_toggle.setChecked(True)
         self.mark_mode()
         self.update_destination()

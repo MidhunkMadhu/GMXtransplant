@@ -32,8 +32,16 @@ EXAMPLES = {'charmprot': ('charmprot', 'charmprot.yaml'), 'protein': ('protein_i
 # Further examples of a mode: key -> (mode, example directory, YAML, output folder).
 EXTRA_EXAMPLES = {'addbinder_gprotein': ('addbinder', 'addbinder', 'addbinder_gprotein.yaml', 'addbinder_gprotein'),
                   'membrane_cholesterol': ('membrane', 'membrane', 'popc_cholesterol.yaml', 'membrane_cholesterol')}
+# System-edit modes shown with the main modes (and their examples with the main examples);
+# the others sit under "More modes" / "More examples".
+MAIN_EDIT_MODES = ('protonate',)
 # Example cards shown under "More examples" besides those of the system-edit modes.
 MORE_EXAMPLE_KEYS = ('membrane_cholesterol',)
+
+
+def in_more(mode):
+    """Whether a mode's tile sits under "More modes"."""
+    return mode in EDIT_MODES and mode not in MAIN_EDIT_MODES
 # Every example card, in display order.
 EXAMPLE_KEYS = [k for mode in EXAMPLES
                 for k in (mode, *(key for key, extra in EXTRA_EXAMPLES.items() if extra[0] == mode))]

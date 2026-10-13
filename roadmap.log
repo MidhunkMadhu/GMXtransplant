@@ -73,3 +73,4 @@ Log
             configs/membrane.yaml, examples/membrane/, docs/guides/MEMBRANE.md.
             GUI: short mode names (Membrane replacement, Binder placement, Salt
             exchange, ...), one-line descriptions, rows always filled (no empty slots).
+2026-10-13  Protonation states moved to the main GUI modes (and its example to the main cards).

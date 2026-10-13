@@ -7,9 +7,9 @@ GROMACS equilibration folder. The host is a CHARMM-GUI-style folder
 (`topol.top`, `toppar/`, `step5_input.gro`; `host_gro` picks another GRO, such
 as an MD frame). Nothing outside the output folder is changed.
 
-In the desktop application these modes are under **More modes** on the
-Configuration page, and their examples under **More examples** on the Examples
-page. Every mode has a D1 receptor example in `examples/<mode>/`, built on the
+In the desktop application protonate is a main mode; the others are under
+**More modes** on the Configuration page, and their examples under
+**More examples** on the Examples page. Every mode has a D1 receptor example in `examples/<mode>/`, built on the
 apo D1R host of the addbinder example.
 
 | Mode | What it does | Example |
