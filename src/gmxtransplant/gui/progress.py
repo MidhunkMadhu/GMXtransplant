@@ -63,7 +63,12 @@ class RunProgress:
                         '[membrane]': 'Placing the equilibrated bilayer',
                         '[water]': 'Hydrating the new bilayer and removing overlapping water',
                         '[salt]': 'Restoring the salt concentration',
-                        '[equilibration]': 'Writing the GROMACS equilibration folder'}
+                        '[equilibration]': 'Writing the GROMACS equilibration folder',
+                        '[repack]': 'Writing the membrane relaxation folder',
+                        '[host_protocol]': "Copying the host's own run inputs",
+                        '[clash check]': 'Checking the finished system for clashes'}
+        if line.startswith('[clash check] '):
+            self.facts['Clash check'] = line[len('[clash check] '):]
         gromacs = re.match(r'\[gromacs\] (grompp passed|grompp FAILED|check skipped)', line)
         if gromacs:
             self.stage = 'Checking the system with GROMACS grompp'
@@ -91,6 +96,9 @@ class RunProgress:
             placed = re.match(r'\[membrane\] placed (.+?) \(best of', line)
             if placed:
                 self.facts['Bilayer'] = f'Placed {placed[1]}.'
+            final = re.match(r'\[membrane\] final (.+)$', line)
+            if final:
+                self.facts['Bilayer'] = f'Placed {final[1]} (after the clash check).'
             membrane = re.match(r'\[host\] midplane z ([\d.]+) A; removing (.+)$', line)
             if membrane:
                 self.facts['Host membrane'] = f'Midplane z {membrane[1]} Å; removed {membrane[2]}.'

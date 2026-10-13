@@ -14,6 +14,7 @@ from dataclasses import asdict, fields, is_dataclass
 from datetime import datetime, timezone
 from math import gcd
 from pathlib import Path
+import shutil
 from typing import Any, Union, get_args, get_origin, get_type_hints
 import json
 import tempfile
@@ -39,6 +40,7 @@ MEMBRANE_CATEGORIES = ("lipid", "sterol", "detergent")
 CATEGORY_ORDER = ("protein", "ligand", "lipid", "sterol", "detergent", "solvent", "ion", "water")
 ENVIRONMENT_CATEGORIES = ("water", "ion", "lipid", "sterol", "detergent", "solvent")
 COMMON_GENERATED = {"step5_input.pdb", "step5_input.gro", "topol.top", "toppar", "index.ndx", "equilibration",
+                    "repack", "host_protocol",
                     "visualization", "view.pml", "view.vmd", "view.pse"}
 
 
@@ -145,12 +147,14 @@ def load_section(path, section, spec_class, check_paths=True, output_root=None, 
         if value is not None and (not isinstance(value, str) or not value.strip()):
             raise ConfigError(f"{section}.{key} must be a file path")
     raw.setdefault("output_dir", next(f.default for f in fields(spec_class) if f.name == "output_dir"))
-    equilibration = raw.pop("equilibration", None)
+    schedules = [f for f in fields(spec_class) if hints[f.name] is EquilibrationSpec]
+    given = {f.name: raw.pop(f.name, None) for f in schedules}
     raw = anchor_config_paths({section: raw}, config_path=path, output_root=output_root)[section]
     cfg = parse_dataclass(spec_class, raw, section)
-    if "equilibration" in {f.name for f in fields(spec_class)}:
-        default = next(f for f in fields(spec_class) if f.name == "equilibration").default_factory()
-        cfg.equilibration = parse_equilibration(equilibration, section, enabled=default.enabled)
+    for f in schedules:
+        default = f.default_factory()
+        setattr(cfg, f.name, parse_equilibration(given[f.name], section, enabled=default.enabled, name=f.name,
+                                                 default=default))
     overrides = getattr(cfg, "environment_overrides", {}) or {}
     if any(not isinstance(k, str) or v not in ENVIRONMENT_CATEGORIES for k, v in overrides.items()):
         raise ConfigError(f"{section}.environment_overrides must map molecule names to environment categories")
@@ -517,8 +521,22 @@ def monovalent_ions(host):
 # Output
 # ---------------------------------------------------------------------------
 
+CLASH_DISTANCE = 0.2   # A; atoms of different molecules closer than this are reported (minimization fails)
+
+
+def find_clashes(positions, sizes, box, cutoff=CLASH_DISTANCE, limit=20):
+    """Atom pairs of different molecules closer than cutoff (hydrogens included).
+    `sizes` are the molecules' atom counts in order. Returns (count, closest examples)."""
+    owner = np.repeat(np.arange(len(sizes)), sizes)
+    pairs, distances = capped_distance(positions, positions, cutoff, box=box)
+    across = owner[pairs[:, 0]] < owner[pairs[:, 1]]
+    pairs, distances = pairs[across], distances[across]
+    order_ = np.argsort(distances)[:limit]
+    return int(len(pairs)), [(int(pairs[i, 0]), int(pairs[i, 1]), float(distances[i])) for i in order_]
+
+
 def write_system(stage, host, ordered, mode, parameter_files=(), equilibration=None, purpose="",
-                 extra_index=None, scene=None, extra_mdp="", restrained=None):
+                 extra_index=None, scene=None, extra_mdp="", restrained=None, more_equilibrations=()):
     """Write the run-ready folder into `stage`; returns a report fragment.
 
     parameter_files: extra force-field files (atom types, bonded types) for new molecules.
@@ -547,18 +565,80 @@ def write_system(stage, host, ordered, mode, parameter_files=(), equilibration=N
     index_groups = write_index(stage / "index.ndx", ordered, extra_index)
     result = {"final_molecules": topology.molecules_written, "final_net_charge": round(audit["net_charge"], 6),
               "atoms": len(final.atoms), "box_angstrom": [round(float(v), 3) for v in final.dimensions[:3]]}
-    if equilibration is not None and equilibration.enabled:
-        if restrained is None:
-            restrained = {m.name: m.definition for _, m in ordered if m.category in ("protein", "ligand")}.values()
-        result["equilibration"] = write_equilibration(equilibration, stage, topology, list(restrained),
-                                                      index_groups, purpose=purpose, extra_mdp=extra_mdp)
-        print(f"[equilibration] {equilibration.output_dir}/: {result['equilibration']['md_length_ps'] / 1000:g} ns "
-              f"in {len(equilibration.stages)} stages; run sample_run.sh")
-        for warning in result["equilibration"]["warnings"]:
+    # The finished system, every atom: anything this close will not minimize.
+    count, examples = find_clashes(final.atoms.positions, [m.stop - m.start for _, m in ordered], final.dimensions)
+    result["final_clash_check"] = {"distance_angstrom": CLASH_DISTANCE, "pairs": count, "closest": [
+        f"{final.atoms[a].resname}{final.atoms[a].resid}:{final.atoms[a].name} (atom {a + 1}) - "
+        f"{final.atoms[b].resname}{final.atoms[b].resid}:{final.atoms[b].name} (atom {b + 1}) {d:.2f} A"
+        for a, b, d in examples]}
+    if count:
+        print(f"[clash check] WARNING: {count} atom pair(s) of different molecules closer than {CLASH_DISTANCE:g} A; "
+              f"closest: {result['final_clash_check']['closest'][0]}. Minimization may fail; see the report.")
+    else:
+        print(f"[clash check] no atoms of different molecules closer than {CLASH_DISTANCE:g} A")
+    if restrained is None:
+        restrained = {m.name: m.definition for _, m in ordered if m.category in ("protein", "ligand")}.values()
+    # The main equilibration, then any further sets (key, spec, purpose), e.g. the membrane repack.
+    for key, spec, text in [("equilibration", equilibration, purpose), *more_equilibrations]:
+        if spec is None or not spec.enabled:
+            continue
+        result[key] = write_equilibration(spec, stage, topology, list(restrained), index_groups,
+                                          purpose=text, extra_mdp=extra_mdp)
+        print(f"[{key}] {spec.output_dir}/: {result[key]['md_length_ps'] / 1000:g} ns "
+              f"in {len(spec.stages)} stages; run sample_run.sh")
+        for warning in result[key]["warnings"]:
             print(f"      WARNING: {warning}")
     if scene is not None:
         _write_scene(stage, final, ordered, mode, *scene)
     return result
+
+
+def write_host_protocol(stage, host, folder="host_protocol"):
+    """The host's own run inputs on the new system: every mdp file of the host folder
+    (mdout.mdp excepted), its shell scripts and README, with the new system's topology,
+    index and coordinates under the GRO name the host used (e.g. system.gro), so the
+    host's protocol and scripts run unchanged. A -D define for a macro that no file of
+    the new topology uses (e.g. the restraint of a removed molecule) is dropped, since
+    grompp refuses unused macros. Returns a report, or None when the host has no mdp files.
+    """
+    import re
+    source = Path(host.folder)
+    mdps = [p for p in sorted(source.glob("*.mdp")) if p.name != "mdout.mdp"]
+    if not mdps:
+        return None
+    bundle = stage / folder
+    bundle.mkdir()
+    shutil.copytree(stage / "toppar", bundle / "toppar")
+    for name in ("topol.top", "index.ndx"):
+        shutil.copy2(stage / name, bundle / name)
+    gro_name = Path(host.gro).name
+    shutil.copy2(stage / "step5_input.gro", bundle / gro_name)
+    topology_text = (bundle / "topol.top").read_text() + "".join(
+        p.read_text(errors="replace") for p in sorted((bundle / "toppar").rglob("*")) if p.is_file())
+    dropped = {}
+    for path in mdps:
+        lines = path.read_text().splitlines()
+        for number, line in enumerate(lines):
+            match = re.match(r"(\s*define\s*=\s*)([^;]*)(.*)", line, re.I)
+            if not match:
+                continue
+            keep, gone = [], []
+            for token in match[2].split():
+                name = token[2:].split("=", 1)[0] if token.startswith("-D") else None
+                (gone if name and not re.search(rf"\b{re.escape(name)}\b", topology_text) else keep).append(token)
+            if gone:
+                lines[number] = f"{match[1]}{' '.join(keep)}{match[3]}"
+                dropped[path.name] = gone
+        header = []
+        if path.name in dropped:
+            header = [f"; GMXtransplant: dropped {' '.join(dropped[path.name])} (not used by the new topology)"]
+        (bundle / path.name).write_text("\n".join(header + lines) + "\n")
+    extras = [p for p in sorted(source.iterdir())
+              if p.is_file() and (p.suffix == ".sh" or p.name.upper().startswith("README"))]
+    for path in extras:
+        shutil.copy2(path, bundle / path.name)
+    return {"directory": folder, "coordinates": gro_name, "mdp_files": [p.name for p in mdps],
+            "other_files": [p.name for p in extras], "dropped_defines": dropped}
 
 
 def _write_scene(stage, final, ordered, mode, roles, palette, alignment):
@@ -593,11 +673,31 @@ def write_report(folder, mode, report, heading, lines):
                  f"final {report['salt']['final']['concentration_molar']} M"]
     if "final_molecules" in report:
         text += ["", "FINAL MOLECULES"] + [f"  {name:<10} {count}" for name, count in report["final_molecules"]]
-    eq = report.get("equilibration")
-    if eq:
-        text += ["", f"EQUILIBRATION: {eq['directory']}/ ({eq['md_length_ps'] / 1000:g} ns of MD, "
-                     f"{len(eq['stages'])} stages); run sample_run.sh, then analyze_equilibration.py"]
-        text += [f"  WARNING: {w}" for w in eq["warnings"]]
+    clashes = report.get("clashes")
+    if clashes and clashes.get("pairs"):
+        text += ["", f"CLASHES: {clashes['pairs']} atom pair(s) of different molecules closer than "
+                     f"{clashes['distance_angstrom']:g} A (hydrogens included); "
+                 + ("removed " + ", ".join(f"{k} {n}" for k, n in clashes["removed"].items())
+                    if clashes.get("removed") else "kept (remove_clashes: false)")]
+        text += [f"  {e}" for e in clashes["examples"][:10]]
+    final_check = report.get("final_clash_check")
+    if final_check is not None:
+        text += ["", f"FINAL CLASH CHECK: {final_check['pairs']} atom pair(s) of different molecules closer "
+                     f"than {final_check['distance_angstrom']:g} A"
+                 + ("" if final_check["pairs"] else " (none: ready for minimization)")]
+        text += [f"  {e}" for e in final_check["closest"][:10]]
+    for key, title in (("repack", "REPACK"), ("equilibration", "EQUILIBRATION")):
+        eq = report.get(key)
+        if eq:
+            text += ["", f"{title}: {eq['directory']}/ ({eq['md_length_ps'] / 1000:g} ns of MD, "
+                         f"{len(eq['stages'])} stages); run sample_run.sh"]
+            text += [f"  WARNING: {w}" for w in eq["warnings"]]
+    protocol = report.get("host_protocol")
+    if protocol:
+        text += ["", f"HOST PROTOCOL: {protocol['directory']}/ (the host's {len(protocol['mdp_files'])} mdp file(s) "
+                     f"and {', '.join(protocol['other_files']) or 'no scripts'} on {protocol['coordinates']})"]
+        text += [f"  {name}: dropped {' '.join(gone)} (not in the new topology)"
+                 for name, gone in protocol["dropped_defines"].items()]
     if report.get("warnings"):
         text += ["", "WARNINGS"] + [f"  {w}" for w in report["warnings"]]
     (folder / f"{mode}_report.txt").write_text("\n".join(text) + "\n")

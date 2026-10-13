@@ -2,6 +2,9 @@
 # pure POPC by default, or any equilibrated bilayer GRO you give. The protein
 # and ligands keep their coordinates (the OPM placement): the host membrane's
 # midplane is found from its lipids and the new bilayer is centred on it.
+# The box is never resized: the new membrane fills it at the bilayer's own density.
+# Three run sets are written: repack/ (membrane relaxes, protein + ligands held),
+# equilibration/ (CHARMM-GUI step6) and host_protocol/ (the host folder's own mdps).
 membrane:
   host: /path/to/membrane_system        # folder with topol.top, toppar/ and step5_input.gro
   # reference_gro: /path/to/bilayer.gro # default: the bundled 500 ns CHARMM36 POPC bilayer (Zenodo 10.5281/zenodo.1010083)
@@ -13,12 +16,16 @@ membrane:
   equilibration:
     enabled: true              # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh
     temperature: 310.0
+  repack:
+    enabled: true              # write repack/: minimization + ~1.4 ns, protein and ligands held
+  copy_host_protocol: true     # write host_protocol/ when the host folder has mdp files
 # A reference_gro with lipids the host lacks also needs lipid_itps (and lipid_forcefield
 # when their parameters are missing). Reference residues are matched to moleculetypes by
 # name or by their atom names (CLOL -> CHL1); resname_map forces a match.
 # Replace each /path/to/ placeholder with a full path; none is resolved against the
 # working directory. Generated files use the --output folder, or the directory you
 # run the command from. Optional: host_gro, max_tilt, lateral_search,
-# protein_hydration_distance, reference_contact_distance, neutralize, target_net_charge,
+# protein_hydration_distance, reference_contact_distance, refill_edge, edge_refill_distance,
+# copy_host_protocol, repack, neutralize, target_net_charge,
 # ion_exclusion_distance, lipid_ion_exclusion_distance, environment_overrides,
 # output_dir, equilibration.output_dir, equilibration.stages.

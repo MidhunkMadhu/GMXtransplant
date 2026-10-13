@@ -35,9 +35,9 @@ from addbinder import _unwrap_sequential
 from charmm_environment import environment_name
 from charmprot import _heavy, _indices, _included_files
 from config import ConfigError
-from equilibration import EquilibrationSpec
+from equilibration import EquilibrationSpec, repack_stages
 from itp import parse_itp
-from system_edit import (balance_charge, generated, ion_block, load_section, monovalent_ions, net_charge, order,
+from system_edit import (write_host_protocol, balance_charge, generated, ion_block, load_section, monovalent_ions, net_charge, order,
                          place, positive, run_edit, salt_summary, write_system)
 from topology import TopologyError, check_parameters
 
@@ -79,7 +79,20 @@ class MembraneSpec:
     # and replaces the host water there, except host water near the protein.
     water_layer: float = 10.0
     protein_hydration_distance: float = 4.0  # A; host water/ions this close to the protein stay
-    reference_contact_distance: float = 2.0  # A; reference copies meeting at the box edge closer than this
+    # A; lipids meeting their neighbours across the box edge closer than this are removed (and
+    # refilled, below). Minimization resolves contacts down to 1 A (tested).
+    reference_contact_distance: float = 1.0
+    # The box is never changed. A lipid removed at the box edge is replaced by another
+    # equilibrated lipid of the same leaflet at the same head position, turned until
+    # its heavy atoms stay this far (A) from every lipid; minimization and repack/
+    # relax what is left.
+    refill_edge: bool = True
+    edge_refill_distance: float = 1.0
+    # Final clash check, every atom (hydrogens included) of different molecules: pairs
+    # closer than clash_distance (A) are reported; with remove_clashes the new lipid or
+    # the water/ion of each pair is removed (never the protein or ligands).
+    clash_distance: float = 0.2
+    remove_clashes: bool = True
     water_clash_distance: float = 2.0    # A, host water/ion heavy atom to lipid or reference water: removed
     neutralize: bool = True
     target_net_charge: float = 0.0
@@ -91,6 +104,13 @@ class MembraneSpec:
     environment_overrides: dict = field(default_factory=dict)
     output_dir: str = "membrane_output"
     equilibration: EquilibrationSpec = field(default_factory=EquilibrationSpec)
+    # A second set: relaxation of the new membrane with the protein and ligands held
+    # (like the cholesterol mode's repack/); written next to equilibration/.
+    # A third set: the host folder's own mdp files, scripts and README on the new
+    # system (written to host_protocol/ when the host folder has mdp files).
+    copy_host_protocol: bool = True
+    repack: EquilibrationSpec = field(
+        default_factory=lambda: EquilibrationSpec(output_dir="repack", stages=repack_stages()))
 
 
 def load_membrane_config(path, check_paths=True, output_root=None):
@@ -122,7 +142,7 @@ def load_membrane_config(path, check_paths=True, output_root=None):
             Path(handle.name).unlink()
     else:
         cfg = load_section(path, "membrane", MembraneSpec, check_paths, output_root, optional_paths=optional)
-    positive(cfg, "membrane", "max_tilt", "protein_clash_distance", "reference_contact_distance",
+    positive(cfg, "membrane", "max_tilt", "protein_clash_distance", "reference_contact_distance", "edge_refill_distance", "clash_distance",
              "protein_hydration_distance", "water_clash_distance", "ion_exclusion_distance",
              "lipid_ion_exclusion_distance")
     positive(cfg, "membrane", "water_layer", allow_zero=True)
@@ -345,9 +365,9 @@ def place_water(cfg, host, frame, reference, lipids, definition, protected, orig
         report["tiled_waters"] = len(placed)
         oxygens = [w[:1] for w in placed]
         drop = _touching(oxygens, protected_heavy, cfg.water_clash_distance, box)
-        drop |= _touching(oxygens, lipid_heavy, cfg.reference_contact_distance, box)
+        drop |= _touching(oxygens, lipid_heavy, cfg.water_clash_distance, box)
         survivors = [i for i in range(len(placed)) if i not in drop]
-        edge = _resolve_contacts([oxygens[i] for i in survivors], cfg.reference_contact_distance, box)
+        edge = _resolve_contacts([oxygens[i] for i in survivors], cfg.water_clash_distance, box)
         survivors = [i for n, i in enumerate(survivors) if n not in edge]
         # Host solvent near the protein keeps its place; elsewhere the reference water does.
         kept_host = [i for i in range(len(solvent)) if i not in gone]
@@ -642,7 +662,67 @@ def _lipids_at(cfg, reference, host_cell, frame, origin, protected_heavy, box):
         return dict(Counter(f"{side} {reference.lipids[k][0].name}" for k, side, _, _ in items))
     report = {"tiled": by_type(candidates), "removed_protein_overlap": by_type([candidates[i] for i in clash]),
               "removed_box_edge_overlap": by_type([keep[i] for i in edge])}
-    return kept, report
+    return kept, report, [keep[i] for i in edge]
+
+
+REFILL_ROTATIONS = 24    # orientations about z tried per reference lipid
+REFILL_CANDIDATES = 256  # reference lipids (of the same leaflet) tried per position
+
+
+def refill_edge(cfg, reference, kept, dropped, protected_all, protected_heavy, box, host_cell, seed=7):
+    """Put a lipid back at each head position emptied at the box edge.
+
+    A lipid removed where the reference was cut to the host box leaves a hole of one
+    lipid. Other equilibrated lipids of the same leaflet are tried there, head on the
+    same spot, turned about z. The first is used whose heavy atoms stay
+    edge_refill_distance from the other lipids' and protein_clash_distance from the
+    protein's, and whose every atom (hydrogens included: a refilled lipid sits in a
+    tight spot) stays clash_distance from every atom of the lipids, protein, ligands
+    and the host water kept near them. Minimization and repack/ relax the rest.
+    """
+    rng = np.random.default_rng(seed)
+    added = []
+    for k_old, side, coords_old, _ in dropped:
+        head = coords_old[_head_index(reference.lipids[k_old][0])]
+        current = np.concatenate([item[2] for item in kept + added])
+        current_heavy = np.concatenate([item[2][item[3]] for item in kept + added])
+
+        def nearby(points):
+            return points[np.linalg.norm(_min_image_xy(points[:, :2] - head[:2], host_cell), axis=1) < 30.0]
+        near_lipids, near_lipids_heavy = nearby(current), nearby(current_heavy)
+        near_protein, near_protein_heavy = nearby(protected_all), nearby(protected_heavy)
+        pool = [k for k in range(len(reference.lipids)) if reference.leaflets[k] == side]
+        found = None
+        for k in rng.choice(pool, size=min(REFILL_CANDIDATES, len(pool)), replace=False):
+            definition, whole = reference.lipids[k]
+            mask = _heavy_mask(definition)
+            pivot = whole[_head_index(definition)]
+            for angle in np.linspace(0, 2 * np.pi, REFILL_ROTATIONS, endpoint=False):
+                c, s = np.cos(angle), np.sin(angle)
+                coords = whole.copy()
+                coords[:, :2] = (coords[:, :2] - pivot[:2]) @ np.array([[c, s], [-s, c]]) + head[:2]
+                coords[:, 2] += head[2] - pivot[2]
+                if len(near_lipids_heavy) and len(capped_distance(coords[mask], near_lipids_heavy,
+                                                                  cfg.edge_refill_distance, box=box,
+                                                                  return_distances=False)):
+                    continue
+                if len(near_lipids) and len(capped_distance(coords, near_lipids, cfg.clash_distance, box=box,
+                                                            return_distances=False)):
+                    continue
+                if len(near_protein) and len(capped_distance(coords, near_protein, cfg.clash_distance,
+                                                             box=box, return_distances=False)):
+                    continue
+                if len(near_protein_heavy) and len(capped_distance(coords[mask], near_protein_heavy,
+                                                                   cfg.protein_clash_distance, box=box,
+                                                                   return_distances=False)):
+                    continue
+                found = (int(k), side, coords, mask)
+                break
+            if found:
+                break
+        if found:
+            added.append(found)
+    return added
 
 
 def place_lipids(cfg, host, frame, reference, protected):
@@ -655,15 +735,90 @@ def place_lipids(cfg, host, frame, reference, protected):
                for i in range(side) for j in range(side)][:cfg.lateral_search]
     best = None
     for number, origin in enumerate(origins):
-        kept, report = _lipids_at(cfg, reference, host_cell, frame, origin, protected_heavy, box)
-        if best is None or len(kept) > len(best[0]):
-            best = (kept, report, origin, number)
-    kept, report, origin, number = best
+        kept, report, dropped = _lipids_at(cfg, reference, host_cell, frame, origin, protected_heavy, box)
+        sides = Counter(item[1] for item in kept + dropped)
+        score = (abs(sides["upper"] - sides["lower"]) > 2, -len(kept) - len(dropped), len(dropped))
+        if best is None or score < best[4]:
+            best = (kept, report, origin, number, score, dropped)
+    kept, report, origin, number, _, dropped = best
+    report["refilled_box_edge"] = {}
+    if cfg.refill_edge and dropped:
+        # Everything a refilled lipid must not touch: protein and ligands, and the host
+        # water and ions kept near them (protein_hydration_distance).
+        universe = host.universe
+        solvent = [m for m in host.molecules if m.category in SOLVENT_CATEGORIES]
+        near = _touching([_heavy(universe.atoms[m.start:m.stop]).positions for m in solvent], protected_heavy,
+                         cfg.protein_hydration_distance, box)
+        guarded = [universe.atoms[_indices(protected)].positions] + \
+                  [universe.atoms[solvent[i].start:solvent[i].stop].positions for i in sorted(near)]
+        added = refill_edge(cfg, reference, kept, dropped, np.concatenate(guarded), protected_heavy, box,
+                            host_cell)
+        kept = kept + added
+        report["refilled_box_edge"] = dict(Counter(f"{s} {reference.lipids[k][0].name}" for k, s, _, _ in added))
     kept.sort(key=lambda item: (reference.lipids[item[0]][0].name, item[1] != "upper", item[0]))
     report["placed"] = dict(Counter(f"{s} {reference.lipids[k][0].name}" for k, s, _, _ in kept))
     report["lateral_search"] = {"registrations_tried": len(origins), "chosen": number,
                                 "origin_angstrom": [round(float(v), 3) for v in origin]}
     return kept, origin, report
+
+
+def resolve_clashes(cfg, host, protected, lipids, waters, kept_solvent, reference):
+    """Every atom, hydrogens included, of the new lipids, the reference water and the
+    kept host solvent against each other and the protein/ligands: pairs closer than
+    clash_distance. With remove_clashes, the water or ion of a pair goes first, then the
+    lipid; the protein and ligands never move. Returns the kept items and a report."""
+    universe, box = host.universe, host.universe.dimensions
+    blocks = [("fixed", None, universe.atoms[_indices(protected)].positions)] if protected else []
+    blocks += [("lipid", i, item[2]) for i, item in enumerate(lipids)]
+    blocks += [("water", i, w) for i, w in enumerate(waters)]
+    blocks += [("solvent", i, universe.atoms[m.start:m.stop].positions) for i, m in enumerate(kept_solvent)]
+    positions = np.concatenate([b[2] for b in blocks])
+    owner = np.concatenate([np.full(len(b[2]), n) for n, b in enumerate(blocks)])
+    # A small margin: the written GRO rounds coordinates to 0.01 A, which can move a pair
+    # just under the cutoff that the final check of the written system applies.
+    pairs, distances = capped_distance(positions, positions, cfg.clash_distance + 0.02, box=box)
+    across = owner[pairs[:, 0]] < owner[pairs[:, 1]]
+    pairs, distances = pairs[across], distances[across]
+
+    def label(n, atom):
+        kind, i, _ = blocks[n]
+        if kind == "fixed":
+            a = universe.atoms[_indices(protected)][atom]
+            return f"{a.resname}{a.resid}:{a.name}"
+        if kind == "lipid":
+            definition = reference.lipids[lipids[i][0]][0]
+            return f"new {definition.name}:{definition.atoms[atom].atom_name}"
+        if kind == "water":
+            return f"reference water:{('OH2', 'H1', 'H2')[atom]}"
+        a = universe.atoms[kept_solvent[i].start + atom]
+        return f"host {kept_solvent[i].name}{a.resid}:{a.name}"
+    starts = np.concatenate([[0], np.cumsum([len(b[2]) for b in blocks])])
+    examples = [f"{label(owner[a], a - starts[owner[a]])} - {label(owner[b], b - starts[owner[b]])} {d:.2f} A"
+                for (a, b), d in sorted(zip(pairs.tolist(), distances), key=lambda x: x[1])[:20]]
+    report = {"distance_angstrom": cfg.clash_distance, "pairs": int(len(pairs)), "examples": examples,
+              "removed": {}}
+    if not len(pairs) or not cfg.remove_clashes:
+        return lipids, waters, kept_solvent, report
+    priority = {"water": 0, "solvent": 0, "lipid": 1, "fixed": 9}
+    gone = set()
+    for a, b in sorted({(int(owner[a]), int(owner[b])) for a, b in pairs}):
+        if a in gone or b in gone:
+            continue
+        drop = min((a, b), key=lambda n: (priority[blocks[n][0]], -n))
+        if blocks[drop][0] == "fixed":
+            continue
+        gone.add(drop)
+    removed = Counter()
+    for n in gone:
+        kind, i, _ = blocks[n]
+        removed[f"new {reference.lipids[lipids[i][0]][0].name}" if kind == "lipid" else
+                "reference water" if kind == "water" else f"host {kept_solvent[i].name}"] += 1
+    report["removed"] = dict(removed)
+    lipids = [x for i, x in enumerate(lipids) if ("lipid", i) not in {blocks[n][:2] for n in gone}]
+    keep_w = [i for i in range(len(waters)) if ("water", i) not in {blocks[n][:2] for n in gone}]
+    waters = waters[keep_w] if len(waters) else waters
+    kept_solvent = [m for i, m in enumerate(kept_solvent) if ("solvent", i) not in {blocks[n][:2] for n in gone}]
+    return lipids, waters, kept_solvent, report
 
 
 # ---------------------------------------------------------------------------
@@ -721,15 +876,33 @@ def run_membrane(config_path, dry_run=False, output_root=None):
         protected = [m for m in host.molecules if m.category not in REMOVED_CATEGORIES + SOLVENT_CATEGORIES]
         lipids, origin, report["placement"] = place_lipids(cfg, host, frame, reference, protected)
         edge = sum(report["placement"]["removed_box_edge_overlap"].values())
-        if edge > 0.02 * max(len(lipids), 1):
+        refilled = sum(report["placement"]["refilled_box_edge"].values())
+        if refilled:
+            print(f"[membrane] box edge: {edge} overlapping lipids removed, {refilled} put back as other "
+                  "equilibrated lipids")
+        if edge - refilled > 0.02 * max(len(lipids), 1):
             report["warnings"].append(
-                f"{edge} reference lipids were removed where the reference was cut to the host box, so the new "
+                f"{edge - refilled} lipids removed where the reference was cut to the host box could not be put back, so the new "
                 "membrane holds fewer lipids than fit; `gmxtransplant membrane-patch` cuts the reference to this "
                 "box and re-equilibrates it, after which nothing is lost (see the membrane guide)")
         print("[membrane] placed " + ", ".join(f"{k} {n}" for k, n in report["placement"]["placed"].items())
               + f" (best of {report['placement']['lateral_search']['registrations_tried']} lateral registrations)")
         waters, water_definition, kept_solvent, removed_solvent, report["water"] = place_water(
             cfg, host, frame, reference, lipids, None, protected, origin)
+        lipids, waters, kept_solvent, report["clashes"] = resolve_clashes(cfg, host, protected, lipids, waters,
+                                                                           kept_solvent, reference)
+        if report["clashes"]["pairs"]:
+            text = (f"{report['clashes']['pairs']} atom pair(s) of different molecules closer than "
+                    f"{cfg.clash_distance:g} A")
+            if cfg.remove_clashes:
+                print(f"[clashes] {text}: removed " + ", ".join(f"{k} {n}" for k, n in
+                                                               report["clashes"]["removed"].items()))
+                report["placement"]["placed"] = dict(Counter(f"{s} {reference.lipids[k][0].name}"
+                                                             for k, s, _, _ in lipids))
+                print("[membrane] final " + ", ".join(f"{k} {n}" for k, n in report["placement"]["placed"].items()))
+            else:
+                report["warnings"].append(f"{text}; they stay (remove_clashes: false): " +
+                                          "; ".join(report["clashes"]["examples"][:5]))
         report["solvent_removed"] = {reason: dict(Counter(m.name for m in items))
                                      for reason, items in removed_solvent.items()}
         if report["water"].get("reference_waters"):
@@ -785,10 +958,20 @@ def run_membrane(config_path, dry_run=False, output_root=None):
         report.update(write_system(
             stage, host, ordered, "membrane", parameter_files=parameter_files, equilibration=cfg.equilibration,
             purpose="Equilibration of the new bilayer", extra_index=groups,
+            more_equilibrations=[("repack", cfg.repack, "Repacking of the new membrane around the held protein "
+                                  "and ligands (lipids unrestrained)")],
             scene=({"inserted_membrane": set(leaflet_of)},
                    {"inserted_membrane": ("Equilibrated bilayer", [.95, .68, .12], True)},
                    "Protein and ligands keep their input coordinates; the bilayer is new."),
             restrained=[m.definition for m in protected]))
+        if cfg.copy_host_protocol:
+            protocol = write_host_protocol(stage, host)
+            if protocol:
+                report["host_protocol"] = protocol
+                print(f"[host_protocol] host_protocol/: the host's {len(protocol['mdp_files'])} mdp file(s) and "
+                      f"scripts on the new system ({protocol['coordinates']})")
+                for name, gone in protocol["dropped_defines"].items():
+                    print(f"      {name}: dropped {' '.join(gone)} (not in the new topology)")
 
     def lines(report):
         out = []

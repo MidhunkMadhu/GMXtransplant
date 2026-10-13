@@ -55,63 +55,68 @@ licensed CC BY 4.0. Only its ions were removed. It has a P–P thickness of
    flat and normal to z.
 2. **Remove the host membrane.** Every lipid, sterol and detergent is
    removed. The protein, ligands, water and ions stay.
-3. **Place the new bilayer.** The reference is repeated periodically and cut
-   to the host box. Its midplane goes on the host midplane, and it keeps its
-   own equilibrated thickness. Any box size works, including hexagonal boxes.
-4. **Remove overlapping lipids, whole lipids only.**
+3. **Place the new bilayer; the box is never changed.** The reference is
+   repeated periodically and cut to the host box (width and height stay as
+   they are). Its midplane goes on the host midplane, and it keeps its own
+   equilibrated thickness and density. Any box size works, including
+   hexagonal boxes.
+4. **Remove overlapping lipids, then fill the box edge again.**
    - Any new lipid with a heavy atom within 2 Å of a protein or ligand heavy
      atom is removed. Raise `protein_clash_distance` to 3 Å to also rule out
      lipid tails threaded through aromatic rings.
-   - Where copies of the reference meet at the box edge, the fewest are
-     removed so that none overlap.
-   - The bilayer is tried at 16 lateral positions. The one that keeps the most
-     lipids is used.
+   - Where the cut reference meets itself across the box edge, the fewest
+     lipids are removed so no heavy atoms are closer than 1 Å.
+   - Each of those positions is filled again: other equilibrated lipids of
+     the same leaflet are tried there (head on the same spot, turned about the
+     membrane normal) until one stays 1 Å from every other lipid. The box is
+     thus filled at the reference density; the minimization resolves the
+     remaining close contacts (tested down to 1 Å).
+   - The bilayer is tried at 16 lateral positions. The one with equal leaflets
+     and the most lipids is used.
 5. **Hydrate the new bilayer.** The reference water hydrates the new
    headgroups, up to 10 Å beyond each phosphate plane, and replaces the host
    water there. Host water and ions close to the protein are kept, including
    internal waters; the reference water yields to them. Outside that layer,
    host water and ions are removed only where they come within 2 Å of the new
    lipids or the reference water.
-6. **Fix charge and salt.** Counterions far from the protein and lipids are
+6. **Check for clashes, atom by atom.** Every atom of the new lipids, the
+   reference water and the host water and ions, hydrogens included, is checked
+   against every other molecule and the protein and ligands. Atoms of different
+   molecules closer than `clash_distance` (0.2 Å) do not minimize (infinite
+   force), so the water or ion of such a pair is removed, else the new lipid
+   (`remove_clashes: true`); the protein and ligands never move. Closer contacts
+   than 1 Å between hydrogens are normal for a placed membrane and are resolved
+   by the minimization (tested on Dardel). The report lists the closest pairs.
+   The finished system is checked again before it is written (`FINAL CLASH
+   CHECK` in the report).
+7. **Fix charge and salt.** Counterions far from the protein and lipids are
    removed, or added in place of bulk waters, to reach the target charge, for
    example after anionic lipids were replaced or added. The reference water brings no ions. Bulk waters away from the
    protein therefore become salt pairs, using the host's own ion types, until
    the host's salt concentration is reached again.
-7. **Write and check.** The topology is checked against the coordinates atom
+8. **Write and check.** The topology is checked against the coordinates atom
    by atom, including the net charge. A failed run leaves only its report,
    with the reason.
 
-## Fill the host box completely: membrane-patch
+## When the box edge cannot be filled: membrane-patch
 
-The reference is tiled onto the host box. When the two boxes differ in size,
-lipids that cross the host box edge meet the periodic images of lipids from the
-other side, and those are removed: a 12.85 nm patch cut to a 10.6 nm box loses
-about 20 lipids per leaflet, so the new membrane holds fewer lipids than fit.
-The run warns when this happens. To fill the box completely, without changing
-its size:
+If some edge positions cannot be filled (the report says how many), the new
+membrane has a small gap that `repack/` closes. To start without any gap,
+`gmxtransplant membrane-patch` cuts the reference to the host box and writes a
+short GROMACS run that re-equilibrates it at that fixed area; its last frame
+(`patch3_npt.gro`), given as `reference_gro`, fits the box exactly:
 
 ```bash
-gmxtransplant membrane-patch -i membrane.yaml -o patch/     # same YAML as the membrane run
-gmxtransplant slurm-script patch/ --profile dardel --account <project>
-sbatch patch/submit.sh                                      # or run patch/sample_run.sh
-# then, in membrane.yaml:  reference_gro: /full/path/patch/patch3_npt.gro
-gmxtransplant --mode membrane -i membrane.yaml --output results/
+gmxtransplant membrane-patch -i membrane.yaml -o patch/ --ns 2
+cd patch && ./sample_run.sh          # or: gmxtransplant slurm-script patch/ ... ; sbatch submit.sh
+# then in membrane.yaml:  reference_gro: /full/path/patch/patch3_npt.gro
 ```
-
-`membrane-patch` cuts the reference (bundled POPC or your `reference_gro`) to
-the host's lateral box at the reference's own density, with equal leaflets and
-the reference composition, hydrated by the reference water. It writes
-`patch_start.gro`, `topol.top` and `toppar/` (from the host), `index.ndx`, four
-mdps and `sample_run.sh`: minimization, 250 ps NVT and 1 ns NPT with the
-headgroups held in z, then `--ns` (default 50) ns of unrestrained NPT. The
-lateral area stays fixed at the host box (`compressibility = 0.0 4.5e-5`), so
-the last frame, `patch3_npt.gro`, is periodic in exactly the host box: used as
-`reference_gro`, only the lipids that overlap the protein are removed.
 
 How many lipids fit: the host's packing does not carry over. Cholesterol
 (about 0.27 nm²) and POPE (about 0.58 nm²) take less area than POPC (about
 0.65 nm²), so a POPC/POPE/cholesterol membrane holds more molecules than the
-same area of pure POPC.
+same area of pure POPC. Example: the D1R systems below had 397 molecules
+(317 phospholipids, 80 cholesterols) in a 10.6 nm box; pure POPC fills it with about 291.
 
 ## Output
 
@@ -123,16 +128,24 @@ In `<output>/membrane_output/`:
 | `topol.top`, `toppar/` | Its topology |
 | `index.ndx` | CHARMM-GUI groups (`SOLU`, `MEMB`, `SOLV`, `SOLU_MEMB`) plus `Protein`, `Membrane`, `POPC_upper`, `POPC_lower`, ... |
 | `membrane_report.txt`, `.json` | Host midplane and leaflets; lipids removed per leaflet; the reference used; POPC placed per leaflet; water and ions removed and why; charge and salt; final molecules |
-| `equilibration/` | The GROMACS equilibration (next section) |
+| `repack/` | Relaxation of the new membrane, protein and ligands held (next section) |
+| `equilibration/` | The normal CHARMM-GUI equilibration (next section) |
+| `host_protocol/` | The host folder's own mdp files and scripts on the new system (next section) |
 | `view.pml`, `view.vmd`, `view.pse` | PyMOL/VMD scenes, with the new POPC in its own colour |
 
-## Equilibration
+## Equilibration: three sets of run inputs
 
-The removed lipids leave gaps around the protein, and the edges of the
-hydration layer meet the host water. Run `equilibration/` before production.
-It is a self-contained GROMACS folder (`topol.top`, `toppar/`, `step5_input.gro`,
-`index.ndx`, one mdp per stage and `sample_run.sh`). It follows the
-CHARMM-GUI Membrane Builder step6 schedule, about 1.9 ns in total:
+Every run writes these self-contained GROMACS folders (each with `topol.top`,
+`toppar/`, the coordinates, `index.ndx`, one mdp per stage and `sample_run.sh`).
+Nothing is run by GMXtransplant; pick the set you need:
+
+| Folder | What it is | Use it when |
+|---|---|---|
+| `repack/` | Minimization and about 1.4 ns with every protein and ligand heavy atom held (4000 → 2000 → 1000 kJ/mol/nm²) and the lipids, water and ions free, so the new membrane closes its gaps around a fixed protein (like the cholesterol mode's `repack/`) | Your protein is already equilibrated (e.g. the host is an MD frame) and only the membrane needs to settle; continue with your own protocol afterwards |
+| `equilibration/` | The CHARMM-GUI Membrane Builder step6 schedule (below), releasing the protein step by step | A normal start from a built system |
+| `host_protocol/` | Every mdp file of the host folder (not `mdout.mdp`), its `*.sh` scripts and README, with the new system saved under the host's GRO name (e.g. `system.gro`) | You want to rerun the host's own protocol unchanged on the new membrane. A `-D` define for a molecule that no longer exists (e.g. `POSRES_FC_CHLB` after the cholesterols are replaced) is dropped and noted at the top of the mdp, since grompp refuses unused macros. Set `copy_host_protocol: false` to skip it. |
+
+`equilibration/` follows the CHARMM-GUI schedule, about 1.9 ns in total:
 
 | Stage | Type | Length | Restraints: backbone / side chains / lipid (kJ/mol/nm²) |
 |---|---|---|---|
@@ -144,17 +157,27 @@ CHARMM-GUI Membrane Builder step6 schedule, about 1.9 ns in total:
 | step6.5_equilibration | NPT | 500 ps (2 fs) | 200 / 50 / 40 |
 | step6.6_equilibration | NPT | 500 ps (2 fs) | 50 / 0 / 0 |
 
-The protein is released step by step, so it keeps its OPM placement while
-the POPC packs around it. The restraints use the `POSRES_FC_BB` and
-`POSRES_FC_SC` blocks in the protein and ligand ITPs, and the `POSRES_FC_LIPID`
-(P in z) and `DIHRES_FC` blocks in the POPC ITP. NPT stages use semi-isotropic
-C-rescale coupling at 1 bar and 310 K. The report warns if a protein or
-ligand ITP leaves heavy atoms without a restraint.
+`repack/` uses the same mdp settings with these stages:
 
-Run it on your workstation:
+| Stage | Type | Length | Protein and ligand heavy atoms (kJ/mol/nm²) | Lipids |
+|---|---|---|---|---|
+| step6.0_minimization | steepest descent | 5000 steps | 4000 | free |
+| step6.1_equilibration | NVT | 125 ps (1 fs) | 4000 | free |
+| step6.2_equilibration | NVT | 125 ps (1 fs) | 2000 | free |
+| step6.3_equilibration | NPT | 125 ps (1 fs) | 1000 | free |
+| step6.4_equilibration | NPT | 1 ns (2 fs) | 1000 | free |
+
+The restraints use the `POSRES_FC_BB` and `POSRES_FC_SC` blocks in the protein
+and ligand ITPs, and the `POSRES_FC_LIPID` (P in z) and `DIHRES_FC` blocks in
+the POPC ITP. NPT stages use semi-isotropic C-rescale coupling at 1 bar and
+310 K. The report warns if a protein or ligand ITP leaves heavy atoms without
+a restraint. Both schedules can be changed in the YAML (`equilibration.stages`,
+`repack.stages`).
+
+Run a set on your workstation:
 
 ```bash
-cd results/membrane_output/equilibration
+cd results/membrane_output/repack        # or equilibration
 ./sample_run.sh
 ```
 
@@ -169,7 +192,9 @@ Then check the stages with `python3 analyze_equilibration.py` (box, area per
 phospholipid, P–P thickness, protein C-alpha RMSD and z drift per stage), and
 continue production from `step6.6_equilibration.gro` with the same `topol.top`.
 `gmxtransplant slurm-script results/membrane_output/equilibration --profile dardel
---account <project>` writes a Slurm job for the whole schedule.
+--account <project>` writes a Slurm job (`submit.sh`) for the whole schedule; submit
+it from that folder (`cd ... && sbatch submit.sh`). The script has no machine paths,
+so the folder can be built on a laptop and copied to the cluster.
 
 On Dardel (GROMACS 2026.1, one node, 53 ns/day) the D1R example (built with the
 earlier 3 Å removal distances) ran the full
@@ -194,7 +219,8 @@ moving less than 0.1 nm along z. To change a stage, e.g. to lengthen the last on
 | `lateral_search` | 16 | Lateral positions of the bilayer tried |
 | `water_layer` | 10.0 | Reference hydration beyond each P plane (Å); 0 keeps only host water |
 | `protein_hydration_distance` | 4.0 | Host water/ions this close to the protein are kept (Å) |
-| `reference_contact_distance` | 2.0 | Allowed contact between reference copies at the box edge (Å) |
+| `reference_contact_distance` | 1.0 | Closest heavy-atom contact allowed between lipids meeting across the box edge (Å) |
+| `refill_edge`, `edge_refill_distance` | true, 1.0 | Fill each emptied edge position with another reference lipid that stays this far (Å) from every lipid |
 | `water_clash_distance` | 2.0 | Host water/ion to new lipid or reference water (Å) |
 | `neutralize`, `target_net_charge` | true, 0 | Remove or add counterions to reach this charge |
 | `ion_exclusion_distance` | 10.0 | Ions this close to the protein are never removed (Å) |
@@ -204,6 +230,39 @@ moving less than 0.1 nm along z. To change a stage, e.g. to lengthen the last on
 | `equilibration.enabled` | true | Write `equilibration/` |
 | `equilibration.temperature` | 310.0 | K |
 | `equilibration.stages` | table above | Each stage: `name`, `integrator` (steep/nvt/npt), `nsteps`, `dt`, `backbone`, `sidechain`, `lipid` |
+| `repack.enabled`, `repack.stages` | true, table above | The relaxation set `repack/` (same stage keys) |
+| `copy_host_protocol` | true | Write `host_protocol/` when the host folder has mdp files |
+| `clash_distance`, `remove_clashes` | 0.2, true | All-atom clash check: closer pairs of different molecules are removed (water/ion first) or, with false, only reported |
+
+## Worked example: a production system's membrane to pure POPC
+
+The D1 receptor with a G protein and two ligands (LDP, G4C) was simulated in a
+POPC/POPE/cholesterol membrane; the folder of its restrained equilibration
+(`eq1/`) holds `system.gro` (an MD frame), `topol.top`, `toppar/`, `index.ndx`,
+its own `step7.*.mdp` files and `submit_bbrest.sh`. To rerun it in pure POPC:
+
+1. Copy those input files (not the trajectories) into a folder, e.g. `D1R/source/`.
+2. Write `membrane.yaml`:
+   ```yaml
+   membrane:
+     host: /full/path/D1R/source
+     host_gro: /full/path/D1R/source/system.gro     # the MD frame, not a step5 GRO
+     output_dir: /full/path/D1R/popc_system
+   ```
+3. Build: `gmxtransplant --mode membrane -i membrane.yaml` (about 20 s). Result:
+   397 host molecules removed; 295 POPC placed in the unchanged 10.6 nm box (the
+   25 lipids removed at the box edge all put back), 4 removed by the clash check,
+   so 291 POPC (146 / 145); final clash check clean, charge 0, salt 0.151 M;
+   `repack/`, `equilibration/` and `host_protocol/` written (the host's mdps lose
+   `-DPOSRES_FC_CHLB`, as no CHLB is left).
+4. Slurm scripts: `gmxtransplant slurm-script popc_system/repack --profile dardel
+   --account <project>` (and the same for `equilibration`); `host_protocol/` has the
+   host's own `submit_bbrest.sh`.
+5. Copy `popc_system/` to the cluster, `cd` into the set you want and `sbatch` it.
+
+On Dardel (GROMACS 2026.1) all 38 mdp files of the 3 sets, for both Asp120
+variants, passed grompp with no warnings, and every set's minimization converged
+(Fmax < 1000 in 1003–2670 steps).
 
 ## Limits
 

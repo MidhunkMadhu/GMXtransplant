@@ -231,6 +231,61 @@ class EndToEndTests(unittest.TestCase):
         for group in ("[ SOLU_MEMB ]", "[ SOLV ]", "[ POPC_upper ]", "[ POPC_lower ]", "[ Upper_leaflet ]"):
             self.assertIn(group, index)
 
+    def test_box_is_kept_and_filled(self):
+        np.testing.assert_allclose(self.final.dimensions[:3], self.host.dimensions[:3], atol=1e-3)
+        placement = self.report["placement"]
+        self.assertLessEqual(sum(placement["refilled_box_edge"].values()),
+                             sum(placement["removed_box_edge_overlap"].values()))
+        # Each leaflet holds what the box fits at the reference density, less the protein's lipids.
+        area = float(self.final.dimensions[0] * self.final.dimensions[1])
+        placed = placement["placed"]
+        for side in ("upper", "lower"):
+            fits = area / self.report["reference"]["area_per_lipid_angstrom2"][side] \
+                - placement["removed_protein_overlap"].get(f"{side} POPC", 0)
+            self.assertGreaterEqual(placed[f"{side} POPC"], 0.97 * fits)
+        self.assertLessEqual(abs(placed["upper POPC"] - placed["lower POPC"]), 2)
+
+    def test_repack_and_host_protocol_sets(self):
+        repack = self.out / "repack"
+        names = sorted(p.name for p in repack.glob("*.mdp"))
+        self.assertEqual(len(names), 5)
+        first = (repack / "step6.1_equilibration.mdp").read_text()
+        self.assertIn("-DPOSRES_FC_BB=4000.0 -DPOSRES_FC_SC=4000.0 -DPOSRES_FC_LIPID=0.0", first)
+        self.assertTrue((repack / "sample_run.sh").is_file())
+        # The example host folder carries its own step6 mdps: copied onto the new system.
+        protocol = self.out / "host_protocol"
+        self.assertTrue((protocol / "step5_input.gro").is_file())
+        self.assertEqual(sorted(p.name for p in protocol.glob("*.mdp")),
+                         sorted(p.name for p in HOST.glob("*.mdp") if p.name != "mdout.mdp"))
+        self.assertEqual(self.report["host_protocol"]["directory"], "host_protocol")
+
+
+class HostProtocolTests(unittest.TestCase):
+    def test_unused_defines_are_dropped_and_scripts_copied(self):
+        from types import SimpleNamespace
+        from system_edit import write_host_protocol
+        with tempfile.TemporaryDirectory() as tmp:
+            host, stage = Path(tmp) / "host", Path(tmp) / "stage"
+            (host).mkdir()
+            (stage / "toppar").mkdir(parents=True)
+            (stage / "toppar" / "POPC.itp").write_text("#ifdef POSRES\nPOSRES_FC_LIPID\n#endif\n")
+            (stage / "topol.top").write_text('#include "toppar/POPC.itp"\n')
+            (stage / "index.ndx").write_text("[ System ]\n1\n")
+            (stage / "step5_input.gro").write_text("x\n0\n 1 1 1\n")
+            (host / "md.mdp").write_text("define = -DPOSRES -DPOSRES_FC_LIPID=0.0 -DPOSRES_FC_CHLB=0.0 ; held\n")
+            (host / "mdout.mdp").write_text("generated\n")
+            (host / "run.sh").write_text("#!/bin/bash\n")
+            report = write_host_protocol(stage, SimpleNamespace(folder=host, gro=host / "system.gro"))
+            out = stage / "host_protocol"
+            self.assertEqual(report["dropped_defines"], {"md.mdp": ["-DPOSRES_FC_CHLB=0.0"]})
+            text = (out / "md.mdp").read_text()
+            self.assertIn("-DPOSRES -DPOSRES_FC_LIPID=0.0", text)
+            self.assertNotIn("CHLB=0.0 ;", text.splitlines()[1])
+            self.assertFalse((out / "mdout.mdp").exists())
+            self.assertTrue((out / "run.sh").is_file())
+            self.assertTrue((out / "system.gro").is_file())
+            self.assertIsNone(write_host_protocol(Path(tmp) / "none", SimpleNamespace(folder=stage, gro="a.gro")))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -500,6 +500,17 @@ class GuiEditorTests(unittest.TestCase):
                 editor.deleteLater()
         self.app.processEvents()
 
+    def test_default_on_section_is_written_only_when_changed(self):
+        from gmxtransplant.gui.editor import ConfigEditor
+        raw = {'membrane': {'host': '/x/host'}}
+        editor = ConfigEditor(raw, 'membrane')
+        self.assertNotIn('repack', editor.value()['membrane'])
+        repack = next(r for r in editor.fields['membrane'].editor.rows if r.key == 'repack')
+        repack.toggle.setChecked(False)
+        self.assertEqual(editor.value()['membrane']['repack'], {'enabled': False})
+        editor.deleteLater()
+        self.app.processEvents()
+
     def test_null_zero_false_and_text_remain_distinct(self):
         from gmxtransplant.gui.editor import ValueEditor
         for value in [0, 0.0, False, '', '0', 'from_itp', [], {}]:

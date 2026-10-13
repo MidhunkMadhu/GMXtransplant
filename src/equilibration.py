@@ -44,6 +44,19 @@ def default_stages():
     ]
 
 
+def repack_stages():
+    # Like the cholesterol mode's repack/: every protein and ligand heavy atom held
+    # (4000 -> 2000 -> 1000, then 1000 to the end) while the lipids, water and ions,
+    # all unrestrained, close the gaps of the new membrane; about 1.4 ns of MD.
+    return [
+        EquilibrationStage("step6.0_minimization", "steep", 5000, 0.0, 4000.0, 4000.0, 0.0),
+        EquilibrationStage("step6.1_equilibration", "nvt", 125000, 0.001, 4000.0, 4000.0, 0.0),
+        EquilibrationStage("step6.2_equilibration", "nvt", 125000, 0.001, 2000.0, 2000.0, 0.0),
+        EquilibrationStage("step6.3_equilibration", "npt", 125000, 0.001, 1000.0, 1000.0, 0.0),
+        EquilibrationStage("step6.4_equilibration", "npt", 500000, 0.002, 1000.0, 1000.0, 0.0),
+    ]
+
+
 @dataclass
 class EquilibrationSpec:
     enabled: bool = True
@@ -60,11 +73,17 @@ def _number(value, key, positive=True):
     return float(value)
 
 
-def parse_equilibration(raw, section="membrane", enabled=True):
-    """Validate an `equilibration:` mapping of the `section` YAML section."""
-    where = f"{section}.equilibration"
+def parse_equilibration(raw, section="membrane", enabled=True, name="equilibration", default=None):
+    """Validate an `equilibration:` (or other `name`) mapping of the `section` YAML section.
+
+    `default` supplies the values a mapping leaves out (default: the CHARMM-GUI schedule).
+    """
+    where = f"{section}.{name}"
+    default = default if default is not None else EquilibrationSpec(enabled=enabled)
     if raw is None:
-        return EquilibrationSpec(enabled=enabled)
+        return default
+    if isinstance(raw, dict):
+        raw = {**{k: v for k, v in asdict(default).items() if k != "enabled"}, "enabled": enabled, **raw}
     if isinstance(raw, EquilibrationSpec):
         raw = asdict(raw)
     if not isinstance(raw, dict):
@@ -152,8 +171,7 @@ def write_equilibration(spec, stage_dir, topology, solute_definitions, index_gro
     script = ["#!/bin/bash",
               "# Sample run script written by GMXtransplant. Adapt it to your machine, or submit",
               "# the same grompp/mdrun lines through your scheduler (gmxtransplant slurm-script).",
-              f"# {purpose}, {md_ps / 1000:g} ns of MD. The protein is held and released step by",
-              "# step (CHARMM-GUI schedule) while the rest of the system relaxes around it.",
+              f"# {purpose}, {md_ps / 1000:g} ns of MD, the stages below.",
               "# Restraints (kJ/mol/nm^2): backbone / side chains / lipid P z + dihedrals"]
     script += [f"#   {s.name}: {s.backbone:g} / {s.sidechain:g} / {s.lipid:g}" for s in spec.stages]
     script += ["# Afterwards, check the stages with analyze_equilibration.py and continue production",

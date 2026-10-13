@@ -30,6 +30,7 @@ ENUMS = {
     ('addbinder', 'side'): ['upper', 'lower'],
     ('cholesterol', 'repack', 'stages', '*', 'integrator'): ['steep', 'nvt', 'npt'],
     ('membrane', 'equilibration', 'stages', '*', 'integrator'): ['steep', 'nvt', 'npt'],
+    ('membrane', 'repack', 'stages', '*', 'integrator'): ['steep', 'nvt', 'npt'],
     ('membrane', 'environment_overrides', '*'): ['lipid', 'sterol', 'water', 'ion', 'detergent', 'solvent'],
     ('addbinder', 'lateral_reference'): ['tip', 'host_center'],
     ('addbinder', 'restraint', 'reference'): ['host_tip', 'host'],
@@ -211,6 +212,11 @@ PATH_TITLES = {
     ('membrane', 'water_layer'): 'Reference water beyond each phosphate plane (Å)',
     ('membrane', 'protein_hydration_distance'): 'Keep host water/ions this close to the protein (Å)',
     ('membrane', 'reference_contact_distance'): 'Overlap distance at the box edge (Å)',
+    ('membrane', 'refill_edge'): 'Fill the box edge again',
+    ('membrane', 'edge_refill_distance'): 'Closest contact for an edge refill (Å)',
+    ('membrane', 'copy_host_protocol'): "Copy the host's own mdp files and scripts",
+    ('membrane', 'clash_distance'): 'Clash distance, all atoms (Å)',
+    ('membrane', 'remove_clashes'): 'Remove clashing lipids and water',
     ('membrane', 'water_clash_distance'): 'Water/ion removal distance (Å)',
     ('membrane', 'restore_salt'): 'Restore the host salt concentration',
     ('membrane', 'equilibration'): 'Equilibration (GROMACS)',
@@ -225,6 +231,18 @@ PATH_TITLES = {
     ('membrane', 'equilibration', 'stages', '*', 'backbone'): 'Protein backbone restraint (kJ/mol/nm²)',
     ('membrane', 'equilibration', 'stages', '*', 'sidechain'): 'Side-chain and ligand restraint (kJ/mol/nm²)',
     ('membrane', 'equilibration', 'stages', '*', 'lipid'): 'Lipid P z and dihedral restraint (kJ/mol/nm²)',
+    ('membrane', 'repack'): 'Membrane relaxation (GROMACS)',
+    ('membrane', 'repack', 'enabled'): 'Write the relaxation folder',
+    ('membrane', 'repack', 'output_dir'): 'Folder name',
+    ('membrane', 'repack', 'temperature'): 'Temperature (K)',
+    ('membrane', 'repack', 'stages'): 'Stages',
+    ('membrane', 'repack', 'stages', '*', 'name'): 'Stage (mdp file name)',
+    ('membrane', 'repack', 'stages', '*', 'integrator'): 'Type',
+    ('membrane', 'repack', 'stages', '*', 'nsteps'): 'Steps',
+    ('membrane', 'repack', 'stages', '*', 'dt'): 'Time step (ps)',
+    ('membrane', 'repack', 'stages', '*', 'backbone'): 'Protein backbone restraint (kJ/mol/nm²)',
+    ('membrane', 'repack', 'stages', '*', 'sidechain'): 'Side-chain and ligand restraint (kJ/mol/nm²)',
+    ('membrane', 'repack', 'stages', '*', 'lipid'): 'Lipid P z and dihedral restraint (kJ/mol/nm²)',
     ('cholesterol', 'repack'): 'Repacking equilibration (GROMACS)',
     ('cholesterol', 'repack', 'enabled'): 'Write the repacking equilibration',
     ('cholesterol', 'repack', 'output_dir'): 'Folder name',
@@ -411,11 +429,16 @@ DESCRIPTIONS = {
     ('membrane', 'lateral_search'): 'The bilayer is shifted to this many lateral positions; the one that keeps the most POPC around the protein is used.',
     ('membrane', 'water_layer'): 'The reference water, equilibrated with the bilayer, hydrates the new POPC up to this far beyond each phosphate plane and replaces the host water there. 0 keeps only host water.',
     ('membrane', 'protein_hydration_distance'): 'Inside the hydration layer, host water and ions this close to the protein (including internal waters) are kept; reference water yields to them.',
-    ('membrane', 'reference_contact_distance'): 'The reference bilayer repeats with its own box length, so copies can meet at the host box edge; the fewest are removed so none are closer than this.',
+    ('membrane', 'reference_contact_distance'): 'Where the cut bilayer meets itself across the box edge, the fewest lipids are removed so none are closer than this.',
+    ('membrane', 'refill_edge'): 'Each emptied edge position gets another equilibrated lipid, so the box (never resized) is filled at the bilayer density.',
+    ('membrane', 'clash_distance'): 'The finished membrane is checked atom by atom, hydrogens included: atoms of different molecules closer than this are listed in the report.',
+    ('membrane', 'remove_clashes'): 'On: the water or ion of each clashing pair is removed first, else the new lipid; the protein and ligands never move. Off: the clashes are only reported.',
+    ('membrane', 'copy_host_protocol'): "host_protocol/: the host folder's mdp files, scripts and README on the new system, for rerunning its own protocol.",
     ('membrane', 'water_clash_distance'): 'Host water and ions with a heavy atom closer than this to a new lipid heavy atom or to reference water are removed.',
     ('membrane', 'restore_salt'): 'The reference water brings no ions. Bulk waters outside the hydration layer and away from the protein become salt pairs until the host concentration is reached again.',
     ('membrane', 'neutralize'): 'Remove counterions to bring the system to the target charge, e.g. after anionic lipids are replaced.',
-    ('membrane', 'equilibration'): 'A GROMACS folder with the CHARMM-GUI step6 schedule: the protein is held and released step by step, so it keeps its OPM placement while the POPC packs around it. A sample run script is saved; it is not run here.',
+    ('membrane', 'equilibration'): 'Normal equilibration: the CHARMM-GUI step6 schedule: the protein is held and released step by step, so it keeps its OPM placement while the POPC packs around it. A sample run script is saved; it is not run here.',
+    ('membrane', 'repack'): 'Relaxation of the new membrane: minimization and about 1.4 ns with every protein and ligand heavy atom held while the lipids close the gaps (like the cholesterol mode). Not run here.',
     ('membrane', 'environment_overrides'): 'Classify molecule types the automatic detector does not recognise, for example a custom lipid MYLIP → lipid (removed with the host membrane).',
     ('charmprot', 'keep_lipids'): 'Keep every lipid and sterol, even where it overlaps the incoming protein. Only clashing water, ions and other molecules are removed. Minimize before simulating.',
     ('charmprot', 'environment_overrides'): 'Classify molecule types the automatic detector does not recognise, for example a custom lipid MYLIP → lipid. Unrecognised types are treated as ligands.',
@@ -1004,7 +1027,9 @@ class Field(QFrame):
         if self.kind in {'required', 'entry'}:
             return True
         if self.kind == 'toggle':
-            return self.toggle.isChecked() or self.present
+            # A section on by default (e.g. membrane.repack) is written only when the file has
+            # it or the user changed it.
+            return self.present or self.toggle.isChecked() != self.default_enabled()
         if self.kind == 'optional':
             return self.toggle.isChecked() or self.was_null
         if self.editor.kind == 'Group':
@@ -1016,9 +1041,13 @@ class Field(QFrame):
             return None
         result = self.editor.value()
         if self.kind == 'toggle':
-            if self.toggle.isChecked() or (isinstance(self.original, dict) and 'enabled' in self.original):
+            if (self.toggle.isChecked() or (isinstance(self.original, dict) and 'enabled' in self.original)
+                    or self.toggle.isChecked() != self.default_enabled()):
                 result['enabled'] = self.toggle.isChecked()
         return result
+
+    def default_enabled(self):
+        return bool(isinstance(self.default, dict) and self.default.get('enabled'))
 
 
 class ConfigEditor(QWidget):

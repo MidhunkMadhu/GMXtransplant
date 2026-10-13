@@ -74,3 +74,12 @@ Log
             GUI: short mode names (Membrane replacement, Binder placement, Salt
             exchange, ...), one-line descriptions, rows always filled (no empty slots).
 2026-10-13  Protonation states moved to the main GUI modes (and its example to the main cards).
+2026-10-13  membrane mode, rebuilt for real use (D1R Asp120 neutral/charged, all-POPC):
+            box never resized; lipids cut at the box edge are refilled with other
+            equilibrated lipids (fills the box at the bilayer density); all-atom clash
+            check (0.2 A, tested by minimization) with removal + final check in every
+            mode's report; three run sets: repack/ (protein+ligands held, ~1.4 ns),
+            equilibration/ (CHARMM-GUI), host_protocol/ (host's own mdps, unused -D
+            defines dropped). membrane-patch subcommand (optional). slurm-script made
+            portable. D1R: 397 host lipids -> 291 POPC; 38 mdps grompp 0 warnings,
+            6 minimizations converged on Dardel. Inputs: work/D1R_popc (local only).
