@@ -1,4 +1,4 @@
-"""Geometry, configuration and end-to-end tests for the popc mode."""
+"""Geometry, configuration and end-to-end tests for the membrane mode."""
 import contextlib
 import io
 import json
@@ -14,8 +14,8 @@ import yaml
 
 from charmprot import inspect_system
 from config import ConfigError
-from popc_membrane import (PopcSpec, _midplane_shift, _min_image_xy, default_reference_path,
-                           load_popc_config, load_reference, measure_host, run_popc, tile)
+from membrane import (MembraneSpec, _midplane_shift, _min_image_xy, default_reference_path,
+                           load_membrane_config, load_reference, measure_host, run_membrane, tile)
 from topology import parse_top_molecules
 from tests import slow
 
@@ -23,7 +23,7 @@ HOST = Path(__file__).resolve().parent.parent / "examples" / "addbinder" / "host
 
 
 def _write(folder, document):
-    path = Path(folder) / "popc.yaml"
+    path = Path(folder) / "membrane.yaml"
     path.write_text(yaml.safe_dump(document))
     return path
 
@@ -68,13 +68,13 @@ class GeometryTests(unittest.TestCase):
 class ConfigTests(unittest.TestCase):
     def test_dry_run_and_bundled_reference(self):
         with tempfile.TemporaryDirectory() as tmp:
-            path = _write(tmp, {"popc": {"host": str(HOST)}})
-            cfg = load_popc_config(path, check_paths=False, output_root=tmp)
-            self.assertEqual(cfg.output_dir, str(Path(tmp).absolute() / "popc_output"))
+            path = _write(tmp, {"membrane": {"host": str(HOST)}})
+            cfg = load_membrane_config(path, check_paths=False, output_root=tmp)
+            self.assertEqual(cfg.output_dir, str(Path(tmp).absolute() / "membrane_output"))
             self.assertIsNone(cfg.reference_gro)
             self.assertEqual(len(cfg.equilibration.stages), 7)
             with contextlib.redirect_stdout(io.StringIO()) as out:
-                self.assertEqual(run_popc(path, dry_run=True, output_root=tmp), 0)
+                self.assertEqual(run_membrane(path, dry_run=True, output_root=tmp), 0)
             self.assertIn("validated", out.getvalue())
         self.assertTrue(default_reference_path().is_file())
 
@@ -86,28 +86,28 @@ class ConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             for extra, message in cases:
                 with self.subTest(extra=extra):
-                    path = _write(tmp, {"popc": {"host": str(HOST), **extra}})
+                    path = _write(tmp, {"membrane": {"host": str(HOST), **extra}})
                     with self.assertRaisesRegex(ConfigError, message):
-                        load_popc_config(path, check_paths=False, output_root=tmp)
+                        load_membrane_config(path, check_paths=False, output_root=tmp)
 
     def test_defaults_and_retired_settings(self):
         with tempfile.TemporaryDirectory() as tmp:
-            path = _write(tmp, {"popc": {"host": str(HOST), "anchor_count": 3, "anchor_separation": 20.0}})
-            cfg = load_popc_config(path, check_paths=False, output_root=tmp)
+            path = _write(tmp, {"membrane": {"host": str(HOST), "anchor_count": 3, "anchor_separation": 20.0}})
+            cfg = load_membrane_config(path, check_paths=False, output_root=tmp)
             self.assertEqual(cfg.retired_settings, ["anchor_count", "anchor_separation"])
             self.assertEqual((cfg.protein_clash_distance, cfg.water_clash_distance), (2.0, 2.0))
 
     def test_relative_host_is_rejected_outside_the_package(self):
         with tempfile.TemporaryDirectory() as tmp:
-            path = _write(tmp, {"popc": {"host": "host"}})
+            path = _write(tmp, {"membrane": {"host": "host"}})
             with self.assertRaisesRegex(ConfigError, "in full"):
-                load_popc_config(path, check_paths=False, output_root=tmp)
+                load_membrane_config(path, check_paths=False, output_root=tmp)
 
 
 class ReferenceTests(unittest.TestCase):
     def test_bundled_bilayer(self):
         host = inspect_system(HOST)
-        reference = load_reference(default_reference_path(), host.definitions, PopcSpec(host=str(HOST)), ["POPC"])
+        reference = load_reference(default_reference_path(), host.definitions, MembraneSpec(host=str(HOST)), ["POPC"])
         report = reference.report
         self.assertEqual((report["lipids"], report["waters"]), (512, 20480))
         self.assertEqual(report["leaflets"]["upper"]["lipids"], 256)
@@ -123,9 +123,9 @@ class ReferenceTests(unittest.TestCase):
 
     def test_cholesterol_is_matched_by_its_atom_names(self):
         host = inspect_system(HOST)
-        path = Path(__file__).resolve().parent.parent / "examples" / "popc" / "reference" / \
+        path = Path(__file__).resolve().parent.parent / "examples" / "membrane" / "reference" / \
             "popc_chol_70-30_charmm36_303K_100ns.gro.gz"
-        reference = load_reference(path, host.definitions, PopcSpec(host=str(HOST)), ["CHL1", "POPC", "POPE"])
+        reference = load_reference(path, host.definitions, MembraneSpec(host=str(HOST)), ["CHL1", "POPC", "POPE"])
         self.assertEqual(reference.report["leaflets"]["upper"]["composition"], {"POPC": 42, "CHL1": 18})
         self.assertIn("CLOL", reference.report["residues_matched"])
         self.assertIn("SOL", reference.report["ignored_residues"])
@@ -137,7 +137,7 @@ class HostTests(unittest.TestCase):
         cls.host = inspect_system(HOST)
 
     def test_midplane_and_planes(self):
-        frame = measure_host(self.host, PopcSpec(host=str(HOST)))
+        frame = measure_host(self.host, MembraneSpec(host=str(HOST)))
         upper, lower = frame.planes["upper"]["mean_z"], frame.planes["lower"]["mean_z"]
         self.assertAlmostEqual(upper - lower, 37.3, delta=0.5)
         self.assertAlmostEqual(frame.midplane, (upper + lower) / 2, delta=1.0)
@@ -145,12 +145,12 @@ class HostTests(unittest.TestCase):
             self.assertLess(frame.planes[side]["tilt_degrees"], 1.0)
         removed = sum(sum(c.values()) for c in frame.counts.values())
         self.assertEqual(removed, 105 + 261 + 156)
-        given = measure_host(self.host, PopcSpec(host=str(HOST), membrane_center_z=120.0))
+        given = measure_host(self.host, MembraneSpec(host=str(HOST), membrane_center_z=120.0))
         self.assertEqual(given.midplane, 120.0)
 
     def test_tilted_membrane_fails(self):
         with self.assertRaisesRegex(ConfigError, "tilted"):
-            measure_host(self.host, PopcSpec(host=str(HOST), max_tilt=0.01))
+            measure_host(self.host, MembraneSpec(host=str(HOST), max_tilt=0.01))
 
 
 @slow
@@ -159,11 +159,11 @@ class EndToEndTests(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         # A full host path: an installed package resolves relative paths only in its own examples.
-        config = _write(cls.tmp.name, {"popc": {"host": str(HOST)}})
+        config = _write(cls.tmp.name, {"membrane": {"host": str(HOST)}})
         with contextlib.redirect_stdout(io.StringIO()):
-            cls.status = run_popc(config, output_root=cls.tmp.name)
-        cls.out = Path(cls.tmp.name) / "popc_output"
-        cls.report = json.loads((cls.out / "popc_report.json").read_text())
+            cls.status = run_membrane(config, output_root=cls.tmp.name)
+        cls.out = Path(cls.tmp.name) / "membrane_output"
+        cls.report = json.loads((cls.out / "membrane_report.json").read_text())
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             cls.final = mda.Universe(str(cls.out / "step5_input.gro"))
@@ -188,13 +188,13 @@ class EndToEndTests(unittest.TestCase):
         n = len(before)
         np.testing.assert_allclose(self.final.atoms[:n].positions, before.positions, atol=1e-3)
 
-    def test_new_popc_clears_the_protein_and_sits_on_the_host_midplane(self):
+    def test_new_bilayer_clears_the_protein_and_sits_on_the_host_midplane(self):
         protein = self.final.atoms[:len(self.host.select_atoms("resname ALA ARG ASN ASP CYS GLN GLU GLY HSD "
                                                                "HSE HSP ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL"))]
         heavy = protein[[not n.startswith("H") for n in protein.names]]
-        popc = self.final.select_atoms("resname POPC")
-        popc_heavy = popc[[not n.startswith("H") for n in popc.names]]
-        pairs = capped_distance(popc_heavy.positions, heavy.positions, 1.95, box=self.final.dimensions,
+        membrane = self.final.select_atoms("resname POPC")
+        membrane_heavy = membrane[[not n.startswith("H") for n in membrane.names]]
+        pairs = capped_distance(membrane_heavy.positions, heavy.positions, 1.95, box=self.final.dimensions,
                                 return_distances=False)
         self.assertEqual(len(pairs), 0)
         p = self.final.select_atoms("resname POPC and name P").positions[:, 2]
@@ -210,8 +210,8 @@ class EndToEndTests(unittest.TestCase):
                                delta=0.005)
         self.assertGreater(self.report["water"]["reference_waters"], 5000)
         water = self.final.select_atoms("resname TIP3 and name OH2")
-        popc = self.final.select_atoms("resname POPC")
-        heavy = popc[[not n.startswith("H") for n in popc.names]]
+        membrane = self.final.select_atoms("resname POPC")
+        heavy = membrane[[not n.startswith("H") for n in membrane.names]]
         close = capped_distance(water.positions, heavy.positions, 1.5, box=self.final.dimensions,
                                 return_distances=False)
         self.assertEqual(len(close), 0)

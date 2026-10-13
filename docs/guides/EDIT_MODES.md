@@ -44,7 +44,7 @@ is set.
 | `output_dir` | Output folder name or path. |
 
 To replace the membrane (pure POPC, or any equilibrated bilayer from a GRO
-file), use the [popc mode](POPC.md).
+file), use the [membrane mode](MEMBRANE.md).
 
 ## salt
 
@@ -204,7 +204,7 @@ gmxtransplant check-gromacs results/salt_output results/mutate_output
 
 ## Validation
 
-All seven examples (and both popc examples) were built on Dardel (GROMACS 2026.1) with
+All seven examples (and both membrane examples) were built on Dardel (GROMACS 2026.1) with
 `--gromacs-check always`: grompp passed each with 0 warnings and 0 notes; the
 step6.0 minimization and 5 ps of the first restrained NVT stage ran without
 LINCS warnings, and the HMR system ran 10 ps at 4 fs without LINCS warnings.

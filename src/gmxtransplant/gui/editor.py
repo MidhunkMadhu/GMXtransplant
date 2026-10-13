@@ -29,8 +29,8 @@ ENUMS = {
     ('charmprot', 'environment_overrides', '*'): ['lipid', 'sterol', 'water', 'ion', 'detergent', 'solvent'],
     ('addbinder', 'side'): ['upper', 'lower'],
     ('cholesterol', 'repack', 'stages', '*', 'integrator'): ['steep', 'nvt', 'npt'],
-    ('popc', 'equilibration', 'stages', '*', 'integrator'): ['steep', 'nvt', 'npt'],
-    ('popc', 'environment_overrides', '*'): ['lipid', 'sterol', 'water', 'ion', 'detergent', 'solvent'],
+    ('membrane', 'equilibration', 'stages', '*', 'integrator'): ['steep', 'nvt', 'npt'],
+    ('membrane', 'environment_overrides', '*'): ['lipid', 'sterol', 'water', 'ion', 'detergent', 'solvent'],
     ('addbinder', 'lateral_reference'): ['tip', 'host_center'],
     ('addbinder', 'restraint', 'reference'): ['host_tip', 'host'],
     ('addbinder', 'ion_side'): ['any', 'binder_side'],
@@ -70,7 +70,7 @@ TITLES = {
     'upper': 'Upper leaflet', 'lower': 'Lower leaflet',
     'forcefield_path': 'Force field (forcefield.itp)', 'coord_path': 'Coordinates',
     'addbinder': 'Host and binder',
-    'popc': 'Host membrane and bilayer',
+    'membrane': 'Host membrane and bilayer',
 }
 # Label of the one checkbox that switches a section on.
 TOGGLES = {
@@ -79,19 +79,9 @@ TOGGLES = {
     'minimization': 'Prepare a restrained minimization folder',
 }
 HELP = {
-    'charmprot': 'Choose two prepared CHARMM-GUI system folders, each containing topol.top, toppar/ and '
-                 'coordinates. All reference proteins and ligands are replaced from the transplant; the '
-                 'membrane, water and ions of the reference are kept.',
-    'addbinder': 'Choose the prepared membrane system (host folder) and the binder: its coordinates, ITP and, '
-                 'for a CHARMM-GUI ligand, the forcefield.itp generated with it. Each pose places the binder '
-                 'the given distance beyond the protein\'s outermost heavy atom on the chosen side, checks it '
-                 'against the protein, the membrane and every periodic image, and writes one system per pose. '
-                 'Distances are in Å.',
-    'popc': 'Choose the prepared membrane system (host folder with topol.top, toppar/ and the step5 GRO). '
-            'The protein and ligands keep their coordinates, so the OPM placement is kept; every lipid and '
-            'sterol is replaced by the lipids of an equilibrated bilayer placed on the host\'s midplane: by '
-            'default pure POPC from a 500 ns CHARMM36 bilayer (Zenodo 10.5281/zenodo.1010083), or any bilayer '
-            'GRO you give, with its own hydration water. Distances are in Å.',
+    'charmprot': 'Two CHARMM-GUI system folders: the reference keeps its membrane, water and ions; proteins and ligands come from the transplant.',
+    'addbinder': 'The host system and the binder (coordinates, ITP and, for a CGenFF ligand, its forcefield.itp). One system is written per pose. Distances in Å.',
+    'membrane': 'The host system folder. The protein keeps its place; the membrane is replaced by pure POPC, or by the bilayer GRO you give. Distances in Å.',
     'paths': 'Give each input as a complete path, or browse for it. Other sections refer to these files.',
     'alignment': 'Fit matching protein regions. Masks use sequential residue positions, not printed residue IDs. Distances are in Å.',
     'output': 'Filenames of the generated files.',
@@ -208,33 +198,33 @@ PATH_TITLES = {
     ('cholesterol', 'composition', 'target_concentration'): 'Salt concentration (mol/L)',
     ('cholesterol', 'composition', 'concentration_tolerance_fraction'): 'Concentration tolerance (fraction)',
     ('cholesterol', 'composition', 'lipid_targets'): 'Lipids per leaflet',
-    ('popc', 'host'): 'Host system folder',
-    ('popc', 'host_gro'): 'Host coordinates (GRO)',
-    ('popc', 'reference_gro'): 'Other equilibrated bilayer (GRO)',
-    ('popc', 'lipid_itps'): 'Extra lipid ITPs',
-    ('popc', 'lipid_forcefield'): 'Extra lipid parameters (forcefield.itp)',
-    ('popc', 'resname_map'): 'Residue names to moleculetypes',
-    ('popc', 'membrane_center_z'): 'Membrane midplane z (Å, host GRO frame)',
-    ('popc', 'max_tilt'): 'Largest leaflet tilt (degrees)',
-    ('popc', 'protein_clash_distance'): 'Lipid removal distance from protein and ligands (Å)',
-    ('popc', 'lateral_search'): 'Lateral positions of the bilayer to try',
-    ('popc', 'water_layer'): 'Reference water beyond each phosphate plane (Å)',
-    ('popc', 'protein_hydration_distance'): 'Keep host water/ions this close to the protein (Å)',
-    ('popc', 'reference_contact_distance'): 'Overlap distance at the box edge (Å)',
-    ('popc', 'water_clash_distance'): 'Water/ion removal distance (Å)',
-    ('popc', 'restore_salt'): 'Restore the host salt concentration',
-    ('popc', 'equilibration'): 'Equilibration (GROMACS)',
-    ('popc', 'equilibration', 'enabled'): 'Write the equilibration folder',
-    ('popc', 'equilibration', 'output_dir'): 'Folder name',
-    ('popc', 'equilibration', 'temperature'): 'Temperature (K)',
-    ('popc', 'equilibration', 'stages'): 'Stages',
-    ('popc', 'equilibration', 'stages', '*', 'name'): 'Stage (mdp file name)',
-    ('popc', 'equilibration', 'stages', '*', 'integrator'): 'Type',
-    ('popc', 'equilibration', 'stages', '*', 'nsteps'): 'Steps',
-    ('popc', 'equilibration', 'stages', '*', 'dt'): 'Time step (ps)',
-    ('popc', 'equilibration', 'stages', '*', 'backbone'): 'Protein backbone restraint (kJ/mol/nm²)',
-    ('popc', 'equilibration', 'stages', '*', 'sidechain'): 'Side-chain and ligand restraint (kJ/mol/nm²)',
-    ('popc', 'equilibration', 'stages', '*', 'lipid'): 'Lipid P z and dihedral restraint (kJ/mol/nm²)',
+    ('membrane', 'host'): 'Host system folder',
+    ('membrane', 'host_gro'): 'Host coordinates (GRO)',
+    ('membrane', 'reference_gro'): 'Other equilibrated bilayer (GRO)',
+    ('membrane', 'lipid_itps'): 'Extra lipid ITPs',
+    ('membrane', 'lipid_forcefield'): 'Extra lipid parameters (forcefield.itp)',
+    ('membrane', 'resname_map'): 'Residue names to moleculetypes',
+    ('membrane', 'membrane_center_z'): 'Membrane midplane z (Å, host GRO frame)',
+    ('membrane', 'max_tilt'): 'Largest leaflet tilt (degrees)',
+    ('membrane', 'protein_clash_distance'): 'Lipid removal distance from protein and ligands (Å)',
+    ('membrane', 'lateral_search'): 'Lateral positions of the bilayer to try',
+    ('membrane', 'water_layer'): 'Reference water beyond each phosphate plane (Å)',
+    ('membrane', 'protein_hydration_distance'): 'Keep host water/ions this close to the protein (Å)',
+    ('membrane', 'reference_contact_distance'): 'Overlap distance at the box edge (Å)',
+    ('membrane', 'water_clash_distance'): 'Water/ion removal distance (Å)',
+    ('membrane', 'restore_salt'): 'Restore the host salt concentration',
+    ('membrane', 'equilibration'): 'Equilibration (GROMACS)',
+    ('membrane', 'equilibration', 'enabled'): 'Write the equilibration folder',
+    ('membrane', 'equilibration', 'output_dir'): 'Folder name',
+    ('membrane', 'equilibration', 'temperature'): 'Temperature (K)',
+    ('membrane', 'equilibration', 'stages'): 'Stages',
+    ('membrane', 'equilibration', 'stages', '*', 'name'): 'Stage (mdp file name)',
+    ('membrane', 'equilibration', 'stages', '*', 'integrator'): 'Type',
+    ('membrane', 'equilibration', 'stages', '*', 'nsteps'): 'Steps',
+    ('membrane', 'equilibration', 'stages', '*', 'dt'): 'Time step (ps)',
+    ('membrane', 'equilibration', 'stages', '*', 'backbone'): 'Protein backbone restraint (kJ/mol/nm²)',
+    ('membrane', 'equilibration', 'stages', '*', 'sidechain'): 'Side-chain and ligand restraint (kJ/mol/nm²)',
+    ('membrane', 'equilibration', 'stages', '*', 'lipid'): 'Lipid P z and dihedral restraint (kJ/mol/nm²)',
     ('cholesterol', 'repack'): 'Repacking equilibration (GROMACS)',
     ('cholesterol', 'repack', 'enabled'): 'Write the repacking equilibration',
     ('cholesterol', 'repack', 'output_dir'): 'Folder name',
@@ -409,24 +399,24 @@ DESCRIPTIONS = {
     ('cholesterol', 'aligned_reference_pdb_path'): 'Written only when diagnostics are on.',
     ('cholesterol', 'reference_placed_pdb_path'): 'Written only when diagnostics are on.',
     ('cholesterol', 'merged_pdb_path'): 'Written only when diagnostics are on.',
-    ('popc', 'host'): 'The prepared membrane system, e.g. a CHARMM-GUI build: a folder with topol.top, toppar/ and step5_input.gro. Its membrane must lie flat, normal to z; its midplane is found from its lipids. Its own lipid ITPs (POPC.itp …) are used for the new lipids.',
-    ('popc', 'lipid_itps'): 'Only for a bilayer GRO with lipids the host does not have, e.g. POPS.itp from CHARMM-GUI.',
-    ('popc', 'lipid_forcefield'): 'Only when the extra lipid ITPs use parameters the host forcefield.itp lacks.',
-    ('popc', 'resname_map'): 'Usually not needed: a reference residue is matched by name, else to the host lipid or sterol with the same atom names (CLOL → CHL1). Use this to force a match.',
-    ('popc', 'host_gro'): "Tick to use a coordinate file other than the host folder's own step5 GRO, e.g. an MD frame.",
-    ('popc', 'reference_gro'): 'Untick to use the bundled bilayer: 512 POPC + water, CHARMM36, 150 mM NaCl, 310 K, the frame at 500 ns of Zenodo 10.5281/zenodo.1010083 (CC BY 4.0). Tick to give any other equilibrated bilayer GRO (mixed lipids, cholesterol, asymmetric leaflets) in CHARMM36 names; three-site water in it hydrates the new bilayer, ions are ignored.',
-    ('popc', 'membrane_center_z'): 'Untick to place the new bilayer on the host membrane\'s midplane (from its lipid tail ends), the OPM-derived centre CHARMM-GUI built. Tick to give the midplane yourself.',
-    ('popc', 'max_tilt'): 'The plane fitted through each leaflet\'s P atoms must be within this angle of the xy plane.',
-    ('popc', 'protein_clash_distance'): 'A new lipid with a heavy atom closer than this to a protein or ligand heavy atom is removed whole. Raise it to 3 Å to rule out lipid tails threaded through aromatic rings.',
-    ('popc', 'lateral_search'): 'The bilayer is shifted to this many lateral positions; the one that keeps the most POPC around the protein is used.',
-    ('popc', 'water_layer'): 'The reference water, equilibrated with the bilayer, hydrates the new POPC up to this far beyond each phosphate plane and replaces the host water there. 0 keeps only host water.',
-    ('popc', 'protein_hydration_distance'): 'Inside the hydration layer, host water and ions this close to the protein (including internal waters) are kept; reference water yields to them.',
-    ('popc', 'reference_contact_distance'): 'The reference bilayer repeats with its own box length, so copies can meet at the host box edge; the fewest are removed so none are closer than this.',
-    ('popc', 'water_clash_distance'): 'Host water and ions with a heavy atom closer than this to a new lipid heavy atom or to reference water are removed.',
-    ('popc', 'restore_salt'): 'The reference water brings no ions. Bulk waters outside the hydration layer and away from the protein become salt pairs until the host concentration is reached again.',
-    ('popc', 'neutralize'): 'Remove counterions to bring the system to the target charge, e.g. after anionic lipids are replaced.',
-    ('popc', 'equilibration'): 'A GROMACS folder with the CHARMM-GUI step6 schedule: the protein is held and released step by step, so it keeps its OPM placement while the POPC packs around it. A sample run script is saved; it is not run here.',
-    ('popc', 'environment_overrides'): 'Classify molecule types the automatic detector does not recognise, for example a custom lipid MYLIP → lipid (removed with the host membrane).',
+    ('membrane', 'host'): 'A CHARMM-GUI-style folder (topol.top, toppar/, step5_input.gro) with the membrane normal to z.',
+    ('membrane', 'lipid_itps'): 'Only for a bilayer GRO with lipids the host does not have, e.g. POPS.itp from CHARMM-GUI.',
+    ('membrane', 'lipid_forcefield'): 'Only when the extra lipid ITPs use parameters the host forcefield.itp lacks.',
+    ('membrane', 'resname_map'): 'Usually not needed; residues are matched automatically (e.g. CLOL → CHL1).',
+    ('membrane', 'host_gro'): "Tick to use a coordinate file other than the host folder's own step5 GRO, e.g. an MD frame.",
+    ('membrane', 'reference_gro'): 'Off: the bundled 512-POPC CHARMM36 bilayer (500 ns). On: any equilibrated bilayer GRO in CHARMM36 names.',
+    ('membrane', 'membrane_center_z'): "Off: the host membrane's own midplane (keeps the OPM placement). On: set it yourself.",
+    ('membrane', 'max_tilt'): 'The plane fitted through each leaflet\'s P atoms must be within this angle of the xy plane.',
+    ('membrane', 'protein_clash_distance'): 'A new lipid with a heavy atom closer than this to a protein or ligand heavy atom is removed whole. Raise it to 3 Å to rule out lipid tails threaded through aromatic rings.',
+    ('membrane', 'lateral_search'): 'The bilayer is shifted to this many lateral positions; the one that keeps the most POPC around the protein is used.',
+    ('membrane', 'water_layer'): 'The reference water, equilibrated with the bilayer, hydrates the new POPC up to this far beyond each phosphate plane and replaces the host water there. 0 keeps only host water.',
+    ('membrane', 'protein_hydration_distance'): 'Inside the hydration layer, host water and ions this close to the protein (including internal waters) are kept; reference water yields to them.',
+    ('membrane', 'reference_contact_distance'): 'The reference bilayer repeats with its own box length, so copies can meet at the host box edge; the fewest are removed so none are closer than this.',
+    ('membrane', 'water_clash_distance'): 'Host water and ions with a heavy atom closer than this to a new lipid heavy atom or to reference water are removed.',
+    ('membrane', 'restore_salt'): 'The reference water brings no ions. Bulk waters outside the hydration layer and away from the protein become salt pairs until the host concentration is reached again.',
+    ('membrane', 'neutralize'): 'Remove counterions to bring the system to the target charge, e.g. after anionic lipids are replaced.',
+    ('membrane', 'equilibration'): 'A GROMACS folder with the CHARMM-GUI step6 schedule: the protein is held and released step by step, so it keeps its OPM placement while the POPC packs around it. A sample run script is saved; it is not run here.',
+    ('membrane', 'environment_overrides'): 'Classify molecule types the automatic detector does not recognise, for example a custom lipid MYLIP → lipid (removed with the host membrane).',
     ('charmprot', 'keep_lipids'): 'Keep every lipid and sterol, even where it overlaps the incoming protein. Only clashing water, ions and other molecules are removed. Minimize before simulating.',
     ('charmprot', 'environment_overrides'): 'Classify molecule types the automatic detector does not recognise, for example a custom lipid MYLIP → lipid. Unrecognised types are treated as ligands.',
     ('charmprot', 'ligands'): 'auto: reference proteins and ligands are removed; transplant proteins and ligands are inserted. ignore: reference proteins and ligands are removed; only transplant proteins are inserted (its ligands are left out).',
@@ -550,7 +540,7 @@ class Context:
 # Settings shown first in a mode's own section; the rest go under Advanced settings.
 PRIMARY = {
     ('charmprot',): ['reference', 'transplant'],
-    ('popc',): ['host', 'reference_gro', 'host_gro', 'membrane_center_z', 'lipid_itps'],
+    ('membrane',): ['host', 'reference_gro', 'host_gro', 'membrane_center_z', 'lipid_itps'],
     ('addbinder',): ['host', 'binder_coordinates', 'binder_itp', 'binder_forcefield', 'side',
                      'distance', 'min_image_gap', 'same_orientation', 'poses',
                      'random_poses', 'random_distance'],
@@ -558,7 +548,7 @@ PRIMARY = {
 # Inputs that are always written, never behind a checkbox.
 REQUIRED = {('charmprot', 'reference'), ('charmprot', 'transplant'),
             ('addbinder', 'host'), ('addbinder', 'binder_coordinates'), ('addbinder', 'binder_itp'),
-            ('popc', 'host')}
+            ('membrane', 'host')}
 NOUNS = {('replacement_ligands',): 'ligand', ('addbinder', 'poses'): 'pose'}
 
 
@@ -566,7 +556,7 @@ ENVIRONMENT_CHOICES = ['lipid', 'sterol', 'water', 'ion', 'detergent', 'solvent'
 # The system-edit modes declare their texts once, in mode_registry.
 for _key, _mode in EDIT_MODES.items():
     TITLES[_key] = _mode.section_title
-    HELP[_key] = _mode.section_help + ' ' + _mode.description
+    HELP[_key] = _mode.section_help
     PRIMARY[(_key,)] = list(_mode.primary)
     REQUIRED |= {(_key, name) for name in _mode.required}
     ENUMS[(_key, 'environment_overrides', '*')] = ENVIRONMENT_CHOICES
@@ -576,7 +566,7 @@ for _key, _mode in EDIT_MODES.items():
     DESCRIPTIONS.update({(_key, *name.split('.')): text for name, text in _mode.help.items()})
     for _list in ('residues', 'mutations', 'copies'):
         NOUNS[(_key, _list)] = {'residues': 'residue', 'mutations': 'mutation', 'copies': 'copy'}[_list]
-OWN_SECTIONS = {'charmprot', 'addbinder', 'popc', *EDIT_MODES}
+OWN_SECTIONS = {'charmprot', 'addbinder', 'membrane', *EDIT_MODES}
 
 # Sections whose `enabled` flag is not a user choice: index.ndx is always written.
 ALWAYS_ENABLED = {('ndx',)}

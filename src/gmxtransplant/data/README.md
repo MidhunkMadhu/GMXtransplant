@@ -12,8 +12,8 @@ System: 512 POPC, 20,480 water, 55 Na⁺ and 55 Cl⁻ (150 mM NaCl), CHARMM36,
 
 Change made for GMXtransplant: the Na⁺ and Cl⁻ ions were removed. The POPC
 and water coordinates and the box are unchanged from
-`POPC_512_NaCl_150mM_310K_md_500ns.gro`. The `popc` mode uses this frame by
-default; give `popc.reference_gro` to use another equilibrated bilayer.
+`POPC_512_NaCl_150mM_310K_md_500ns.gro`. The `membrane` mode uses this frame by
+default; give `membrane.reference_gro` to use another equilibrated bilayer.
 
 # CHARMM36 protein and ion library
 

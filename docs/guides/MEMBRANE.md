@@ -1,6 +1,6 @@
-# popc mode: replace the membrane with an equilibrated bilayer
+# membrane mode: replace the membrane with an equilibrated bilayer
 
-`--mode popc` replaces the membrane of a prepared system with the lipids of a
+`--mode membrane` replaces the membrane of a prepared system with the lipids of a
 well-equilibrated bilayer: pure POPC from the bundled 500 ns bilayer by
 default, or any bilayer you give as a GRO file (mixed lipids, cholesterol,
 asymmetric leaflets). The protein and its ligands are not moved: the host
@@ -16,13 +16,13 @@ Use it to:
 ## Quick start
 
 ```bash
-gmxtransplant --show-example popc > popc.yaml   # set host to your system folder
-gmxtransplant --mode popc -i popc.yaml --dry-run
-gmxtransplant --mode popc -i popc.yaml --output results/
+gmxtransplant --show-example membrane > membrane.yaml   # set host to your system folder
+gmxtransplant --mode membrane -i membrane.yaml --dry-run
+gmxtransplant --mode membrane -i membrane.yaml --output results/
 ```
 
 The only required setting is `host`. To try the included D1 receptor system
-first, see the [popc example](../../examples/popc/README.md). It is also a
+first, see the [membrane example](../../examples/membrane/README.md). It is also a
 card on the Examples tab of the desktop application.
 
 ## Inputs
@@ -34,7 +34,7 @@ card on the Examples tab of the desktop application.
 | `lipid_itps`, `lipid_forcefield` | Only for a reference with lipids the host does not have (e.g. `POPS.itp`), and their parameters when the host `forcefield.itp` lacks them. `resname_map` forces a residue → moleculetype match. |
 | `membrane_center_z` | Optional. The membrane midplane in Å, in the host GRO frame. Leave it out to use the host membrane's own midplane, the centre the host was built around. |
 
-A second example uses your-own-GRO input: `examples/popc/popc_cholesterol.yaml`
+A second example uses your-own-GRO input: `examples/membrane/popc_cholesterol.yaml`
 replaces the D1R membrane with an equilibrated POPC/cholesterol 70:30 bilayer
 (J. Melcr, Zenodo [10.5281/zenodo.209362](https://doi.org/10.5281/zenodo.209362), CC BY 4.0).
 
@@ -83,14 +83,14 @@ licensed CC BY 4.0. Only its ions were removed. It has a P–P thickness of
 
 ## Output
 
-In `<output>/popc_output/`:
+In `<output>/membrane_output/`:
 
 | File | Contents |
 |---|---|
 | `step5_input.gro`, `step5_input.pdb` | The new system |
 | `topol.top`, `toppar/` | Its topology |
 | `index.ndx` | CHARMM-GUI groups (`SOLU`, `MEMB`, `SOLV`, `SOLU_MEMB`) plus `Protein`, `Membrane`, `POPC_upper`, `POPC_lower`, ... |
-| `popc_report.txt`, `.json` | Host planes and anchors; lipids removed per leaflet; the reference used; POPC placed per leaflet; water and ions removed and why; charge and salt; final molecules |
+| `membrane_report.txt`, `.json` | Host midplane and leaflets; lipids removed per leaflet; the reference used; POPC placed per leaflet; water and ions removed and why; charge and salt; final molecules |
 | `equilibration/` | The GROMACS equilibration (next section) |
 | `view.pml`, `view.vmd`, `view.pse` | PyMOL/VMD scenes, with the new POPC in its own colour |
 
@@ -122,7 +122,7 @@ ligand ITP leaves heavy atoms without a restraint.
 Run it on your workstation:
 
 ```bash
-cd results/popc_output/equilibration
+cd results/membrane_output/equilibration
 ./sample_run.sh
 ```
 
@@ -136,7 +136,7 @@ GMX="srun -n 1 gmx_mpi" MDRUN="srun gmx_mpi mdrun" ./sample_run.sh
 Then check the stages with `python3 analyze_equilibration.py` (box, area per
 phospholipid, P–P thickness, protein C-alpha RMSD and z drift per stage), and
 continue production from `step6.6_equilibration.gro` with the same `topol.top`.
-`gmxtransplant slurm-script results/popc_output/equilibration --profile dardel
+`gmxtransplant slurm-script results/membrane_output/equilibration --profile dardel
 --account <project>` writes a Slurm job for the whole schedule.
 
 On Dardel (GROMACS 2026.1, one node, 53 ns/day) the D1R example (built with the

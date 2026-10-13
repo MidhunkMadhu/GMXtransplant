@@ -5,10 +5,10 @@ Usage:
     python3 src/run_pipeline.py --mode protein -i protein_replace.yaml
     python3 src/run_pipeline.py --mode lig -i ligand_replace.yaml
     python3 src/run_pipeline.py --mode chl -i cholesterol_restore.yaml
-    python3 src/run_pipeline.py --mode popc -i popc.yaml
+    python3 src/run_pipeline.py --mode membrane -i membrane.yaml
     python3 src/run_pipeline.py --mode charmprot -i charmprot.yaml
     python3 src/run_pipeline.py --mode addbinder -i addbinder.yaml
-    python3 src/run_pipeline.py --mode salt -i salt.yaml      (also membrane, protonate,
+    python3 src/run_pipeline.py --mode salt -i salt.yaml      (also protonate,
         mutate, hmr, resize, flood, oligomer: see mode_registry.py)
     python3 src/run_pipeline.py prepare-minimization --coordinates X.gro --topology topol.top
     python3 src/run_pipeline.py check-gromacs FOLDER
@@ -101,7 +101,7 @@ from mode_registry import EDIT_MODES
 _EXAMPLE_FILES = {
     "charmprot": "charmprot.yaml",
     "addbinder": "addbinder.yaml",
-    "popc": "popc.yaml",
+    "membrane": "membrane.yaml",
     "protein": "protein_replace.yaml",
     "lig": "ligand_replace.yaml",
     "chl": "cholesterol_restore.yaml",
@@ -1239,14 +1239,14 @@ def _main(config_path: str, mode: str, dry_run: bool = False,
             print(f"[BUNDLE ERROR] {exc}; the built poses remain available", file=sys.stderr)
             return 7
         return 0
-    if mode == "popc":
-        from popc_membrane import run_popc
+    if mode == "membrane":
+        from membrane import run_membrane
         if prepare:
-            print("[CONFIG ERROR] --prepare-minimization is not available for popc; it writes its own "
+            print("[CONFIG ERROR] --prepare-minimization is not available for membrane; it writes its own "
                   "GROMACS equilibration folder", file=sys.stderr)
             return 2
         try:
-            return run_popc(config_path, dry_run=dry_run, output_root=output_root)
+            return run_membrane(config_path, dry_run=dry_run, output_root=output_root)
         except ConfigError as exc:
             print(f"[CONFIG ERROR] {exc}", file=sys.stderr)
             return 2
@@ -1303,9 +1303,9 @@ def _gromacs_targets(config_path, mode, output_root=None):
         cfg = importlib.import_module(EDIT_MODES[mode].module).load_config(config_path, check_paths=False,
                                                                            output_root=output_root)
         return [(cfg.output_dir, None, None, None)]
-    if mode == "popc":
-        from popc_membrane import load_popc_config
-        return [(load_popc_config(config_path, check_paths=False, output_root=output_root).output_dir,
+    if mode == "membrane":
+        from membrane import load_membrane_config
+        return [(load_membrane_config(config_path, check_paths=False, output_root=output_root).output_dir,
                  None, None, None)]
     if mode == "charmprot":
         from charmprot import load_charmprot_config
@@ -1381,10 +1381,10 @@ def _build_cli_parser() -> argparse.ArgumentParser:
         description="Modify a prepared molecular-simulation system."
     )
     parser.add_argument(
-        "--mode", choices=("charmprot", "protein", "lig", "chl", "addbinder", "popc", *EDIT_MODES),
+        "--mode", choices=("charmprot", "protein", "lig", "chl", "addbinder", "membrane", "popc", *EDIT_MODES),
         help=("two-folder CHARMM-GUI transplant, protein replacement, ligand replacement, "
               "cholesterol restoration, adding a binder above/below a membrane protein, "
-              "replacing the membrane with equilibrated POPC, or one of: "
+              "replacing the membrane with an equilibrated bilayer (popc is the former name), or one of: "
               + "; ".join(f"{key}: {mode.summary}" for key, mode in EDIT_MODES.items())),
     )
     parser.add_argument(
@@ -1417,7 +1417,7 @@ def _build_cli_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
         "--show-example",
-        choices=("charmprot", "protein", "lig", "chl", "addbinder", "popc", *EDIT_MODES, "minimize"),
+        choices=("charmprot", "protein", "lig", "chl", "addbinder", "membrane", *EDIT_MODES, "minimize"),
         metavar="MODE",
         help="print a bundled mode-specific YAML example and exit",
     )
@@ -1459,6 +1459,8 @@ def cli(argv=None) -> int:
         return 0
     if cli_args.example_comments is not None:
         parser.error("--comments and --no-comments require --show-example")
+    if cli_args.mode == "popc":
+        cli_args.mode = "membrane"
     if not cli_args.mode or not cli_args.input:
         parser.error("--mode and --input are required unless --show-example is used")
     try:

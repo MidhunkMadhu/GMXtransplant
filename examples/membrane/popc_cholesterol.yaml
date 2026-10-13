@@ -3,7 +3,7 @@
 # J. Melcr, Zenodo 10.5281/zenodo.209362, CC BY 4.0). The receptor keeps its
 # OPM placement. The reference names cholesterol CLOL; it is matched to the
 # host's CHL1 by its atom names, so nothing else needs to be given.
-popc:
+membrane:
   host: ../addbinder/host
   reference_gro: reference/popc_chol_70-30_charmm36_303K_100ns.gro.gz
   equilibration:

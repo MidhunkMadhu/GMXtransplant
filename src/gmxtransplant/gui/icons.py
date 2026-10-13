@@ -51,7 +51,7 @@ PICTOGRAMS = {
 <line x1="24" y1="7.5" x2="24" y2="16" stroke="{b}" stroke-width="1.6" stroke-dasharray="1.5 2.5" stroke-linecap="round"/>
 <path d="M24 1 L29 4 L29 9.5 L24 12.5 L19 9.5 L19 4 Z" fill="none" stroke="{a}" stroke-width="2" stroke-linejoin="round"/>''',
     # POPC: a bilayer, head groups out and tails in.
-    'popc': '''
+    'membrane': '''
 <g stroke="{b}" stroke-width="1.5" stroke-linecap="round" fill="none">
 ''' + ''.join(f'<path d="M{x - 0.8} 11 L{x - 0.8} 22 M{x + 0.8} 11 L{x + 0.8} 16 L{x + 2} 18 L{x + 0.8} 22"/>'
               f'<path d="M{x - 0.8} 37 L{x - 0.8} 26 M{x + 0.8} 37 L{x + 0.8} 32 L{x + 2} 30 L{x + 0.8} 26"/>'

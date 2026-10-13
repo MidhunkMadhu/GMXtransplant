@@ -2,7 +2,7 @@
 # pure POPC by default, or any equilibrated bilayer GRO you give. The protein
 # and ligands keep their coordinates (the OPM placement): the host membrane's
 # midplane is found from its lipids and the new bilayer is centred on it.
-popc:
+membrane:
   host: /path/to/membrane_system        # folder with topol.top, toppar/ and step5_input.gro
   # reference_gro: /path/to/bilayer.gro # default: the bundled 500 ns CHARMM36 POPC bilayer (Zenodo 10.5281/zenodo.1010083)
   # membrane_center_z: 123.0            # A, host GRO frame; default: the host membrane's midplane

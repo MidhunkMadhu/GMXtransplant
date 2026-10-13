@@ -51,7 +51,7 @@ DEFAULT_REFERENCE = "popc512_charmm36_nacl150mM_310K_500ns.gro.gz"
 REFERENCE_SOURCE = ("POPC bilayer, 512 lipids, CHARMM36, 150 mM NaCl, 310 K, frame at 500 ns. "
                     "H. Martinez-Seara, Zenodo, doi:10.5281/zenodo.1010083 (CC BY 4.0); "
                     "lipids only, water and ions removed")
-GENERATED = generated("popc")
+GENERATED = generated("membrane")
 # Settings of earlier versions that are no longer used (the anchor rule is gone).
 RETIRED = ("anchor_count", "anchor_separation")
 
@@ -61,7 +61,7 @@ RETIRED = ("anchor_count", "anchor_separation")
 # ---------------------------------------------------------------------------
 
 @dataclass
-class PopcSpec:
+class MembraneSpec:
     host: str
     host_gro: str | None = None
     # Equilibrated bilayer to take the lipids from; empty: the bundled 500 ns POPC bilayer.
@@ -89,54 +89,58 @@ class PopcSpec:
     ion_exclusion_distance: float = 10.0
     lipid_ion_exclusion_distance: float = 5.0
     environment_overrides: dict = field(default_factory=dict)
-    output_dir: str = "popc_output"
+    output_dir: str = "membrane_output"
     equilibration: EquilibrationSpec = field(default_factory=EquilibrationSpec)
 
 
-def load_popc_config(path, check_paths=True, output_root=None):
+def load_membrane_config(path, check_paths=True, output_root=None):
     import yaml
     from config import _UniqueKeySafeLoader
-    retired = []
+    retired, legacy = [], False
     try:
         raw = yaml.load(Path(path).read_text(), Loader=_UniqueKeySafeLoader)
-        if isinstance(raw, dict) and isinstance(raw.get("popc"), dict):
-            retired = [k for k in RETIRED if k in raw["popc"]]
+        if isinstance(raw, dict) and "membrane" not in raw and isinstance(raw.get("popc"), dict):
+            raw["membrane"] = raw.pop("popc")  # files written for the former name of this mode
+            legacy = True
+        if isinstance(raw, dict) and isinstance(raw.get("membrane"), dict):
+            retired = [k for k in RETIRED if k in raw["membrane"]]
     except (OSError, yaml.YAMLError):
         pass
-    if retired:
-        # Older files: drop the retired keys into a temporary copy before the strict check.
+    optional = ("host_gro", "reference_gro", "lipid_itps", "lipid_forcefield")
+    if retired or legacy:
+        # Older files: rewrite them into a temporary copy (next to the original, so
+        # relative paths still resolve) before the strict check.
         import tempfile
-        raw["popc"] = {k: v for k, v in raw["popc"].items() if k not in RETIRED}
+        raw["membrane"] = {k: v for k, v in raw["membrane"].items() if k not in RETIRED}
         handle = tempfile.NamedTemporaryFile("w", suffix=".yaml", dir=Path(path).parent, delete=False)
         with handle:
             yaml.safe_dump(raw, handle)
         try:
-            cfg = load_section(handle.name, "popc", PopcSpec, check_paths, output_root,
-                               optional_paths=("host_gro", "reference_gro", "lipid_itps", "lipid_forcefield"))
+            cfg = load_section(handle.name, "membrane", MembraneSpec, check_paths, output_root,
+                               optional_paths=optional)
         finally:
             Path(handle.name).unlink()
     else:
-        cfg = load_section(path, "popc", PopcSpec, check_paths, output_root,
-                           optional_paths=("host_gro", "reference_gro", "lipid_itps", "lipid_forcefield"))
-    positive(cfg, "popc", "max_tilt", "protein_clash_distance", "reference_contact_distance",
+        cfg = load_section(path, "membrane", MembraneSpec, check_paths, output_root, optional_paths=optional)
+    positive(cfg, "membrane", "max_tilt", "protein_clash_distance", "reference_contact_distance",
              "protein_hydration_distance", "water_clash_distance", "ion_exclusion_distance",
              "lipid_ion_exclusion_distance")
-    positive(cfg, "popc", "water_layer", allow_zero=True)
+    positive(cfg, "membrane", "water_layer", allow_zero=True)
     if cfg.max_tilt >= 45:
-        raise ConfigError("popc.max_tilt must be below 45 degrees")
+        raise ConfigError("membrane.max_tilt must be below 45 degrees")
     if not 1 <= cfg.lateral_search <= 400:
-        raise ConfigError("popc.lateral_search must be a whole number from 1 to 400")
+        raise ConfigError("membrane.lateral_search must be a whole number from 1 to 400")
     if any(not isinstance(k, str) or not isinstance(v, str) for k, v in cfg.resname_map.items()):
-        raise ConfigError("popc.resname_map must map residue names to moleculetype names")
+        raise ConfigError("membrane.resname_map must map residue names to moleculetype names")
     cfg.retired_settings = retired
     return cfg
 
 
-load_config = load_popc_config
+load_config = load_membrane_config
 
 
 # ---------------------------------------------------------------------------
-# Geometry (popc's tested helpers)
+# Geometry (membrane's tested helpers)
 # ---------------------------------------------------------------------------
 
 def default_reference_path():
@@ -666,15 +670,15 @@ def place_lipids(cfg, host, frame, reference, protected):
 # Run
 # ---------------------------------------------------------------------------
 
-def run_popc(config_path, dry_run=False, output_root=None):
-    cfg = load_popc_config(config_path, check_paths=not dry_run, output_root=output_root)
+def run_membrane(config_path, dry_run=False, output_root=None):
+    cfg = load_membrane_config(config_path, check_paths=not dry_run, output_root=output_root)
     reference_path = cfg.reference_gro or str(default_reference_path())
 
     def build(stage, host, report):
         work = stage.parent / "work"
         work.mkdir()
         for key in cfg.retired_settings:
-            report["warnings"].append(f"popc.{key} is no longer used and was ignored (the midplane is found from "
+            report["warnings"].append(f"membrane.{key} is no longer used and was ignored (the midplane is found from "
                                       "the host lipids)")
         frame = measure_host(host, cfg)
         removed = [m for m in host.molecules if m.category in REMOVED_CATEGORIES]
@@ -715,7 +719,7 @@ def run_popc(config_path, dry_run=False, output_root=None):
                 "than the host's; the water layers adjust during the NPT equilibration")
         protected = [m for m in host.molecules if m.category not in REMOVED_CATEGORIES + SOLVENT_CATEGORIES]
         lipids, origin, report["placement"] = place_lipids(cfg, host, frame, reference, protected)
-        print("[popc] placed " + ", ".join(f"{k} {n}" for k, n in report["placement"]["placed"].items())
+        print("[membrane] placed " + ", ".join(f"{k} {n}" for k, n in report["placement"]["placed"].items())
               + f" (best of {report['placement']['lateral_search']['registrations_tried']} lateral registrations)")
         waters, water_definition, kept_solvent, removed_solvent, report["water"] = place_water(
             cfg, host, frame, reference, lipids, None, protected, origin)
@@ -772,10 +776,10 @@ def run_popc(config_path, dry_run=False, output_root=None):
             parameter_files = list(_included_files(Path(cfg.lipid_forcefield).resolve(),
                                                    Path(cfg.lipid_forcefield).resolve().parent))
         report.update(write_system(
-            stage, host, ordered, "popc", parameter_files=parameter_files, equilibration=cfg.equilibration,
+            stage, host, ordered, "membrane", parameter_files=parameter_files, equilibration=cfg.equilibration,
             purpose="Equilibration of the new bilayer", extra_index=groups,
-            scene=({"inserted_popc": set(leaflet_of)},
-                   {"inserted_popc": ("Equilibrated bilayer", [.95, .68, .12], True)},
+            scene=({"inserted_membrane": set(leaflet_of)},
+                   {"inserted_membrane": ("Equilibrated bilayer", [.95, .68, .12], True)},
                    "Protein and ligands keep their input coordinates; the bilayer is new."),
             restrained=[m.definition for m in protected]))
 
@@ -813,9 +817,9 @@ def run_popc(config_path, dry_run=False, output_root=None):
                        + (", ".join(f"{k} {v}" for k, v in counts.items()) or "none"))
         return out
 
-    return run_edit("popc", cfg, "REPLACE THE MEMBRANE WITH AN EQUILIBRATED BILAYER", build,
+    return run_edit("membrane", cfg, "REPLACE THE MEMBRANE WITH AN EQUILIBRATED BILAYER", build,
                     "replace the membrane with an equilibrated bilayer", lines, dry_run=dry_run,
                     dry_run_note=f"Reference: {reference_path}; ")
 
 
-run = run_popc
+run = run_membrane

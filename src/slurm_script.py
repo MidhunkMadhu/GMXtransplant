@@ -1,7 +1,7 @@
 """Write a Slurm batch script that runs an equilibration folder's sample_run.sh.
 
-    gmxtransplant slurm-script popc_output/equilibration --profile dardel --account naiss2025-3-21
-    sbatch popc_output/equilibration/submit.sh
+    gmxtransplant slurm-script membrane_output/equilibration --profile dardel --account naiss2025-3-21
+    sbatch membrane_output/equilibration/submit.sh
 
 A profile fills in the cluster's partition, modules and GROMACS commands; every
 value can be given or overridden on the command line. Nothing is submitted.

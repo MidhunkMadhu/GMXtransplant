@@ -19,29 +19,29 @@ from config import path_kind, is_output_path as is_output, PLACEHOLDER_PATH_PREF
 from mode_registry import EDIT_MODES
 
 MODES = {'charmprot': 'CHARMM-GUI protein transplant', 'protein': 'Protein insertion', 'lig': 'Ligand replacement',
-         'chl': 'Cholesterol restoration', 'addbinder': 'Add binder outside the membrane protein',
-         'popc': 'Replace the membrane with equilibrated POPC',
+         'chl': 'Cholesterol restoration', 'addbinder': 'Binder placement',
+         'membrane': 'Membrane replacement',
          **{key: mode.title for key, mode in EDIT_MODES.items()}, 'minimize': 'Minimization preparation'}
 FOLDERS = {'charmprot': 'charmprot', 'protein': 'protein', 'lig': 'ligand', 'chl': 'cholesterol',
-           'addbinder': 'addbinder', 'popc': 'popc', **{key: key for key in EDIT_MODES}, 'minimize': 'minimization'}
+           'addbinder': 'addbinder', 'membrane': 'membrane', **{key: key for key in EDIT_MODES}, 'minimize': 'minimization'}
 EXAMPLES = {'charmprot': ('charmprot', 'charmprot.yaml'), 'protein': ('protein_insertion', 'protein_replace.yaml'),
             'lig': ('ligand_replacement', 'ligand_replace.yaml'),
             'chl': ('cholesterol_restoration', 'cholesterol_restore.yaml'),
-            'addbinder': ('addbinder', 'addbinder.yaml'), 'popc': ('popc', 'popc.yaml'),
+            'addbinder': ('addbinder', 'addbinder.yaml'), 'membrane': ('membrane', 'membrane.yaml'),
             **{key: (mode.example_dir, mode.example_yaml) for key, mode in EDIT_MODES.items()}}
 # Further examples of a mode: key -> (mode, example directory, YAML, output folder).
 EXTRA_EXAMPLES = {'addbinder_gprotein': ('addbinder', 'addbinder', 'addbinder_gprotein.yaml', 'addbinder_gprotein'),
-                  'popc_cholesterol': ('popc', 'popc', 'popc_cholesterol.yaml', 'popc_cholesterol')}
+                  'membrane_cholesterol': ('membrane', 'membrane', 'popc_cholesterol.yaml', 'membrane_cholesterol')}
 # Example cards shown under "More examples" besides those of the system-edit modes.
-MORE_EXAMPLE_KEYS = ('popc_cholesterol',)
+MORE_EXAMPLE_KEYS = ('membrane_cholesterol',)
 # Every example card, in display order.
 EXAMPLE_KEYS = [k for mode in EXAMPLES
                 for k in (mode, *(key for key, extra in EXTRA_EXAMPLES.items() if extra[0] == mode))]
 # A folder every complete example ships with, proving its inputs are installed.
-EXAMPLE_INPUT_FOLDER = {'charmprot': 'reference', 'addbinder': 'host', 'popc': '../addbinder/host',
+EXAMPLE_INPUT_FOLDER = {'charmprot': 'reference', 'addbinder': 'host', 'membrane': '../addbinder/host',
                         **{key: '../addbinder/host' for key in EDIT_MODES}}
 # Sections that are a mode's own self-contained configuration.
-OWN_SECTION_MODES = ('charmprot', 'addbinder', 'popc', *EDIT_MODES)
+OWN_SECTION_MODES = ('charmprot', 'addbinder', 'membrane', *EDIT_MODES)
 # Files a system-edit mode writes besides its report and system (copied run inputs).
 EDIT_EXTRA_ARTIFACTS = {'hmr': ('README', 'step6.0_minimization.mdp', 'step6.1_equilibration.mdp',
                                 'step6.2_equilibration.mdp', 'step6.3_equilibration.mdp', 'step6.4_equilibration.mdp',
@@ -180,9 +180,9 @@ def defaults(mode):
     if mode == 'addbinder':
         from addbinder import AddBinderSpec
         return {'addbinder': asdict(AddBinderSpec(host='', binder_coordinates='', binder_itp=''))}
-    if mode == 'popc':
-        from popc_membrane import PopcSpec
-        return {'popc': asdict(PopcSpec(host=''))}
+    if mode == 'membrane':
+        from membrane import MembraneSpec
+        return {'membrane': asdict(MembraneSpec(host=''))}
     if mode in EDIT_MODES:
         return {mode: asdict(edit_spec(mode)(host=''))}
     if mode == 'minimize':
@@ -367,11 +367,11 @@ def build_job(raw, output_root, mode, example_base=None, prepare=False, example_
                 'inputs': [str(p) for p in inputs],
                 'artifacts': ['run.yaml', 'run.log', 'run-status.json', *sorted(generated(mode)),
                               *EDIT_EXTRA_ARTIFACTS.get(mode, ())]}
-    if mode == 'popc':
-        from popc_membrane import GENERATED
-        section = values.get('popc')
+    if mode == 'membrane':
+        from membrane import GENERATED
+        section = values.get('membrane')
         if not isinstance(section, dict):
-            raise ValueError('popc must be a mapping of settings.')
+            raise ValueError('membrane must be a mapping of settings.')
         section['output_dir'] = str(out)
         return {'id': uuid.uuid4().hex, 'mode': mode, 'directory': str(out), 'config': values,
                 'inputs': [str(p) for p in inputs],
@@ -450,9 +450,9 @@ def validate_job(job, check_paths=False):
         if job['mode'] == 'addbinder':
             from addbinder import load_addbinder_config
             return load_addbinder_config(path, check_paths=check_paths)
-        if job['mode'] == 'popc':
-            from popc_membrane import load_popc_config
-            return load_popc_config(path, check_paths=check_paths)
+        if job['mode'] == 'membrane':
+            from membrane import load_membrane_config
+            return load_membrane_config(path, check_paths=check_paths)
         if job['mode'] in EDIT_MODES:
             import importlib
             module = importlib.import_module(EDIT_MODES[job['mode']].module)

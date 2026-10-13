@@ -15,7 +15,7 @@ All molecular components need compatible parameters before assembly. Inspect the
 | Replace a bound ligand while retaining the protein | `--mode lig` | `ligand_replace.yaml` |
 | Restore experimental cholesterol and adjust leaflet composition | `--mode chl` | `cholesterol_restore.yaml` |
 | Add a ligand or protein binder in the water above/below a membrane protein ([guide](docs/guides/ADDBINDER.md)) | `--mode addbinder` | `addbinder.yaml` |
-| Replace the membrane with a well-equilibrated bilayer, keeping the OPM placement: pure POPC by default, or any bilayer GRO you give ([guide](docs/guides/POPC.md)) | `--mode popc` | `popc.yaml` |
+| Replace the membrane with a well-equilibrated bilayer, keeping the OPM placement: pure POPC by default, or any bilayer GRO you give ([guide](docs/guides/MEMBRANE.md)) | `--mode membrane` | `membrane.yaml` |
 | Prepare a restrained OpenMM minimization folder for an assembled system | `prepare-minimization` | `minimization.yaml` |
 
 More modes, each changing one prepared system ([guide](docs/guides/EDIT_MODES.md)); in the desktop application they are under **More modes**:
@@ -130,7 +130,7 @@ one-click examples, validation, readable progress summaries, cancellation, and r
 Detailed logs are collapsed until **View Command Progress** is clicked. YAML is
 generated automatically in the background; there is no YAML editing tab.
 Select an output folder first. Runs write directly to a folder named after the mode
-(`charmprot/`, `protein/`, `ligand/`, `cholesterol/`, `addbinder/`, `popc/`,
+(`charmprot/`, `protein/`, `ligand/`, `cholesterol/`, `addbinder/`, `membrane/`,
 `minimization/`, and `salt/`, `mutate/` … for the further modes); example runs use
 `examples/<mode>/`. Repeating a run replaces its
 generated products, including `toppar/`, without timestamped run directories.
@@ -175,7 +175,7 @@ gmxtransplant --mode protein -i protein_replace.yaml --output results/
 
 `--output DIR` chooses where the generated files go. Without it they are written to the directory you ran the command from. Either way, the run's closing line names the absolute folder it wrote to.
 
-Use `--show-example` with `charmprot`, `lig`, `chl`, `addbinder`, `popc`, `minimize`, `salt`, `protonate`, `mutate`, `hmr`, `resize`, `flood` or `oligomer` for the other modes. Add `--no-comments` to print a compact example with the same active settings.
+Use `--show-example` with `charmprot`, `lig`, `chl`, `addbinder`, `membrane`, `minimize`, `salt`, `protonate`, `mutate`, `hmr`, `resize`, `flood` or `oligomer` for the other modes. Add `--no-comments` to print a compact example with the same active settings.
 
 The source checkout includes a complete example for each mode. Each example
 README explains its supplied files and how to run it:
@@ -187,9 +187,9 @@ README explains its supplied files and how to run it:
 - [Adding a binder](examples/addbinder/README.md): a prepared receptor system,
   a dopamine ligand and a G protein, placed on opposite sides of the membrane
   ([guide](docs/guides/ADDBINDER.md))
-- [Equilibrated POPC membrane](examples/popc/README.md): the same receptor
+- [Equilibrated POPC membrane](examples/membrane/README.md): the same receptor
   system with its membrane replaced by pure POPC, and by a POPC/cholesterol
-  bilayer from a GRO file ([guide](docs/guides/POPC.md))
+  bilayer from a GRO file ([guide](docs/guides/MEMBRANE.md))
 - The further modes, each on the same receptor system ([guide](docs/guides/EDIT_MODES.md)):
   [salt](examples/salt/README.md),
   [protonate](examples/protonate/README.md), [mutate](examples/mutate/README.md),

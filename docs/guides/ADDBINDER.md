@@ -216,7 +216,7 @@ included, so the binder stays in place while water, ions and lipid tails relax.
 
 ## Desktop application
 
-In the desktop application, choose **Add binder outside the membrane protein** on
+In the desktop application, choose **Binder placement** on
 the Configuration tab, or run one of its two cards on the Examples tab: dopamine
 (extracellular) or the Gs trimer (intracellular). Results go to `addbinder/`
 (examples: `examples/addbinder/` and `examples/addbinder_gprotein/`) in the

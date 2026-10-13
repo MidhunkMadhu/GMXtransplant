@@ -62,6 +62,6 @@ a source of **heavy-atom coordinates**:
 
 ## Not planned
 
-- `Modeller.addMembrane()` / `addSolvent()`: CHARMM-GUI and the membrane, popc and
+- `Modeller.addMembrane()` / `addSolvent()`: CHARMM-GUI and the membrane and
   resize modes already cover this with GROMACS topologies.
 - Using OpenMM force-field XML topologies in place of the CHARMM36 ITPs.

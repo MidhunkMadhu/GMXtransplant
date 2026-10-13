@@ -1,4 +1,4 @@
-"""Tests of the system-edit modes (salt, protonate, mutate, hmr, resize, flood, oligomer) and popc with a user bilayer.
+"""Tests of the system-edit modes (salt, protonate, mutate, hmr, resize, flood, oligomer) and membrane with a user bilayer.
 
 The end-to-end classes build each bundled D1R example (about 10-40 s each); they are
 marked slow and skipped with GMXT_FAST=1 (tools/run_tests.py --fast).
@@ -309,16 +309,16 @@ class OligomerRunTests(unittest.TestCase):
 
 
 @slow
-class PopcCholesterolRunTests(unittest.TestCase):
-    """The popc mode with a user bilayer GRO (POPC/cholesterol 70:30; CLOL matched to CHL1 by atom names)."""
+class MembraneCholesterolRunTests(unittest.TestCase):
+    """The membrane mode with a user bilayer GRO (POPC/cholesterol 70:30; CLOL matched to CHL1 by atom names)."""
 
-    def test_popc_cholesterol(self):
-        from popc_membrane import run_popc
+    def test_membrane_cholesterol(self):
+        from membrane import run_membrane
         with tempfile.TemporaryDirectory() as tmp:
             with contextlib.redirect_stdout(io.StringIO()):
-                code = run_popc(str(ROOT / "examples" / "popc" / "popc_cholesterol.yaml"), output_root=tmp)
-            folder = Path(tmp) / "popc_output"
-            report = json.loads((folder / "popc_report.json").read_text())
+                code = run_membrane(str(ROOT / "examples" / "membrane" / "popc_cholesterol.yaml"), output_root=tmp)
+            folder = Path(tmp) / "membrane_output"
+            report = json.loads((folder / "membrane_report.json").read_text())
             self.assertEqual(code, 0)
             universe, counts = _check_common(self, folder, report)
             self.assertNotIn("POPE", counts)

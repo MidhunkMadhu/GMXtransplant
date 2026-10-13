@@ -60,7 +60,7 @@ class RunProgress:
                         '[host]': 'Reading and classifying the host system',
                         '[frame]': 'Locating the membrane and the protein tip',
                         '[binder]': 'Reading the binder and checking its parameters',
-                        '[popc]': 'Placing the equilibrated bilayer',
+                        '[membrane]': 'Placing the equilibrated bilayer',
                         '[water]': 'Hydrating the new bilayer and removing overlapping water',
                         '[salt]': 'Restoring the salt concentration',
                         '[equilibration]': 'Writing the GROMACS equilibration folder'}
@@ -87,8 +87,8 @@ class RunProgress:
         rmsd = re.search(r'(?:RMSD.*?:|Alignment RMSD:)\s*([\d.]+)\s*A\b', line)
         if rmsd:
             self.facts['Alignment'] = f'Fit RMSD: {rmsd[1]} Å.'
-        if self.mode == 'popc':
-            placed = re.match(r'\[popc\] placed (.+?) \(best of', line)
+        if self.mode == 'membrane':
+            placed = re.match(r'\[membrane\] placed (.+?) \(best of', line)
             if placed:
                 self.facts['Bilayer'] = f'Placed {placed[1]}.'
             membrane = re.match(r'\[host\] midplane z ([\d.]+) A; removing (.+)$', line)

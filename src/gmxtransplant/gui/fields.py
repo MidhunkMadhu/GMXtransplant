@@ -6,7 +6,7 @@ import config
 import types
 from charmprot import CharmProtSpec
 from addbinder import AddBinderSpec
-from popc_membrane import PopcSpec
+from membrane import MembraneSpec
 from mode_registry import EDIT_MODES
 
 
@@ -33,8 +33,8 @@ def annotation_for(path):
             annotation = CharmProtSpec
         elif index == 0 and key == 'addbinder':
             annotation = AddBinderSpec
-        elif index == 0 and key == 'popc':
-            annotation = PopcSpec
+        elif index == 0 and key == 'membrane':
+            annotation = MembraneSpec
         elif index == 0 and key in EDIT_MODES:
             from .model import edit_spec
             annotation = edit_spec(key)

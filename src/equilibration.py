@@ -60,7 +60,7 @@ def _number(value, key, positive=True):
     return float(value)
 
 
-def parse_equilibration(raw, section="popc", enabled=True):
+def parse_equilibration(raw, section="membrane", enabled=True):
     """Validate an `equilibration:` mapping of the `section` YAML section."""
     where = f"{section}.equilibration"
     if raw is None:

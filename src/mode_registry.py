@@ -61,15 +61,15 @@ def _help(**extra):
 
 EDIT_MODES = {
     "salt": EditMode(
-        key="salt", title="Change the salt", module="salt", spec="SaltSpec",
-        summary="Set the salt concentration and ion types (NaCl, KCl, CaCl2, MgCl2) of a prepared system",
+        key="salt", title="Salt exchange", module="salt", spec="SaltSpec",
+        summary="Set the salt type and concentration.",
         description="Set the salt of a prepared system: remove the bulk ions and add the chosen cation and anion "
                     "(NaCl, KCl, CaCl2, MgCl2 ...) at a concentration in mol/L, replacing random bulk waters "
                     "away from the protein and membrane, then neutralize. Missing ion parameters come from the "
                     "bundled CHARMM36 set.",
         example_dir="salt", example_yaml="salt.yaml",
-        example_title="150 mM KCl instead of NaCl: D1R",
-        example_description="Replace the 150 mM NaCl of the apo D1 receptor build with 150 mM KCl.",
+        example_title="Salt exchange: D1R",
+        example_description="150 mM KCl instead of NaCl.",
         progress={"[salt]": "Placing ions"},
         files=("host_gro",), file_lists=("ion_itps",),
         primary=("host", "concentration", "cation", "anion", "host_gro"),
@@ -84,16 +84,15 @@ EDIT_MODES = {
                    keep_bound_distance="Ions with an atom this close to a protein heavy atom are kept "
                                        "(e.g. a structural sodium); 0 removes all bulk ions.")),
     "protonate": EditMode(
-        key="protonate", title="Change protonation states", module="protonate", spec="ProtonateSpec",
-        summary="Change residue protonation states (HSD/HSE/HSP, ASPP, GLUP, LSN) and rebalance the ions",
+        key="protonate", title="Protonation states", module="protonate", spec="ProtonateSpec",
+        summary="Change residue protonation states.",
         description="Change the protonation state of chosen residues of a prepared system: histidine HSD/HSE/HSP, "
                     "protonated ASP/GLU, neutral LYS. The protein ITP gets the CHARMM36 atoms, charges and bonded "
                     "terms, hydrogens are placed from the CHARMM internal coordinates, and counterions keep the "
                     "system neutral.",
         example_dir="protonate", example_yaml="protonate.yaml",
         example_title="Protonation states: D1R",
-        example_description="Make D2.50 (ASP70, built protonated as ASPP) charged again and doubly protonate "
-                            "histidine 164 (HSD → HSP) in the apo D1 receptor build.",
+        example_description="D2.50 charged, H164 doubly protonated.",
         progress={"[protonate]": "Changing protonation states"},
         primary=("host", "residues", "host_gro"),
         labels=_labels(residues="Residues", **{"residues.*.molecule": "Protein moleculetype",
@@ -105,14 +104,13 @@ EDIT_MODES = {
         section_title="Host system and residues"),
     "mutate": EditMode(
         key="mutate", title="Point mutations", module="mutate", spec="MutateSpec",
-        summary="Point mutations in a prepared system: CHARMM36 topology, side chain built and fitted in place",
+        summary="Mutate residues; side chains built in place.",
         description="Mutate residues of a prepared system. The side chain is built from the CHARMM36 internal "
                     "coordinates, its rotamer chosen to avoid clashes, the protein ITP gets the new residue's "
                     "atoms and bonded terms, overlapping water and ions are removed and the charge rebalanced.",
         example_dir="mutate", example_yaml="mutate.yaml",
-        example_title="Point mutations D103A, S198A: D1R",
-        example_description="Mutate the dopamine-binding aspartate D3.32 (ASP103 → ALA) and S5.42 "
-                            "(SER198 → ALA) of the apo D1 receptor build.",
+        example_title="Point mutations: D1R",
+        example_description="D3.32A and S5.42A.",
         progress={"[mutate]": "Building mutated residues"},
         primary=("host", "mutations", "host_gro"),
         labels=_labels(mutations="Mutations", **{"mutations.*.molecule": "Protein moleculetype",
@@ -126,28 +124,27 @@ EDIT_MODES = {
         section_title="Host system and mutations"),
     "hmr": EditMode(
         key="hmr", title="Hydrogen mass repartitioning", module="hmr", spec="HmrSpec",
-        summary="Hydrogen mass repartitioning of the topology, for 4 fs time steps",
+        summary="Heavier hydrogens for 4 fs time steps.",
         description="Repartition hydrogen masses in every molecule of a prepared system (water excluded): each "
                     "hydrogen gets the chosen mass, taken from the heavy atom it is bonded to, so the total mass "
                     "is unchanged. Allows a 4 fs time step with h-bond constraints.",
         example_dir="hmr", example_yaml="hmr.yaml",
         example_title="Hydrogen mass repartitioning: D1R",
-        example_description="Repartition the hydrogen masses of the apo D1 receptor build to 3.024 u for 4 fs "
-                            "time steps.",
+        example_description="3.024 u hydrogens for 4 fs steps.",
         progress={"[hmr]": "Repartitioning hydrogen masses"},
         primary=("host", "hydrogen_mass", "host_gro"),
         labels=_labels(hydrogen_mass="Hydrogen mass (u)", skip_water="Leave water unchanged",
                        time_step="Time step written to the mdp files (ps)"),
         help=_help(hydrogen_mass="3.024 u is three times the hydrogen mass (CHARMM-GUI's HMR choice).")),
     "resize": EditMode(
-        key="resize", title="Extend the water layer", module="resize", spec="ResizeSpec",
-        summary="Make the box taller by adding equilibrated bulk water (and its ions) above and below",
+        key="resize", title="Water layer extension", module="resize", spec="ResizeSpec",
+        summary="Add bulk water to make the box taller.",
         description="Make the water layer of a prepared membrane system thicker: slabs of the host's own bulk "
                     "water and ions are copied into the new space, so the box grows along z without changing "
                     "the membrane or the salt concentration.",
         example_dir="resize", example_yaml="resize.yaml",
-        example_title="Thicker water layer: D1R",
-        example_description="Add 20 Å of bulk water and ions to the water layer of the apo D1 receptor build.",
+        example_title="Water layer extension: D1R",
+        example_description="20 Å more water.",
         progress={"[resize]": "Adding water slabs"},
         primary=("host", "add_water", "host_gro"),
         labels=_labels(add_water="Water added along z (Å)",
@@ -156,16 +153,15 @@ EDIT_MODES = {
         help=_help(add_water="The box grows by this much along z. The water above and below the membrane is "
                              "one layer through the periodic boundary, so it all goes in the middle of that layer.")),
     "flood": EditMode(
-        key="flood", title="Flood with ligand copies", module="flood", spec="FloodSpec",
-        summary="Add many copies of a small molecule to the water (ligand flooding, cosolvent probes)",
+        key="flood", title="Ligand flooding", module="flood", spec="FloodSpec",
+        summary="Add many copies of a small molecule to the water.",
         description="Place many copies of a small molecule (a ligand or cosolvent probe) at random positions and "
                     "orientations in the water of a prepared system, away from the protein, the membrane and "
                     "each other. Overlapping water is removed and the charge rebalanced. Used for unbiased "
                     "binding (ligand flooding) and mixed-solvent mapping.",
         example_dir="flood", example_yaml="flood.yaml",
-        example_title="Dopamine flooding: D1R",
-        example_description="Add 10 dopamine molecules at random positions in the water around the apo D1 "
-                            "receptor for unbiased binding simulations.",
+        example_title="Ligand flooding: D1R",
+        example_description="10 dopamine copies in the water.",
         progress={"[flood]": "Placing ligand copies"},
         files=("host_gro", "molecule_coordinates", "molecule_itp", "molecule_forcefield"),
         primary=("host", "molecule_coordinates", "molecule_itp", "molecule_forcefield", "copies",
@@ -179,15 +175,14 @@ EDIT_MODES = {
                        min_copy_distance="Smallest distance between copies (Å)", seed="Random seed"),
         help=_help(copies="0 uses the concentration instead.")),
     "oligomer": EditMode(
-        key="oligomer", title="Add protein copies to the membrane", module="oligomer", spec="OligomerSpec",
-        summary="Add copies of the membrane protein (dimers, oligomers) at a set distance and rotation",
+        key="oligomer", title="Protein copies", module="oligomer", spec="OligomerSpec",
+        summary="Add copies of the membrane protein.",
         description="Add copies of the membrane protein (with its ligands) to the same membrane: each copy is "
                     "shifted in the membrane plane and rotated about the membrane normal. Overlapping lipids "
                     "are removed whole, water and ions as needed, and the charge rebalanced.",
         example_dir="oligomer", example_yaml="oligomer.yaml",
         example_title="Receptor dimer: D1R",
-        example_description="Add a second D1 receptor half the box away in x and y, turned 180° about the "
-                            "membrane normal: a checkerboard lattice of two receptors.",
+        example_description="A second receptor, turned 180°.",
         progress={"[oligomer]": "Placing protein copies"},
         primary=("host", "copies", "host_gro"),
         labels=_labels(copies="Copies", **{"copies.*.shift": "Shift in the membrane plane x y (Å)",

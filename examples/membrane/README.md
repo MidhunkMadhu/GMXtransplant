@@ -1,4 +1,4 @@
-# popc example: the apo D1 receptor in equilibrated POPC
+# membrane example: the apo D1 receptor in equilibrated POPC
 
 The host is the apo D1R build from the addbinder example (`../addbinder/host`).
 CHARMM-GUI Membrane Builder made it: PROA in a POPC/POPE/cholesterol membrane
@@ -10,17 +10,17 @@ from the bundled 500 ns CHARMM36 bilayer. The receptor keeps its coordinates.
 From the source checkout root:
 
 ```bash
-cd examples/popc
-python -B ../../src/run_pipeline.py --mode popc -i popc.yaml --output results/
+cd examples/membrane
+python -B ../../src/run_pipeline.py --mode membrane -i membrane.yaml --output results/
 ```
 
-In the desktop application, use the **Equilibrated POPC membrane: D1R** card
+In the desktop application, use the **POPC membrane: D1R** card
 on the Examples tab. For your own system, see the
-[popc mode guide](../../docs/guides/POPC.md).
+[membrane mode guide](../../docs/guides/MEMBRANE.md).
 
 ## What to expect
 
-The run takes about 20 seconds and writes `results/popc_output/`:
+The run takes about 20 seconds and writes `results/membrane_output/`:
 
 | | |
 |---|---|
@@ -34,7 +34,7 @@ The run takes about 20 seconds and writes `results/popc_output/`:
 Then run the equilibration (about 1.9 ns):
 
 ```bash
-cd results/popc_output/equilibration
+cd results/membrane_output/equilibration
 ./sample_run.sh
 ```
 
@@ -50,11 +50,11 @@ node rather than a laptop. The guide shows the settings for a Slurm job.
 host's CHL1 by its atom names, so the YAML holds only `host` and `reference_gro`.
 
 ```bash
-python -B ../../src/run_pipeline.py --mode popc -i popc_cholesterol.yaml --output results/
+python -B ../../src/run_pipeline.py --mode membrane -i popc_cholesterol.yaml --output results/
 ```
 
 Expect about 400 POPC and 200 CHL1 placed, reference hydration water, the
 host's salt concentration and a net charge of 0. The reference is about 8 Å
 thicker than the host membrane (cholesterol orders the tails); the NPT
 equilibration adjusts the water layers. In the desktop application this is the
-**Equilibrated POPC/cholesterol membrane: D1R** card under **More examples**.
+**POPC/cholesterol membrane: D1R** card under **More examples**.

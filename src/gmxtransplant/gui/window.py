@@ -34,25 +34,16 @@ def report_files(root):
             if not any(part.startswith('.') for part in p.relative_to(root).parts)]
 
 
-# Shown under the mode selector: what the selected mode does.
+# One line under the mode tiles: what the selected mode does.
 MODE_DESCRIPTIONS = {
-    'charmprot': 'Replace the proteins and ligands of a prepared CHARMM-GUI system with those of a second '
-                 'CHARMM-GUI system, keeping its membrane, water and ions.',
-    'protein': 'Insert a new protein, with any bound ligands, into a prepared membrane system in place of the old one.',
-    'lig': 'Replace one bound ligand with another; the protein, membrane, water and ions stay as they are.',
-    'chl': 'Restore experimentally resolved cholesterol into a prepared membrane system and adjust the '
-           'lipid composition. The restored cholesterols start with few lipid neighbours, so the run also '
-           'writes repack/, a system set up for a short equilibration (about 1.4 ns) that holds the protein, '
-           'ligands and restored cholesterols while the other lipids fill the gaps; a sample run script is '
-           'also saved.',
-    'addbinder': 'Place a ligand or protein in the water above or below a membrane protein, a set distance from '
-                 'its outermost atom, and build one complete system per pose.',
-    'popc': 'Replace the membrane of a prepared system with a well-equilibrated pure POPC bilayer (500 ns, '
-            'CHARMM36), or with any equilibrated bilayer you give as a GRO file. The protein keeps its OPM '
-            'placement; overlapping lipids, water and ions are removed, and the run writes equilibration/, a '
-            'GROMACS system set up for the CHARMM-GUI step6 equilibration with a sample run script.',
-    **{key: mode.description for key, mode in EDIT_MODES.items()},
-    'minimize': 'Prepare a restrained OpenMM minimization folder for a system you have already assembled.',
+    'charmprot': 'Swap the proteins and ligands of one CHARMM-GUI system into another.',
+    'protein': 'Insert a new protein, with its ligands, in place of the old one.',
+    'lig': 'Replace one bound ligand with another.',
+    'chl': 'Restore experimental cholesterol into the membrane.',
+    'addbinder': 'Place a ligand or protein in the water above or below the protein.',
+    'membrane': 'Replace the membrane with equilibrated POPC or your own bilayer.',
+    **{key: mode.summary for key, mode in EDIT_MODES.items()},
+    'minimize': 'Prepare a restrained OpenMM minimization.',
 }
 
 SANS = '"Inter", "SF Pro Text", "Helvetica Neue", "Segoe UI", "DejaVu Sans", sans-serif'
@@ -289,21 +280,21 @@ def repolish(widget):
 
 
 # Example cards: the original titles and descriptions.
-EXAMPLE_TITLES = {'popc': 'Equilibrated POPC membrane: D1R',
-                  'popc_cholesterol': 'Equilibrated POPC/cholesterol membrane: D1R',
+EXAMPLE_TITLES = {'membrane': 'POPC membrane: D1R',
+                  'membrane_cholesterol': 'POPC/cholesterol membrane: D1R',
                   'addbinder': 'Add binder: dopamine (extracellular)',
                   'addbinder_gprotein': 'Add binder: G protein (intracellular)',
                   **{key: mode.example_title for key, mode in EDIT_MODES.items()}}
 EXAMPLE_DETAILS = {
-    'charmprot': 'Choose reference and transplant folders. Replace proteins and ligands automatically while retaining the reference environment.',
-    'protein': 'Insert a protein and its bound ligands into a prepared membrane system using matching topology inputs.',
-    'lig': 'Replace one bound ligand (LI1) with another (LI2) using explicit heavy-atom correspondence, its ITP and its force field.',
-    'chl': 'Restore five experimental cholesterol molecules into the prepared D1R system. Uses Open Babel, installed with GMXtransplant.',
-    'popc': 'Replace the POPC/POPE/cholesterol membrane of the apo D1 receptor build with equilibrated pure POPC; the receptor keeps its OPM placement. Writes the system and a GROMACS equilibration folder.',
-    'popc_cholesterol': 'Your own bilayer GRO: replace the membrane of the apo D1 receptor build with an equilibrated POPC/cholesterol 70:30 bilayer; the receptor keeps its OPM placement.',
-    'addbinder': 'Extracellular ligand: place dopamine above the apo D1 receptor, once straight above at 20 Å and three times from random directions at 20–25 Å; one run-ready folder each.',
+    'charmprot': 'Swap the proteins and ligands of two CHARMM-GUI systems.',
+    'protein': 'Insert a protein and its ligands into a membrane system.',
+    'lig': 'Replace bound ligand LI1 with LI2.',
+    'chl': 'Restore five experimental cholesterols.',
+    'membrane': 'The D1 receptor in equilibrated pure POPC.',
+    'membrane_cholesterol': 'The D1 receptor in a POPC/cholesterol 70:30 bilayer.',
+    'addbinder': 'Dopamine above the D1 receptor, four poses.',
     **{key: mode.example_description for key, mode in EDIT_MODES.items()},
-    'addbinder_gprotein': 'Intracellular protein: place the Gs heterotrimer below the apo D1 receptor in its receptor-bound arrangement: pulled straight out to 20 Å (shorter if the box needs it) and towards two random sides at 15 Å, one of them also randomly rotated; one run-ready folder each.',
+    'addbinder_gprotein': 'The Gs heterotrimer below the D1 receptor, three poses.',
 }
 PAGES = ['Configuration', 'Examples', 'Run & results']
 
@@ -357,6 +348,22 @@ class Tile(QFrame):
             super().keyPressEvent(event)
 
 
+def place_balanced(grid, widgets, columns, span_total=12):
+    """Lay widgets out in rows of nearly equal length that each fill the full width:
+    7 widgets in 4 columns become 4 + 3, every row stretched, no empty slot."""
+    rows = max(1, -(-len(widgets) // columns))
+    base, extra = divmod(len(widgets), rows)
+    index = 0
+    for row in range(rows):
+        count = base + (row < extra)
+        for position in range(count):
+            span = span_total // count
+            grid.addWidget(widgets[index], row, position * span, 1, span)
+            index += 1
+    for column in range(span_total):
+        grid.setColumnStretch(column, 1)
+
+
 class ResponsiveGrid(QWidget):
     """Cards in as many columns as fit, so the examples need no scrolling."""
 
@@ -380,10 +387,7 @@ class ResponsiveGrid(QWidget):
         self.columns = columns
         for widget in self.widgets:
             self.grid.removeWidget(widget)
-        for index, widget in enumerate(self.widgets):
-            self.grid.addWidget(widget, index // columns, index % columns)
-        for column in range(self.maximum_columns):
-            self.grid.setColumnStretch(column, 1 if column < columns else 0)
+        place_balanced(self.grid, self.widgets, columns)
 
     def fit(self, width):
         self.arrange(max(1, min(self.maximum_columns, width // self.minimum_width)))
@@ -620,14 +624,14 @@ class MainWindow(QMainWindow):
     def tile_grid(self, modes):
         tiles = QGridLayout()
         tiles.setSpacing(10)
-        for index, mode in enumerate(modes):
+        widgets = []
+        for mode in modes:
             tile = Tile(MODES[mode], lambda m=mode: self.select_mode(m))
             self.pictograms.append((tile.icon, mode))
             tile.setToolTip(MODE_DESCRIPTIONS[mode])
             self.mode_buttons[mode] = tile
-            tiles.addWidget(tile, index // 4, index % 4)
-        for column in range(4):
-            tiles.setColumnStretch(column, 1)
+            widgets.append(tile)
+        place_balanced(tiles, widgets, 4)
         return tiles
 
     def build_examples_tab(self):
@@ -843,7 +847,7 @@ class MainWindow(QMainWindow):
             btn.setEnabled(not busy)
         if selected and not busy and 'output folder' in self.banner_text.text():
             self.banner.hide()
-        self.mode_info.setText(f'<b>Current mode: {MODES[self.mode]}</b> — {MODE_DESCRIPTIONS[self.mode]}')
+        self.mode_info.setText(f'<b>{MODES[self.mode]}</b> — {MODE_DESCRIPTIONS[self.mode]}')
         # The line under the output folder appears only for a problem with it.
         problem = ''
         if selected:

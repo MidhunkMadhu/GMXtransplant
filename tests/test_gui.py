@@ -286,7 +286,6 @@ class ProgressTests(unittest.TestCase):
                       'held) with topol.top, toppar/, the GRO, index.ndx and mdp files; a sample run script is '
                       'also saved.\n')
         self.assertIn('repack/ holds a 1.375 ns repacking equilibration', progress.facts['Repacking'])
-        self.assertIn('repack/', MODE_DESCRIPTIONS['chl'])
 
     def test_addbinder_glance_reads_the_current_pose_and_salt_lines(self):
         from gmxtransplant.gui.progress import RunProgress
@@ -381,52 +380,51 @@ def _left_click():
                        Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
 
 
-class PopcGuiTests(unittest.TestCase):
-    def test_popc_mode_example_and_job(self):
+class MembraneGuiTests(unittest.TestCase):
+    def test_membrane_mode_example_and_job(self):
         from gmxtransplant.gui.model import EXAMPLE_KEYS
-        self.assertIn('popc', MODES)
+        self.assertIn('membrane', MODES)
         self.assertEqual(EXAMPLE_KEYS.index('addbinder_gprotein'), EXAMPLE_KEYS.index('addbinder') + 1)
-        self.assertIn('popc', EXAMPLE_KEYS)
-        path = example_path('popc')
+        self.assertIn('membrane', EXAMPLE_KEYS)
+        path = example_path('membrane')
         with tempfile.TemporaryDirectory() as tmp:
-            job = build_job(load_yaml(path), tmp, 'popc', example_base=path.parent)
-            self.assertEqual(job['directory'], str(Path(tmp).resolve() / 'examples' / 'popc'))
-            self.assertEqual(job['config']['popc']['output_dir'], job['directory'])
-            self.assertTrue(Path(job['config']['popc']['host']).is_dir())
+            job = build_job(load_yaml(path), tmp, 'membrane', example_base=path.parent)
+            self.assertEqual(job['directory'], str(Path(tmp).resolve() / 'examples' / 'membrane'))
+            self.assertEqual(job['config']['membrane']['output_dir'], job['directory'])
+            self.assertTrue(Path(job['config']['membrane']['host']).is_dir())
             self.assertIn('equilibration', job['artifacts'])
             cfg = validate_job(job, check_paths=True)
             self.assertEqual(cfg.equilibration.output_dir, 'equilibration')
 
-    def test_popc_template_and_defaults(self):
-        self.assertEqual(defaults('popc')['popc']['protein_clash_distance'], 2.0)
-        self.assertEqual(defaults('popc')['popc']['water_clash_distance'], 2.0)
-        self.assertNotIn('anchor_count', defaults('popc')['popc'])
+    def test_membrane_template_and_defaults(self):
+        self.assertEqual(defaults('membrane')['membrane']['protein_clash_distance'], 2.0)
+        self.assertEqual(defaults('membrane')['membrane']['water_clash_distance'], 2.0)
+        self.assertNotIn('anchor_count', defaults('membrane')['membrane'])
         from gmxtransplant.gui.model import EXAMPLE_KEYS, MORE_EXAMPLE_KEYS
-        self.assertIn('popc_cholesterol', EXAMPLE_KEYS)
-        self.assertIn('popc_cholesterol', MORE_EXAMPLE_KEYS)
-        path = example_path('popc_cholesterol')
+        self.assertIn('membrane_cholesterol', EXAMPLE_KEYS)
+        self.assertIn('membrane_cholesterol', MORE_EXAMPLE_KEYS)
+        path = example_path('membrane_cholesterol')
         with tempfile.TemporaryDirectory() as tmp:
-            job = build_job(load_yaml(path), tmp, 'popc', example_base=path.parent,
-                            example_folder='popc_cholesterol')
-            self.assertTrue(Path(job['config']['popc']['reference_gro']).is_file())
+            job = build_job(load_yaml(path), tmp, 'membrane', example_base=path.parent,
+                            example_folder='membrane_cholesterol')
+            self.assertTrue(Path(job['config']['membrane']['reference_gro']).is_file())
             validate_job(job, check_paths=True)
-        raw = template_document('popc')
-        self.assertIn('popc', raw)
+        raw = template_document('membrane')
+        self.assertIn('membrane', raw)
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(Exception):
-                validate_job(build_job(raw, tmp, 'popc'), check_paths=True)
+                validate_job(build_job(raw, tmp, 'membrane'), check_paths=True)
 
-    def test_popc_progress_facts(self):
+    def test_membrane_progress_facts(self):
         from gmxtransplant.gui.progress import RunProgress
         from gmxtransplant.gui.window import MODE_DESCRIPTIONS
-        progress = RunProgress('popc')
+        progress = RunProgress('membrane')
         progress.feed('[host] midplane z 122.99 A; removing 105 CHL1, 261 POPC, 156 POPE\n'
-                      '[popc] placed upper POPC 228, lower POPC 229 (best of 16 lateral registrations)\n'
+                      '[membrane] placed upper POPC 228, lower POPC 229 (best of 16 lateral registrations)\n'
                       '[salt] host 0.1537 M -> final 0.1537 M; 30 pair(s) added in the bulk water\n')
         self.assertEqual(progress.facts['Bilayer'], 'Placed upper POPC 228, lower POPC 229.')
         self.assertIn('105 CHL1', progress.facts['Host membrane'])
         self.assertIn('0.1537 M', progress.facts['Salt'])
-        self.assertIn('equilibration/', MODE_DESCRIPTIONS['popc'])
 
 
 class EditModeGuiTests(unittest.TestCase):
@@ -442,7 +440,7 @@ class EditModeGuiTests(unittest.TestCase):
                 self.assertEqual(MODES[key], mode.title)
                 self.assertIn(key, EXAMPLE_KEYS)
                 self.assertIn(key, PICTOGRAMS)
-                self.assertEqual(MODE_DESCRIPTIONS[key], mode.description)
+                self.assertEqual(MODE_DESCRIPTIONS[key], mode.summary)
                 self.assertEqual(EXAMPLE_TITLES[key], mode.example_title)
                 path = example_path(key)
                 with tempfile.TemporaryDirectory() as tmp:
@@ -460,7 +458,7 @@ class EditModeGuiTests(unittest.TestCase):
         progress.feed('[salt] removed 614 bulk ion(s): 300 SOD, 314 CLA\n'
                       '[charge] +14.000 e -> +0.000 e\n'
                       '[gromacs] grompp passed for /x/salt_output (0 warnings, 0 notes)\n')
-        self.assertIn('614', progress.facts['Change the salt'])
+        self.assertIn('614', progress.facts['Salt exchange'])
         self.assertEqual(progress.facts['Charge'], '+14.000 e -> +0.000 e')
         self.assertIn('grompp passed', progress.facts['GROMACS check'])
 
