@@ -81,6 +81,38 @@ licensed CC BY 4.0. Only its ions were removed. It has a P–P thickness of
    by atom, including the net charge. A failed run leaves only its report,
    with the reason.
 
+## Fill the host box completely: membrane-patch
+
+The reference is tiled onto the host box. When the two boxes differ in size,
+lipids that cross the host box edge meet the periodic images of lipids from the
+other side, and those are removed: a 12.85 nm patch cut to a 10.6 nm box loses
+about 20 lipids per leaflet, so the new membrane holds fewer lipids than fit.
+The run warns when this happens. To fill the box completely, without changing
+its size:
+
+```bash
+gmxtransplant membrane-patch -i membrane.yaml -o patch/     # same YAML as the membrane run
+gmxtransplant slurm-script patch/ --profile dardel --account <project>
+sbatch patch/submit.sh                                      # or run patch/sample_run.sh
+# then, in membrane.yaml:  reference_gro: /full/path/patch/patch3_npt.gro
+gmxtransplant --mode membrane -i membrane.yaml --output results/
+```
+
+`membrane-patch` cuts the reference (bundled POPC or your `reference_gro`) to
+the host's lateral box at the reference's own density, with equal leaflets and
+the reference composition, hydrated by the reference water. It writes
+`patch_start.gro`, `topol.top` and `toppar/` (from the host), `index.ndx`, four
+mdps and `sample_run.sh`: minimization, 250 ps NVT and 1 ns NPT with the
+headgroups held in z, then `--ns` (default 50) ns of unrestrained NPT. The
+lateral area stays fixed at the host box (`compressibility = 0.0 4.5e-5`), so
+the last frame, `patch3_npt.gro`, is periodic in exactly the host box: used as
+`reference_gro`, only the lipids that overlap the protein are removed.
+
+How many lipids fit: the host's packing does not carry over. Cholesterol
+(about 0.27 nm²) and POPE (about 0.58 nm²) take less area than POPC (about
+0.65 nm²), so a POPC/POPE/cholesterol membrane holds more molecules than the
+same area of pure POPC.
+
 ## Output
 
 In `<output>/membrane_output/`:

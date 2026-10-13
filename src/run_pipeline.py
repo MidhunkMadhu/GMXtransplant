@@ -13,6 +13,7 @@ Usage:
     python3 src/run_pipeline.py prepare-minimization --coordinates X.gro --topology topol.top
     python3 src/run_pipeline.py check-gromacs FOLDER
     python3 src/run_pipeline.py slurm-script FOLDER/equilibration --profile dardel
+    python3 src/run_pipeline.py membrane-patch -i membrane.yaml -o patch/   (reference cut to the host box)
 
 PROTEIN MODE:
 implements the project's core workflow:
@@ -1444,6 +1445,9 @@ def cli(argv=None) -> int:
     if argv and argv[0] == "slurm-script":
         from slurm_script import main as slurm_main
         return slurm_main(argv[1:])
+    if argv and argv[0] == "membrane-patch":
+        from membrane_patch import main as patch_main
+        return patch_main(argv[1:])
     parser = _build_cli_parser()
     cli_args = parser.parse_args(argv)
     if cli_args.show_example:

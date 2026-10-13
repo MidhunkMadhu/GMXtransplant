@@ -234,3 +234,59 @@ class EndToEndTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@slow
+class MembranePatchTests(unittest.TestCase):
+    """membrane-patch: the bundled POPC bilayer cut to the example host's box."""
+
+    @classmethod
+    def setUpClass(cls):
+        from membrane_patch import FINAL, STAGES, build_patch
+        cls.tmp = tempfile.TemporaryDirectory()
+        config = _write(cls.tmp.name, {"membrane": {"host": str(HOST)}})
+        cls.out = Path(cls.tmp.name) / "patch"
+        cls.report = build_patch(config, cls.out, nanoseconds=20)
+        cls.stages, cls.final = STAGES, FINAL
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cls.gro = mda.Universe(str(cls.out / "patch_start.gro"))
+            cls.host = mda.Universe(str(HOST / "step5_input.gro"))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_box_is_the_host_box_and_leaflets_are_equal(self):
+        self.assertTrue(np.allclose(self.gro.dimensions[:2], self.host.dimensions[:2], atol=0.01))
+        lipids = self.report["lipids"]
+        self.assertEqual(sum(lipids["upper"].values()), sum(lipids["lower"].values()))
+        # The reference density: 64.5 A^2 per POPC in the bundled bilayer.
+        for value in self.report["area_per_lipid_angstrom2"].values():
+            self.assertAlmostEqual(value, 64.5, delta=1.5)
+
+    def test_topology_matches_the_coordinates(self):
+        top = (self.out / "topol.top").read_text()
+        self.assertNotIn("topol.top", "".join(l for l in top.splitlines() if l.startswith("#include")))
+        rows = dict(parse_top_molecules(str(self.out / "topol.top")))
+        self.assertEqual(rows["POPC"], len(self.gro.select_atoms("resname POPC").residues))
+        self.assertEqual(rows["TIP3"], len(self.gro.select_atoms("resname TIP3").residues))
+        for name in ("forcefield.itp", "POPC.itp", "TIP3.itp"):
+            self.assertTrue((self.out / "toppar" / name).is_file())
+
+    def test_stages_hold_the_area_and_restrain_only_with_the_itp_macros(self):
+        for name in self.stages:
+            self.assertTrue((self.out / f"{name}.mdp").is_file())
+        final = (self.out / f"{self.stages[-1]}.mdp").read_text()
+        self.assertIn("compressibility         = 0.0  4.5e-5", final)
+        self.assertIn("nsteps                  = 10000000", final)
+        self.assertNotIn("define", final)
+        self.assertIn("-DPOSRES_FC_LIPID=1000.0", (self.out / f"{self.stages[0]}.mdp").read_text())
+        script = (self.out / "sample_run.sh").read_text()
+        self.assertIn("-t patch2_npt_restrained.cpt", script)
+        self.assertEqual(self.report["final"], self.final)
+
+    def test_a_used_folder_is_refused(self):
+        from membrane_patch import build_patch
+        with self.assertRaises(ConfigError):
+            build_patch(_write(self.tmp.name, {"membrane": {"host": str(HOST)}}), self.out)

@@ -30,7 +30,7 @@ More modes, each changing one prepared system ([guide](docs/guides/EDIT_MODES.md
 | Add many copies of a small molecule to the water (ligand flooding) | `--mode flood` | `flood.yaml` |
 | Add copies of the membrane protein (dimers, oligomers) | `--mode oligomer` | `oligomer.yaml` |
 
-After every run, the built system is checked with `gmx grompp` (no warnings allowed) when GROMACS is installed; `gmxtransplant check-gromacs FOLDER` checks any folder, and `gmxtransplant slurm-script` writes a Slurm job for an equilibration folder.
+After every run, the built system is checked with `gmx grompp` (no warnings allowed) when GROMACS is installed; `gmxtransplant check-gromacs FOLDER` checks any folder, `gmxtransplant slurm-script` writes a Slurm job for an equilibration folder, and `gmxtransplant membrane-patch` cuts the membrane reference to the host box and sets up its re-equilibration, so the new membrane fills the box with nothing lost at the edges ([guide](docs/guides/MEMBRANE.md)).
 
 Protein mode supports membrane proteins generally, including receptors, channels, and transporters. Any ligands included in the incoming selection move with the protein during alignment.
 

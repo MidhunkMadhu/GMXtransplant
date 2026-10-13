@@ -34,8 +34,8 @@ def script(folder, profile="generic", account=None, partition=None, modules=None
             values[key] = value
     folder = Path(folder).resolve()
     if not (folder / "sample_run.sh").is_file():
-        raise SystemExit(f"{folder} has no sample_run.sh: point at an equilibration folder written by GMXtransplant")
-    name = job_name or f"gmxt-{folder.parent.name}"[:40]
+        raise SystemExit(f"{folder} has no sample_run.sh: point at an equilibration (or membrane-patch) folder written by GMXtransplant")
+    name = job_name or f"gmxt-{folder.parent.name}-{folder.name}"[:40]
     lines = ["#!/bin/bash", f"#SBATCH -J {name}"]
     if account:
         lines.append(f"#SBATCH -A {account}")
@@ -46,14 +46,20 @@ def script(folder, profile="generic", account=None, partition=None, modules=None
               f"#SBATCH -o {name}.%j.out", f"#SBATCH -e {name}.%j.err"]
     if values["gpus"]:
         lines.append(f"#SBATCH --gpus={values['gpus']}")
-    lines += ["# Written by GMXtransplant (gmxtransplant slurm-script). Submit with: sbatch submit.sh", "set -e",
-              f"cd {shlex.quote(str(folder))}"]
+    # No absolute path: the folder is usually built on one machine and run on a cluster.
+    lines += ["# Written by GMXtransplant (gmxtransplant slurm-script). Submit from this folder:",
+              "#   cd <this folder> && sbatch submit.sh", "set -e",
+              'cd "${SLURM_SUBMIT_DIR:-$(dirname "$0")}"',
+              '[ -f sample_run.sh ] || { echo "Submit from the folder with sample_run.sh: cd <folder> && sbatch '
+              'submit.sh" >&2; exit 1; }']
     if values["modules"]:
         lines.append("module load " + " ".join(values["modules"]))
     lines += [f"export OMP_NUM_THREADS={values['cpus_per_task']}",
               f"export GMX={shlex.quote(values['gmx'])}", f"export MDRUN={shlex.quote(values['mdrun'])}",
               "./sample_run.sh",
-              "if command -v python3 >/dev/null; then python3 analyze_equilibration.py | tee analysis.txt; fi"]
+              "if [ -f analyze_equilibration.py ] && command -v python3 >/dev/null; then",
+              "    python3 analyze_equilibration.py | tee analysis.txt || true",
+              "fi"]
     target = folder / "submit.sh"
     target.write_text("\n".join(lines) + "\n")
     os.chmod(target, 0o755)
@@ -78,7 +84,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     target = script(args.folder, args.profile, args.account, args.partition, args.modules, args.gmx, args.mdrun,
                     args.nodes, args.ntasks_per_node, args.cpus_per_task, args.time, args.gpus, args.job_name)
-    print(f"Wrote {target}; submit it with: sbatch {target}")
+    print(f"Wrote {target}; submit it from its folder: cd {target.parent} && sbatch submit.sh")
     return 0
 
 

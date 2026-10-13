@@ -219,6 +219,10 @@ class GromacsCheckTests(unittest.TestCase):
             self.assertIn("#SBATCH -A naiss0000-0-0", text)
             self.assertIn("module load PDC/26.03", text)
             self.assertIn("export MDRUN='srun gmx_mpi mdrun -pin on'", text)
+            # Portable: no absolute path of the machine that wrote it; runs from the submit folder.
+            self.assertNotIn(str(Path(tmp).resolve()), text)
+            self.assertIn('cd "${SLURM_SUBMIT_DIR:-$(dirname "$0")}"', text)
+            self.assertIn("if [ -f analyze_equilibration.py ]", text)
 
 
 def _check_common(test, folder, report):

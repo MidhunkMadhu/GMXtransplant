@@ -720,6 +720,12 @@ def run_membrane(config_path, dry_run=False, output_root=None):
                 "than the host's; the water layers adjust during the NPT equilibration")
         protected = [m for m in host.molecules if m.category not in REMOVED_CATEGORIES + SOLVENT_CATEGORIES]
         lipids, origin, report["placement"] = place_lipids(cfg, host, frame, reference, protected)
+        edge = sum(report["placement"]["removed_box_edge_overlap"].values())
+        if edge > 0.02 * max(len(lipids), 1):
+            report["warnings"].append(
+                f"{edge} reference lipids were removed where the reference was cut to the host box, so the new "
+                "membrane holds fewer lipids than fit; `gmxtransplant membrane-patch` cuts the reference to this "
+                "box and re-equilibrates it, after which nothing is lost (see the membrane guide)")
         print("[membrane] placed " + ", ".join(f"{k} {n}" for k, n in report["placement"]["placed"].items())
               + f" (best of {report['placement']['lateral_search']['registrations_tried']} lateral registrations)")
         waters, water_definition, kept_solvent, removed_solvent, report["water"] = place_water(
