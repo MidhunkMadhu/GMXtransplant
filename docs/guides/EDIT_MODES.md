@@ -125,6 +125,7 @@ excluded. The report gives the chi angles and the score. The topology is
 rebuilt as for protonate. Water and ions within `water_clash_distance` (2.5 Å)
 of a new atom are removed; lipids within `lipid_clash_distance` (2 Å) are
 removed whole (`remove_clashing_lipids: false` only warns). Minimize before MD.
+PDBFixer side chains are planned ([roadmap](PDBFIXER_ROADMAP.md)).
 
 ## hmr
 
