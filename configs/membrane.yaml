@@ -25,7 +25,7 @@ membrane:
 # Replace each /path/to/ placeholder with a full path; none is resolved against the
 # working directory. Generated files use the --output folder, or the directory you
 # run the command from. Optional: host_gro, max_tilt, lateral_search,
-# protein_hydration_distance, reference_contact_distance, refill_edge, edge_refill_distance,
+# protein_hydration_distance, reference_contact_distance, refill_edge, edge_refill_distance, refill_protein,
 # copy_host_protocol, repack, neutralize, target_net_charge,
 # ion_exclusion_distance, lipid_ion_exclusion_distance, environment_overrides,
 # output_dir, equilibration.output_dir, equilibration.stages.

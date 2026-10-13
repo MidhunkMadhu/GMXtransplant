@@ -20,23 +20,29 @@ on the Examples tab. For your own system, see the
 
 ## What to expect
 
-The run takes about 20 seconds and writes `results/membrane_output/`:
+The run takes about 30 seconds and writes `results/membrane_output/`:
 
 | | |
 |---|---|
 | Host membrane removed | 261 POPC, 156 POPE, 105 CHL1 |
 | Host midplane | z = 123.0 Å, from the lipid tail ends; both leaflets tilted 0.1° |
 | P–P thickness, host / reference | 37.3 Å / 39.0 Å |
-| POPC placed, upper / lower | 232 / 231 (49 removed within 2 Å of the receptor) |
-| Hydration water | 10,684 reference waters; host water and ions near the receptor kept |
+| POPC placed, upper / lower | 241 / 243 in the unchanged box: 49 touching the receptor removed and 18 refitted against it; 11 meeting across the box edge removed and 4 put back |
+| Clash check | 1 lipid and 1 water closer than 0.2 Å removed; the final check is clean |
+| Hydration water | 10,602 reference waters; host water and ions near the receptor kept |
 | Charge, salt | 0 e; 0.154 M, as in the host |
 
-Then run the equilibration (about 1.9 ns):
+Three run sets are written: `repack/` (the membrane relaxes around the held
+receptor, about 1.4 ns), `equilibration/` (CHARMM-GUI schedule, about 1.9 ns)
+and `host_protocol/` (the host folder's own step6 mdps). For example:
 
 ```bash
 cd results/membrane_output/equilibration
 ./sample_run.sh
 ```
+
+On Dardel (GROMACS 2026.1) every mdp of the three sets passed grompp with no
+warnings, and the minimization converged.
 
 The system has about 380,000 atoms, so run the equilibration on a compute
 node rather than a laptop. The guide shows the settings for a Slurm job.

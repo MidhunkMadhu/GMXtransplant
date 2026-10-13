@@ -212,7 +212,9 @@ def place(items, workdir, label="placed"):
         for atom in definition.atoms:
             key = (number, atom.resnr)
             if key != previous:
-                residues.append((atom.resnr, atom.resname))
+                # Distinct numbers, so the GRO read back keeps every molecule's residues apart
+                # (renumber_residues sets the final numbers).
+                residues.append((len(residues) + 1, atom.resname))
                 previous = key
             resindex.append(len(residues) - 1)
             names.append(atom.atom_name)
@@ -298,6 +300,22 @@ def merge(ordered, dimensions):
         final = mda.Merge(*groups)
     final.dimensions = np.array(dimensions, dtype=float).copy()
     return final
+
+
+def renumber_residues(final, ordered):
+    """Residue numbers as CHARMM-GUI writes them: proteins and ligands keep theirs; every
+    other moleculetype is numbered 1, 2, 3 ... in file order (a molecule of several
+    residues gets consecutive numbers). New molecules otherwise all carry their ITP
+    residue number, and viewers then join them into one residue (one bonded mess)."""
+    counters, offset = Counter(), 0
+    for _, mol in ordered:
+        size = mol.stop - mol.start
+        if mol.category not in ("protein", "ligand"):
+            residues = final.atoms[offset:offset + size].residues
+            start = counters[mol.name]
+            residues.resids = np.arange(start + 1, start + 1 + len(residues))
+            counters[mol.name] += len(residues)
+        offset += size
 
 
 def net_charge(ordered):
@@ -545,6 +563,7 @@ def write_system(stage, host, ordered, mode, parameter_files=(), equilibration=N
     (default: every protein and ligand).
     """
     final = merge(ordered, host.universe.dimensions)
+    renumber_residues(final, ordered)
     donor = ParameterSource(list(host.files) + [Path(p) for p in parameter_files])
     topology = write_topology(stage, host, donor, ordered)
     top = Path(topology.top_path)

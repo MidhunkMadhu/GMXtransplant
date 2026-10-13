@@ -71,6 +71,11 @@ licensed CC BY 4.0. Only its ions were removed. It has a P–P thickness of
      membrane normal) until one stays 1 Å from every other lipid. The box is
      thus filled at the reference density; the minimization resolves the
      remaining close contacts (tested down to 1 Å).
+   - Each position emptied next to the protein is filled the same way: other
+     equilibrated lipids are turned until one fits against the protein (heavy
+     atoms 2 Å from it, every atom 0.2 Å), so the protein-lipid interface is
+     packed like the host's instead of left empty (`refill_protein`). Positions
+     whose head lies inside the protein stay empty.
    - The bilayer is tried at 16 lateral positions. The one with equal leaflets
      and the most lipids is used.
 5. **Hydrate the new bilayer.** The reference water hydrates the new
@@ -220,6 +225,7 @@ moving less than 0.1 nm along z. To change a stage, e.g. to lengthen the last on
 | `water_layer` | 10.0 | Reference hydration beyond each P plane (Å); 0 keeps only host water |
 | `protein_hydration_distance` | 4.0 | Host water/ions this close to the protein are kept (Å) |
 | `reference_contact_distance` | 1.0 | Closest heavy-atom contact allowed between lipids meeting across the box edge (Å) |
+| `refill_protein` | true | Fit other reference lipids against the protein where touching lipids were removed |
 | `refill_edge`, `edge_refill_distance` | true, 1.0 | Fill each emptied edge position with another reference lipid that stays this far (Å) from every lipid |
 | `water_clash_distance` | 2.0 | Host water/ion to new lipid or reference water (Å) |
 | `neutralize`, `target_net_charge` | true, 0 | Remove or add counterions to reach this charge |

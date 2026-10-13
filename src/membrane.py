@@ -88,6 +88,9 @@ class MembraneSpec:
     # relax what is left.
     refill_edge: bool = True
     edge_refill_distance: float = 1.0
+    # The same for the lipids removed for touching the protein: other equilibrated
+    # lipids are fitted against the protein, so the protein-lipid interface is packed.
+    refill_protein: bool = True
     # Final clash check, every atom (hydrogens included) of different molecules: pairs
     # closer than clash_distance (A) are reported; with remove_clashes the new lipid or
     # the water/ion of each pair is removed (never the protein or ligands).
@@ -662,63 +665,70 @@ def _lipids_at(cfg, reference, host_cell, frame, origin, protected_heavy, box):
         return dict(Counter(f"{side} {reference.lipids[k][0].name}" for k, side, _, _ in items))
     report = {"tiled": by_type(candidates), "removed_protein_overlap": by_type([candidates[i] for i in clash]),
               "removed_box_edge_overlap": by_type([keep[i] for i in edge])}
-    return kept, report, [keep[i] for i in edge]
+    return kept, report, [keep[i] for i in edge], [candidates[i] for i in clash]
 
 
 REFILL_ROTATIONS = 24    # orientations about z tried per reference lipid
 REFILL_CANDIDATES = 256  # reference lipids (of the same leaflet) tried per position
+REFILL_REACH = 30.0      # A; atoms this far (xy) from the position are checked
 
 
 def refill_edge(cfg, reference, kept, dropped, protected_all, protected_heavy, box, host_cell, seed=7):
-    """Put a lipid back at each head position emptied at the box edge.
+    """Put a lipid back at each emptied head position (box edge, or next to the protein).
 
-    A lipid removed where the reference was cut to the host box leaves a hole of one
-    lipid. Other equilibrated lipids of the same leaflet are tried there, head on the
-    same spot, turned about z. The first is used whose heavy atoms stay
-    edge_refill_distance from the other lipids' and protein_clash_distance from the
-    protein's, and whose every atom (hydrogens included: a refilled lipid sits in a
-    tight spot) stays clash_distance from every atom of the lipids, protein, ligands
-    and the host water kept near them. Minimization and repack/ relax the rest.
+    Other equilibrated lipids of the same leaflet are tried there, head on the same
+    spot, turned about z (REFILL_ROTATIONS orientations). The first is used whose heavy
+    atoms stay edge_refill_distance from the other lipids' and protein_clash_distance
+    from the protein's, and whose every atom (hydrogens included: a refilled lipid sits
+    in a tight spot) stays clash_distance from every atom of the lipids, protein,
+    ligands and the host water kept near them. Minimization and repack/ relax the rest.
+
+    Fast: around each position the atoms within REFILL_REACH are unwrapped once (minimum
+    image) into KD-trees, and all orientations of a candidate are tested in one query.
     """
+    from scipy.spatial import cKDTree
     rng = np.random.default_rng(seed)
+    height = float(box[2])
+    angles = np.linspace(0, 2 * np.pi, REFILL_ROTATIONS, endpoint=False)
+    turns = np.array([[[np.cos(a), np.sin(a)], [-np.sin(a), np.cos(a)]] for a in angles])
     added = []
     for k_old, side, coords_old, _ in dropped:
         head = coords_old[_head_index(reference.lipids[k_old][0])]
-        current = np.concatenate([item[2] for item in kept + added])
-        current_heavy = np.concatenate([item[2][item[3]] for item in kept + added])
+        lipids_all = np.concatenate([item[2] for item in kept + added])
+        lipids_heavy = np.concatenate([item[2][item[3]] for item in kept + added])
 
-        def nearby(points):
-            return points[np.linalg.norm(_min_image_xy(points[:, :2] - head[:2], host_cell), axis=1) < 30.0]
-        near_lipids, near_lipids_heavy = nearby(current), nearby(current_heavy)
-        near_protein, near_protein_heavy = nearby(protected_all), nearby(protected_heavy)
+        def local(points):
+            """Points within REFILL_REACH (xy) of the head, unwrapped around it."""
+            if not len(points):
+                return points
+            delta = points - head
+            delta[:, :2] = _min_image_xy(delta[:, :2], host_cell)
+            delta[:, 2] -= height * np.round(delta[:, 2] / height)
+            near = np.linalg.norm(delta[:, :2], axis=1) < REFILL_REACH
+            return head + delta[near]
+        checks = [(local(protected_heavy), cfg.protein_clash_distance, True),
+                  (local(lipids_heavy), cfg.edge_refill_distance, True),
+                  (local(protected_all), cfg.clash_distance, False),
+                  (local(lipids_all), cfg.clash_distance, False)]
+        trees = [(cKDTree(points), cutoff, heavy_only) for points, cutoff, heavy_only in checks if len(points)]
         pool = [k for k in range(len(reference.lipids)) if reference.leaflets[k] == side]
         found = None
         for k in rng.choice(pool, size=min(REFILL_CANDIDATES, len(pool)), replace=False):
             definition, whole = reference.lipids[k]
             mask = _heavy_mask(definition)
-            pivot = whole[_head_index(definition)]
-            for angle in np.linspace(0, 2 * np.pi, REFILL_ROTATIONS, endpoint=False):
-                c, s = np.cos(angle), np.sin(angle)
-                coords = whole.copy()
-                coords[:, :2] = (coords[:, :2] - pivot[:2]) @ np.array([[c, s], [-s, c]]) + head[:2]
-                coords[:, 2] += head[2] - pivot[2]
-                if len(near_lipids_heavy) and len(capped_distance(coords[mask], near_lipids_heavy,
-                                                                  cfg.edge_refill_distance, box=box,
-                                                                  return_distances=False)):
-                    continue
-                if len(near_lipids) and len(capped_distance(coords, near_lipids, cfg.clash_distance, box=box,
-                                                            return_distances=False)):
-                    continue
-                if len(near_protein) and len(capped_distance(coords, near_protein, cfg.clash_distance,
-                                                             box=box, return_distances=False)):
-                    continue
-                if len(near_protein_heavy) and len(capped_distance(coords[mask], near_protein_heavy,
-                                                                   cfg.protein_clash_distance, box=box,
-                                                                   return_distances=False)):
-                    continue
-                found = (int(k), side, coords, mask)
-                break
-            if found:
+            relative = whole - whole[_head_index(definition)]
+            coords = np.empty((len(angles),) + whole.shape)
+            coords[:, :, :2] = np.einsum("nj,rjk->rnk", relative[:, :2], turns) + head[:2]
+            coords[:, :, 2] = relative[:, 2] + head[2]
+            fits = np.ones(len(angles), dtype=bool)
+            for tree, cutoff, heavy_only in trees:
+                points = coords[:, mask] if heavy_only else coords
+                distances, _ = tree.query(points.reshape(-1, 3), k=1, distance_upper_bound=cutoff)
+                fits &= np.isinf(distances.reshape(len(angles), -1)).all(axis=1)
+                if not fits.any():
+                    break
+            if fits.any():
+                found = (int(k), side, coords[int(np.argmax(fits))], mask)
                 break
         if found:
             added.append(found)
@@ -735,14 +745,15 @@ def place_lipids(cfg, host, frame, reference, protected):
                for i in range(side) for j in range(side)][:cfg.lateral_search]
     best = None
     for number, origin in enumerate(origins):
-        kept, report, dropped = _lipids_at(cfg, reference, host_cell, frame, origin, protected_heavy, box)
+        kept, report, dropped, at_protein = _lipids_at(cfg, reference, host_cell, frame, origin, protected_heavy, box)
         sides = Counter(item[1] for item in kept + dropped)
         score = (abs(sides["upper"] - sides["lower"]) > 2, -len(kept) - len(dropped), len(dropped))
         if best is None or score < best[4]:
-            best = (kept, report, origin, number, score, dropped)
-    kept, report, origin, number, _, dropped = best
+            best = (kept, report, origin, number, score, dropped, at_protein)
+    kept, report, origin, number, _, dropped, at_protein = best
     report["refilled_box_edge"] = {}
-    if cfg.refill_edge and dropped:
+    report["refilled_at_protein"] = {}
+    if (cfg.refill_edge and dropped) or (cfg.refill_protein and at_protein):
         # Everything a refilled lipid must not touch: protein and ligands, and the host
         # water and ions kept near them (protein_hydration_distance).
         universe = host.universe
@@ -751,10 +762,20 @@ def place_lipids(cfg, host, frame, reference, protected):
                          cfg.protein_hydration_distance, box)
         guarded = [universe.atoms[_indices(protected)].positions] + \
                   [universe.atoms[solvent[i].start:solvent[i].stop].positions for i in sorted(near)]
-        added = refill_edge(cfg, reference, kept, dropped, np.concatenate(guarded), protected_heavy, box,
-                            host_cell)
-        kept = kept + added
-        report["refilled_box_edge"] = dict(Counter(f"{s} {reference.lipids[k][0].name}" for k, s, _, _ in added))
+        guarded = np.concatenate(guarded)
+        if cfg.refill_edge and dropped:
+            added = refill_edge(cfg, reference, kept, dropped, guarded, protected_heavy, box, host_cell)
+            kept = kept + added
+            report["refilled_box_edge"] = dict(Counter(f"{s} {reference.lipids[k][0].name}"
+                                                       for k, s, _, _ in added))
+        if cfg.refill_protein and at_protein:
+            # Lipids removed for touching the protein leave the protein-lipid interface
+            # empty; the same search puts a lipid back at each of those head positions
+            # wherever one fits against the protein (none fits where the head lies inside it).
+            added = refill_edge(cfg, reference, kept, at_protein, guarded, protected_heavy, box, host_cell)
+            kept = kept + added
+            report["refilled_at_protein"] = dict(Counter(f"{s} {reference.lipids[k][0].name}"
+                                                         for k, s, _, _ in added))
     kept.sort(key=lambda item: (reference.lipids[item[0]][0].name, item[1] != "upper", item[0]))
     report["placed"] = dict(Counter(f"{s} {reference.lipids[k][0].name}" for k, s, _, _ in kept))
     report["lateral_search"] = {"registrations_tried": len(origins), "chosen": number,
@@ -880,6 +901,11 @@ def run_membrane(config_path, dry_run=False, output_root=None):
         if refilled:
             print(f"[membrane] box edge: {edge} overlapping lipids removed, {refilled} put back as other "
                   "equilibrated lipids")
+        touching = sum(report["placement"]["removed_protein_overlap"].values())
+        interface = sum(report["placement"]["refilled_at_protein"].values())
+        if touching:
+            print(f"[membrane] protein: {touching} lipids touching it removed, {interface} put back against it "
+                  "as other equilibrated lipids")
         if edge - refilled > 0.02 * max(len(lipids), 1):
             report["warnings"].append(
                 f"{edge - refilled} lipids removed where the reference was cut to the host box could not be put back, so the new "

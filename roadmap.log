@@ -83,3 +83,8 @@ Log
             defines dropped). membrane-patch subcommand (optional). slurm-script made
             portable. D1R: 397 host lipids -> 291 POPC; 38 mdps grompp 0 warnings,
             6 minimizations converged on Dardel. Inputs: ~/Downloads/D1R_popc (outside the repo).
+2026-10-13  membrane: lipids are fitted back against the protein where touching ones were
+            removed (refill_protein; the interface was left empty: 45 vs the host's 140
+            lipid atoms within 4 A of the receptor, now 145). Refill search rewritten with
+            KD-trees (minutes -> seconds). New molecules get their own residue numbers
+            (CHARMM-GUI style), so viewers no longer join the whole membrane into one residue.

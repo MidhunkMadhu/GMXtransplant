@@ -245,6 +245,21 @@ class EndToEndTests(unittest.TestCase):
             self.assertGreaterEqual(placed[f"{side} POPC"], 0.97 * fits)
         self.assertLessEqual(abs(placed["upper POPC"] - placed["lower POPC"]), 2)
 
+    def test_protein_interface_is_refilled(self):
+        placement = self.report["placement"]
+        refilled = sum(placement["refilled_at_protein"].values())
+        self.assertGreater(refilled, 5)
+        self.assertLessEqual(refilled, sum(placement["removed_protein_overlap"].values()))
+        self.assertEqual(self.report["final_clash_check"]["pairs"], 0)
+
+    def test_every_new_molecule_has_its_own_residue_number(self):
+        # Viewers join atoms with equal residue numbers into one residue.
+        for name in ("POPC", "TIP3", "SOD", "CLA"):
+            residues = self.final.select_atoms(f"resname {name}").residues
+            rows = dict(parse_top_molecules(str(self.out / "topol.top")))
+            self.assertEqual(len(residues), rows[name], name)
+            self.assertEqual(list(residues.resids), list(range(1, len(residues) + 1)), name)
+
     def test_repack_and_host_protocol_sets(self):
         repack = self.out / "repack"
         names = sorted(p.name for p in repack.glob("*.mdp"))
