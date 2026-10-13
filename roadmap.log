@@ -1,0 +1,70 @@
+GMXtransplant roadmap and working log
+=====================================
+
+Read this first when continuing on another computer. The newest entry is at
+the bottom of the log section.
+
+Setting up a new computer
+-------------------------
+  git clone <repo> && cd GMXtransplant
+  ~/miniforge3/bin/python3 -m pip install .        # install into the base conda env
+  python3 tools/run_tests.py --fast                # about 2 min; full suite without --fast (~7 min)
+  QT_QPA_PLATFORM=offscreen PYTHONPATH=src python3 -B -m unittest tests.test_gui
+
+Working rules
+-------------
+- No Claude attribution in commits or PRs (no Co-Authored-By, no "Generated with").
+- No CI: never add GitHub Actions or any test runs on GitHub. All testing is local.
+- Install into the base conda env (command above), not a separate env.
+- Keep the laptop cool: long or multi-threaded GROMACS runs go to Dardel through
+  Slurm (account naiss2025-3-21, modules PDC/26.03 gromacs/2026.1-cpeGNU-26.03,
+  `srun gmx_mpi`), never on the login node. `gmxtransplant slurm-script <folder>
+  --profile dardel --account naiss2025-3-21` writes submit.sh.
+- GUI: keep the original titles and labels. Main modes and examples stay visible;
+  newer modes and extra examples go under "More modes" / "More examples".
+- Files named *.local.md are local notes and are never committed.
+
+Modes (gmxtransplant --mode ...)
+--------------------------------
+  charmprot, protein, lig, chl, addbinder     original pipelines
+  popc                                        replace the membrane: bundled POPC, or any bilayer via reference_gro
+  salt, protonate, mutate, hmr,               system-edit modes (src/mode_registry.py, src/system_edit.py);
+  resize, flood, oligomer                     guide docs/guides/EDIT_MODES.md, examples/<mode>/
+  check-gromacs, slurm-script                 subcommands
+
+Open items / roadmap
+--------------------
+1. popc: run the full 1.875 ns equilibration on Dardel with the merged engine
+   (2 A removal distances). Only grompp + minimization + 5 ps NVT have been
+   run on it so far (job 26435453); the full run (job 26430209) used the old
+   engine with 3 A distances.
+2. PDBFixer pipelines (planned, not implemented): docs/guides/PDBFIXER_ROADMAP.md
+   - mutate side chains from PDBFixer, protonation states from pH, a prepare
+     step for incoming structures, loops and termini, comparison benchmark.
+3. addbinder: verify a Gs heterotrimer on the D1R intracellular side
+   (docs/guides/ADDBINDER_ROADMAP.md for the addbinder roadmap).
+4. Host artifact: minimizations of the D1R example host stop at 5000 steps on
+   POPE 807 C210 (atom 62006); this comes from the host build, not our modes.
+5. Housekeeping: the local branch pre-strip-backup can be deleted once confirmed.
+
+Log
+---
+2026-10-12  popc mode (e9fda9a): membrane -> equilibrated POPC, OPM placement kept.
+            Dardel job 26430209: 7/7 equilibration stages, 0 LINCS warnings,
+            box 12.95 -> 12.56 nm, P-P 3.83 nm, C-alpha RMSD 0.09 nm.
+2026-10-12  GUI redesign (94129b6): navigation rail, mode tiles with pictograms,
+            themes Light / Dark / Aurora.
+2026-10-13  c6663d8: system-edit modes, CHARMM36 library (bundled, only adds
+            parameters the host lacks), grompp check after every run, Slurm
+            generator, equilibration folders + analyze_equilibration.py,
+            addbinder flat-bottom restraint, config split, @slow tests.
+            Dardel jobs 26433482 and 26435375: every example grompp 0 warnings /
+            0 notes, minimization + 5 ps NVT without LINCS warnings, HMR 10 ps at 4 fs.
+2026-10-13  67398ad: PDBFixer roadmap (docs only).
+2026-10-13  c78e25b: membrane mode merged into popc. Midplane from lipid tail
+            ends (no anchor rule), reference residues matched automatically
+            (CLOL -> CHL1), default removal distances 2 A. POPC/cholesterol
+            example: examples/popc/popc_cholesterol.yaml.
+            Dardel job 26435453: both popc examples grompp 0/0, minimization
+            converged, 5 ps NVT 0 LINCS warnings. Fast tests 247 OK, GUI tests OK.
+2026-10-13  roadmap.log added; reinstalled into base; pushed to main.
