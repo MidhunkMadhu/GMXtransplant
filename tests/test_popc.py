@@ -14,7 +14,7 @@ import yaml
 
 from charmprot import inspect_system
 from config import ConfigError
-from popc_membrane import (PopcSpec, _anchors, _midplane_shift, _min_image_xy, default_reference_path,
+from popc_membrane import (PopcSpec, _midplane_shift, _min_image_xy, default_reference_path,
                            load_popc_config, load_reference, measure_host, run_popc, tile)
 from topology import parse_top_molecules
 from tests import slow
@@ -37,14 +37,11 @@ class GeometryTests(unittest.TestCase):
         shift = _midplane_shift(tails, height)
         self.assertAlmostEqual(float(np.mod(centre + shift, height)), height / 2, delta=0.5)
 
-    def test_anchor_spacing_uses_the_minimum_image(self):
+    def test_minimum_image_in_a_square_cell(self):
         cell = np.array([[100.0, 0.0], [0.0, 100.0]])
         # Two points 98 A apart in x are 2 A apart through the boundary.
-        points = np.array([[1.0, 50.0], [99.0, 50.0], [50.0, 50.0], [50.0, 10.0]])
-        chosen, spacing = _anchors(points, 3, 20.0, cell)
-        self.assertEqual(len(chosen), 3)
-        self.assertGreaterEqual(spacing, 20.0)
-        self.assertAlmostEqual(float(np.linalg.norm(_min_image_xy(points[0] - points[1], cell))), 2.0)
+        delta = np.array([1.0, 50.0]) - np.array([99.0, 50.0])
+        self.assertAlmostEqual(float(np.linalg.norm(_min_image_xy(delta, cell))), 2.0)
 
     def test_hexagonal_minimum_image(self):
         cell = np.array([[100.0, 0.0], [50.0, 100.0 * np.sqrt(3) / 2]])
@@ -82,7 +79,7 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(default_reference_path().is_file())
 
     def test_bad_values_are_rejected(self):
-        cases = [({"anchor_count": 2}, "anchor_count"), ({"unknown": 1}, "Unknown"),
+        cases = [({"unknown": 1}, "Unknown"), ({"resname_map": {"CLOL": 1}}, "resname_map"),
                  ({"protein_clash_distance": -1}, "protein_clash_distance"),
                  ({"equilibration": {"stages": [{"name": "a", "integrator": "md", "nsteps": 1}]}}, "integrator"),
                  ({"lateral_search": 0}, "lateral_search"), ({"restore_salt": "yes"}, "restore_salt")]
@@ -92,6 +89,13 @@ class ConfigTests(unittest.TestCase):
                     path = _write(tmp, {"popc": {"host": str(HOST), **extra}})
                     with self.assertRaisesRegex(ConfigError, message):
                         load_popc_config(path, check_paths=False, output_root=tmp)
+
+    def test_defaults_and_retired_settings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write(tmp, {"popc": {"host": str(HOST), "anchor_count": 3, "anchor_separation": 20.0}})
+            cfg = load_popc_config(path, check_paths=False, output_root=tmp)
+            self.assertEqual(cfg.retired_settings, ["anchor_count", "anchor_separation"])
+            self.assertEqual((cfg.protein_clash_distance, cfg.water_clash_distance), (2.0, 2.0))
 
     def test_relative_host_is_rejected_outside_the_package(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -103,7 +107,7 @@ class ConfigTests(unittest.TestCase):
 class ReferenceTests(unittest.TestCase):
     def test_bundled_bilayer(self):
         host = inspect_system(HOST)
-        reference = load_reference(default_reference_path(), host.definitions["POPC"])
+        reference = load_reference(default_reference_path(), host.definitions, PopcSpec(host=str(HOST)), ["POPC"])
         report = reference.report
         self.assertEqual((report["lipids"], report["waters"]), (512, 20480))
         self.assertEqual(report["leaflets"]["upper"]["lipids"], 256)
@@ -111,10 +115,20 @@ class ReferenceTests(unittest.TestCase):
         self.assertAlmostEqual(report["area_per_lipid_angstrom2"]["upper"], 64.5, delta=0.5)
         heads = reference.heads
         self.assertTrue(np.all(np.abs(heads[:, 2]) < 30))
-        for lipid, side in zip(reference.positions, reference.leaflets):
+        for (_, lipid), side in zip(reference.lipids, reference.leaflets):
             self.assertLess(np.ptp(lipid, axis=0).max(), 35.0)          # whole
             self.assertLess(np.abs(lipid[:, 2]).max(), 32.0)           # inside its bilayer
             self.assertEqual(side, "upper" if lipid[19, 2] > 0 else "lower")
+
+
+    def test_cholesterol_is_matched_by_its_atom_names(self):
+        host = inspect_system(HOST)
+        path = Path(__file__).resolve().parent.parent / "examples" / "popc" / "reference" / \
+            "popc_chol_70-30_charmm36_303K_100ns.gro.gz"
+        reference = load_reference(path, host.definitions, PopcSpec(host=str(HOST)), ["CHL1", "POPC", "POPE"])
+        self.assertEqual(reference.report["leaflets"]["upper"]["composition"], {"POPC": 42, "CHL1": 18})
+        self.assertIn("CLOL", reference.report["residues_matched"])
+        self.assertIn("SOL", reference.report["ignored_residues"])
 
 
 class HostTests(unittest.TestCase):
@@ -122,19 +136,17 @@ class HostTests(unittest.TestCase):
     def setUpClass(cls):
         cls.host = inspect_system(HOST)
 
-    def test_planes_and_anchors(self):
+    def test_midplane_and_planes(self):
         frame = measure_host(self.host, PopcSpec(host=str(HOST)))
-        self.assertAlmostEqual(frame.planes["upper"]["mean_z"] - frame.planes["lower"]["mean_z"], 37.3, delta=0.5)
+        upper, lower = frame.planes["upper"]["mean_z"], frame.planes["lower"]["mean_z"]
+        self.assertAlmostEqual(upper - lower, 37.3, delta=0.5)
+        self.assertAlmostEqual(frame.midplane, (upper + lower) / 2, delta=1.0)
         for side in ("upper", "lower"):
-            self.assertEqual(len(frame.anchors[side]), 3)
-            self.assertGreaterEqual(frame.anchors[side + "_min_separation_angstrom"], 20.0)
             self.assertLess(frame.planes[side]["tilt_degrees"], 1.0)
-        removed = sum(sum(c.values()) for c in frame.leaflet_counts.values())
+        removed = sum(sum(c.values()) for c in frame.counts.values())
         self.assertEqual(removed, 105 + 261 + 156)
-
-    def test_anchors_too_far_apart_fail(self):
-        with self.assertRaisesRegex(ConfigError, "apart"):
-            measure_host(self.host, PopcSpec(host=str(HOST), anchor_separation=500.0))
+        given = measure_host(self.host, PopcSpec(host=str(HOST), membrane_center_z=120.0))
+        self.assertEqual(given.midplane, 120.0)
 
     def test_tilted_membrane_fails(self):
         with self.assertRaisesRegex(ConfigError, "tilted"):
@@ -182,7 +194,7 @@ class EndToEndTests(unittest.TestCase):
         heavy = protein[[not n.startswith("H") for n in protein.names]]
         popc = self.final.select_atoms("resname POPC")
         popc_heavy = popc[[not n.startswith("H") for n in popc.names]]
-        pairs = capped_distance(popc_heavy.positions, heavy.positions, 2.95, box=self.final.dimensions,
+        pairs = capped_distance(popc_heavy.positions, heavy.positions, 1.95, box=self.final.dimensions,
                                 return_distances=False)
         self.assertEqual(len(pairs), 0)
         p = self.final.select_atoms("resname POPC and name P").positions[:, 2]
@@ -190,7 +202,7 @@ class EndToEndTests(unittest.TestCase):
         upper, lower = p[p > midplane], p[p <= midplane]
         self.assertAlmostEqual((upper.mean() + lower.mean()) / 2, midplane, delta=1.0)
         placed = self.report["placement"]["placed"]
-        self.assertEqual((len(upper), len(lower)), (placed["upper"], placed["lower"]))
+        self.assertEqual((len(upper), len(lower)), (placed["upper POPC"], placed["lower POPC"]))
 
     def test_salt_and_water(self):
         salt = self.report["salt"]
@@ -216,7 +228,7 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("pcoupltype              = semiisotropic", (folder / "step6.6_equilibration.mdp").read_text())
         self.assertEqual(self.report["equilibration"]["warnings"], [])
         index = (self.out / "index.ndx").read_text()
-        for group in ("[ SOLU_MEMB ]", "[ SOLV ]", "[ POPC_upper ]", "[ POPC_lower ]"):
+        for group in ("[ SOLU_MEMB ]", "[ SOLV ]", "[ POPC_upper ]", "[ POPC_lower ]", "[ Upper_leaflet ]"):
             self.assertIn(group, index)
 
 

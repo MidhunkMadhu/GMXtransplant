@@ -1,60 +1,59 @@
-"""Replace the membrane of a prepared system with a well-equilibrated pure POPC bilayer.
+"""Replace the membrane of a prepared system with an equilibrated bilayer: POPC by default.
 
-The host is one prepared CHARMM-GUI-style folder (topol.top, toppar/, GRO) with
-POPC among its lipids. Its proteins and ligands never move, so the membrane
-placement CHARMM-GUI derived from OPM is kept. The host bilayer is measured
-from its lipid phosphorus atoms: each leaflet must hold at least three POPC
-whose P atoms lie at least 20 A apart laterally, and the plane fitted through
-each leaflet's P atoms must be flat and normal to z.
+The host is one prepared CHARMM-GUI-style folder (topol.top, toppar/, GRO). Its
+proteins and ligands never move, so the membrane placement CHARMM-GUI derived
+from OPM is kept. Every host lipid and sterol is removed. The host midplane is
+found from its lipids (the tail ends of the phospholipids), and an equilibrated
+reference bilayer is repeated periodically and cut to the host box with its own
+midplane on the host's: by default the bundled 500 ns CHARMM36 POPC bilayer
+(Zenodo 10.5281/zenodo.1010083), or any bilayer GRO given as reference_gro
+(mixed lipids, cholesterol, asymmetric leaflets).
 
-Every host lipid and sterol is then removed and replaced by POPC from an
-equilibrated reference bilayer (by default the 500 ns frame of the CHARMM36
-POPC/150 mM NaCl simulation of Zenodo 10.5281/zenodo.1010083). The reference
-is repeated periodically and cut to the host box, its midplane on the host
-midplane. Reference lipids that overlap the protein or ligands, or a periodic
-copy of another reference lipid at the box edge, are removed whole. Host water
-and ions that overlap the new lipids are removed, counterions restore the net
-charge, and a GROMACS equilibration folder lets the lipids close the gaps
-around the protein before production.
+Each reference residue becomes a host moleculetype: the one of the same name,
+else the host lipid or sterol (or a lipid_itps entry) with exactly the same atom
+names, so CLOL becomes CHL1 without being told; resname_map overrides this.
+Reference lipids that overlap the protein or ligands, or a periodic copy of
+another at the box edge, are removed whole. The reference hydration water
+replaces host water near the new headgroups; host water and ions that overlap
+are removed; counterions and the host salt concentration are restored; a
+GROMACS equilibration folder lets the lipids close the gaps around the protein.
 """
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
 from importlib.resources import files
 from pathlib import Path
-import json
-import tempfile
 import warnings
 
 import MDAnalysis as mda
 from MDAnalysis.lib.distances import capped_distance, self_capped_distance
 from MDAnalysis.lib.mdamath import triclinic_vectors
 import numpy as np
-import yaml
 
 from addbinder import _unwrap_sequential
-from charmprot import (Molecule, inspect_system, write_topology, _heavy, _indices,
-                       _publish_directory)
-from config import ConfigError, _UniqueKeySafeLoader, anchor_config_paths
-from equilibration import (EquilibrationSpec, EquilibrationStage, parse_equilibration,  # noqa: F401
-                           write_equilibration as _write_equilibration)
-from ion_selection import select_counterions
-from output import write_outputs
-from topology import audit_final_topology, TopologyError
+from charmm_environment import environment_name
+from charmprot import _heavy, _indices, _included_files
+from config import ConfigError
+from equilibration import EquilibrationSpec
+from itp import parse_itp
+from system_edit import (balance_charge, generated, ion_block, load_section, monovalent_ions, net_charge, order,
+                         place, positive, run_edit, salt_summary, write_system)
+from topology import TopologyError, check_parameters
 
 LIPID = "POPC"
 REMOVED_CATEGORIES = ("lipid", "sterol", "detergent")
+LIPID_CATEGORIES = ("lipid", "sterol")
 SOLVENT_CATEGORIES = ("water", "ion", "solvent")
 WATER_MOLARITY = 55.51   # mol/L of pure water: salt concentration = pairs / waters * 55.51
+ION_MIN_SPACING = 5.0    # A between an added ion and any other ion
 DEFAULT_REFERENCE = "popc512_charmm36_nacl150mM_310K_500ns.gro.gz"
 REFERENCE_SOURCE = ("POPC bilayer, 512 lipids, CHARMM36, 150 mM NaCl, 310 K, frame at 500 ns. "
                     "H. Martinez-Seara, Zenodo, doi:10.5281/zenodo.1010083 (CC BY 4.0); "
                     "lipids only, water and ions removed")
-GENERATED = {"step5_input.pdb", "step5_input.gro", "topol.top", "toppar", "index.ndx",
-             "popc_report.json", "popc_report.txt", "equilibration",
-             "visualization", "view.pml", "view.vmd", "view.pse"}
+GENERATED = generated("popc")
+# Settings of earlier versions that are no longer used (the anchor rule is gone).
+RETIRED = ("anchor_count", "anchor_separation")
 
 
 # ---------------------------------------------------------------------------
@@ -65,22 +64,23 @@ GENERATED = {"step5_input.pdb", "step5_input.gro", "topol.top", "toppar", "index
 class PopcSpec:
     host: str
     host_gro: str | None = None
-    # Equilibrated bilayer to take the POPC from; empty: the bundled Zenodo 1010083 frame.
+    # Equilibrated bilayer to take the lipids from; empty: the bundled 500 ns POPC bilayer.
     reference_gro: str | None = None
-    # Midplane z (A, host GRO frame); empty: midway between the host's P planes.
+    lipid_itps: list[str] = field(default_factory=list)   # ITPs of reference lipids the host does not have
+    lipid_forcefield: str | None = None   # their parameters, when the host forcefield.itp lacks them
+    resname_map: dict = field(default_factory=dict)        # reference residue -> moleculetype (overrides)
+    # Midplane z (A, host GRO frame); empty: found from the host lipids.
     membrane_center_z: float | None = None
-    anchor_count: int = 3                # POPC per leaflet whose P atoms are ...
-    anchor_separation: float = 20.0      # ... at least this far apart laterally (A)
     max_tilt: float = 5.0                # degrees between a leaflet's P plane and the xy plane
-    protein_clash_distance: float = 3.0  # A, POPC heavy atom to protein/ligand heavy atom
-    # Lateral registrations of the reference tried; the one keeping the most POPC is used.
+    protein_clash_distance: float = 2.0  # A, lipid heavy atom to protein/ligand heavy atom: lipid removed
+    # Lateral registrations of the reference tried; the one keeping the most lipids is used.
     lateral_search: int = 16
     # Reference water hydrates the new bilayer up to this far beyond each P plane (A)
     # and replaces the host water there, except host water near the protein.
     water_layer: float = 10.0
     protein_hydration_distance: float = 4.0  # A; host water/ions this close to the protein stay
     reference_contact_distance: float = 2.0  # A; reference copies meeting at the box edge closer than this
-    water_clash_distance: float = 2.5    # A, host water/ion heavy atom to POPC or reference water
+    water_clash_distance: float = 2.0    # A, host water/ion heavy atom to lipid or reference water: removed
     neutralize: bool = True
     target_net_charge: float = 0.0
     # Bulk waters outside the new hydration layer become salt pairs until the host's
@@ -88,95 +88,60 @@ class PopcSpec:
     restore_salt: bool = True
     ion_exclusion_distance: float = 10.0
     lipid_ion_exclusion_distance: float = 5.0
-    environment_overrides: dict[str, str] = field(default_factory=dict)
+    environment_overrides: dict = field(default_factory=dict)
     output_dir: str = "popc_output"
     equilibration: EquilibrationSpec = field(default_factory=EquilibrationSpec)
 
 
-def _number(value, key, positive=True):
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value):
-        raise ConfigError(f"popc.{key} must be a number")
-    if positive and value <= 0:
-        raise ConfigError(f"popc.{key} must be greater than 0")
-    return float(value)
-
-
-def _parse_equilibration(raw):
-    return parse_equilibration(raw, "popc")
-
-
 def load_popc_config(path, check_paths=True, output_root=None):
+    import yaml
+    from config import _UniqueKeySafeLoader
+    retired = []
     try:
         raw = yaml.load(Path(path).read_text(), Loader=_UniqueKeySafeLoader)
-    except (OSError, yaml.YAMLError) as exc:
-        raise ConfigError(str(exc)) from exc
-    if not isinstance(raw, dict) or not isinstance(raw.get("popc"), dict):
-        raise ConfigError("popc YAML must contain a popc: mapping")
-    from config import _resolve_path_references
-    raw = _resolve_path_references(raw)
-    raw.pop("paths", None)
-    if set(raw) - {"popc"}:
-        raise ConfigError(f"Unknown popc sections: {sorted(set(raw) - {'popc'})}")
-    raw = dict(raw["popc"])
-    unknown = set(raw) - set(PopcSpec.__dataclass_fields__)
-    if unknown:
-        raise ConfigError(f"Unknown popc options: {sorted(unknown)}")
-    if not isinstance(raw.get("host"), str) or not raw["host"].strip():
-        raise ConfigError("popc.host must be a nonempty folder path")
-    for key in ("host_gro", "reference_gro", "membrane_center_z"):
-        if raw.get(key) == "":
-            raw[key] = None  # an empty optional field in the GUI means "not set"
-    for key in ("host_gro", "reference_gro"):
-        value = raw.get(key)
-        if value is not None and (not isinstance(value, str) or not value.strip()):
-            raise ConfigError(f"popc.{key} must be a file path")
-    raw.setdefault("output_dir", PopcSpec.__dataclass_fields__["output_dir"].default)
-    equilibration = raw.pop("equilibration", None)
-    raw = anchor_config_paths({"popc": raw}, config_path=path, output_root=output_root)["popc"]
-    cfg = PopcSpec(**raw)
-    cfg.equilibration = _parse_equilibration(equilibration)
-    if cfg.membrane_center_z is not None:
-        cfg.membrane_center_z = _number(cfg.membrane_center_z, "membrane_center_z", positive=False)
-    if type(cfg.anchor_count) is not int or cfg.anchor_count < 3:
-        raise ConfigError("popc.anchor_count must be a whole number, 3 or more (three points define a plane)")
-    if type(cfg.lateral_search) is not int or not 1 <= cfg.lateral_search <= 400:
-        raise ConfigError("popc.lateral_search must be a whole number from 1 to 400")
-    for key in ("anchor_separation", "max_tilt", "protein_clash_distance", "reference_contact_distance",
-                "water_layer", "protein_hydration_distance",
-                "water_clash_distance", "ion_exclusion_distance", "lipid_ion_exclusion_distance"):
-        setattr(cfg, key, _number(getattr(cfg, key), key))
+        if isinstance(raw, dict) and isinstance(raw.get("popc"), dict):
+            retired = [k for k in RETIRED if k in raw["popc"]]
+    except (OSError, yaml.YAMLError):
+        pass
+    if retired:
+        # Older files: drop the retired keys into a temporary copy before the strict check.
+        import tempfile
+        raw["popc"] = {k: v for k, v in raw["popc"].items() if k not in RETIRED}
+        handle = tempfile.NamedTemporaryFile("w", suffix=".yaml", dir=Path(path).parent, delete=False)
+        with handle:
+            yaml.safe_dump(raw, handle)
+        try:
+            cfg = load_section(handle.name, "popc", PopcSpec, check_paths, output_root,
+                               optional_paths=("host_gro", "reference_gro", "lipid_itps", "lipid_forcefield"))
+        finally:
+            Path(handle.name).unlink()
+    else:
+        cfg = load_section(path, "popc", PopcSpec, check_paths, output_root,
+                           optional_paths=("host_gro", "reference_gro", "lipid_itps", "lipid_forcefield"))
+    positive(cfg, "popc", "max_tilt", "protein_clash_distance", "reference_contact_distance",
+             "protein_hydration_distance", "water_clash_distance", "ion_exclusion_distance",
+             "lipid_ion_exclusion_distance")
+    positive(cfg, "popc", "water_layer", allow_zero=True)
     if cfg.max_tilt >= 45:
         raise ConfigError("popc.max_tilt must be below 45 degrees")
-    cfg.target_net_charge = _number(cfg.target_net_charge, "target_net_charge", positive=False)
-    for key in ("neutralize", "restore_salt"):
-        if type(getattr(cfg, key)) is not bool:
-            raise ConfigError(f"popc.{key} must be true or false")
-    if not isinstance(cfg.environment_overrides, dict) or any(
-            not isinstance(k, str) or v not in ("water", "ion", "lipid", "sterol", "detergent", "solvent")
-            for k, v in cfg.environment_overrides.items()):
-        raise ConfigError("popc.environment_overrides must map molecule names to environment categories")
-    output, host = Path(cfg.output_dir), Path(cfg.host)
-    if output == host or host in output.parents or output in host.parents:
-        raise ConfigError("popc.output_dir must be separate from the host folder")
-    if check_paths:
-        if not host.is_dir():
-            raise ConfigError(f"host folder does not exist: {host}")
-        if not (host / "topol.top").is_file() or not (host / "toppar").is_dir():
-            raise ConfigError(f"host must contain topol.top and toppar/: {host}")
-        for key in ("host_gro", "reference_gro"):
-            value = getattr(cfg, key)
-            if value and not Path(value).is_file():
-                raise ConfigError(f"popc.{key} does not exist: {value}")
+    if not 1 <= cfg.lateral_search <= 400:
+        raise ConfigError("popc.lateral_search must be a whole number from 1 to 400")
+    if any(not isinstance(k, str) or not isinstance(v, str) for k, v in cfg.resname_map.items()):
+        raise ConfigError("popc.resname_map must map residue names to moleculetype names")
+    cfg.retired_settings = retired
     return cfg
 
+
+load_config = load_popc_config
+
+
+# ---------------------------------------------------------------------------
+# Geometry (popc's tested helpers)
+# ---------------------------------------------------------------------------
 
 def default_reference_path():
     return Path(str(files("gmxtransplant").joinpath("data", DEFAULT_REFERENCE)))
 
-
-# ---------------------------------------------------------------------------
-# Membrane geometry
-# ---------------------------------------------------------------------------
 
 def _cell(dimensions):
     """xy cell vectors (2x2, rows a and b) and the box height; c must lie along z."""
@@ -227,199 +192,6 @@ def _plane(xy, z):
     return coefficients, tilt, float(residual.std())
 
 
-def _anchors(xy, count, separation, cell):
-    """Farthest-point choice of `count` P atoms; returns (indices, smallest pairwise lateral distance)."""
-    centroid = xy.mean(axis=0)
-    chosen = [int(np.argmin(np.linalg.norm(_min_image_xy(xy - centroid, cell), axis=1)))]
-    nearest = np.linalg.norm(_min_image_xy(xy - xy[chosen[0]], cell), axis=1)
-    while len(chosen) < count:
-        pick = int(np.argmax(nearest))
-        if nearest[pick] <= 0:
-            break
-        chosen.append(pick)
-        nearest = np.minimum(nearest, np.linalg.norm(_min_image_xy(xy - xy[pick], cell), axis=1))
-    pairs = [np.linalg.norm(_min_image_xy(xy[i] - xy[j], cell))
-             for n, i in enumerate(chosen) for j in chosen[n + 1:]]
-    return chosen, (float(min(pairs)) if pairs else 0.0)
-
-
-@dataclass
-class HostMembrane:
-    shift: float          # added to z to put the midplane at height / 2
-    height: float
-    midplane: float       # GRO frame, A
-    planes: dict          # leaflet -> report
-    anchors: dict         # leaflet -> list of anchor reports
-    leaflet_counts: dict  # leaflet -> Counter of host lipid moleculetypes
-
-
-def measure_host(host, cfg):
-    universe = host.universe
-    cell, height = _cell(universe.dimensions)
-    membrane = [m for m in host.molecules if m.category in REMOVED_CATEGORIES]
-    popc = [m for m in membrane if m.name == LIPID]
-    if not popc:
-        raise ConfigError(f"The host has no {LIPID} moleculetype; this mode replaces a membrane that contains "
-                          f"{LIPID} (lipid moleculetypes found: {sorted({m.name for m in membrane}) or 'none'})")
-    if not any(a.atom_name == "P" for a in popc[0].definition.atoms):
-        raise ConfigError(f"The host {LIPID} has no P atom to measure the headgroup planes")
-    lengths = universe.dimensions[:3].astype(float)
-    heads, others, tails = [], [], []   # (molecule, P position); molecules without P (sterols ...)
-    for mol in membrane:
-        names = [a.atom_name for a in mol.definition.atoms]
-        if "P" in names:
-            whole = _unwrap_sequential(universe.atoms[mol.start:mol.stop].positions.astype(float), lengths)
-            p_index = names.index("P")
-            heads.append((mol, universe.atoms[mol.start + p_index].position.astype(float)))
-            tails.append(_tail_end(whole, p_index) - whole[p_index, 2] + heads[-1][1][2])
-        else:
-            others.append(mol)
-    if len(heads) < 6:
-        raise ConfigError("Fewer than six phospholipids in the host; cannot measure the bilayer")
-    positions = np.array([p for _, p in heads])
-    shift = float(_midplane_shift(np.array(tails), height))
-    zc = np.mod(positions[:, 2] + shift, height)
-    leaflet = np.where(zc > height / 2, "upper", "lower")
-    planes, anchors, counts = {}, {}, {}
-    for side in ("upper", "lower"):
-        on_side = leaflet == side
-        if on_side.sum() < 3:
-            raise ConfigError(f"Found {int(on_side.sum())} phosphorus atom(s) in the {side} leaflet; "
-                              "the membrane normal must lie along the box z axis")
-        (a, b, c), tilt, spread = _plane(positions[on_side, :2], zc[on_side])
-        if tilt > cfg.max_tilt:
-            raise ConfigError(f"The {side} leaflet's P plane is tilted {tilt:.1f} degrees from the xy plane "
-                              f"(max_tilt {cfg.max_tilt:g}); the membrane must be flat and normal to z")
-        planes[side] = {"mean_z": round(float(np.mean(zc[on_side]) - shift), 3), "tilt_degrees": round(tilt, 3),
-                        "spread_angstrom": round(spread, 3), "phosphorus_atoms": int(on_side.sum())}
-        indices = [i for i in np.flatnonzero(on_side) if heads[i][0].name == LIPID]
-        if len(indices) < cfg.anchor_count:
-            raise ConfigError(f"The {side} leaflet holds {len(indices)} {LIPID}; at least {cfg.anchor_count} "
-                              f"are needed, {cfg.anchor_separation:g} A apart")
-        chosen, spacing = _anchors(positions[indices, :2], cfg.anchor_count, cfg.anchor_separation, cell)
-        if spacing + 1e-6 < cfg.anchor_separation:
-            raise ConfigError(f"The {side} leaflet has no {cfg.anchor_count} {LIPID} whose P atoms are "
-                              f"{cfg.anchor_separation:g} A apart (best {spacing:.1f} A)")
-        triangle = positions[[indices[i] for i in chosen[:3]], :2]
-        legs = _min_image_xy(triangle[1:] - triangle[0], cell)
-        area = 0.5 * abs(legs[0, 0] * legs[1, 1] - legs[0, 1] * legs[1, 0])
-        if area < 0.1 * cfg.anchor_separation ** 2:
-            raise ConfigError(f"The {side} leaflet's {LIPID} anchors lie on one line; no plane is defined")
-        anchors[side] = [{"moleculetype": heads[indices[i]][0].name, "occurrence": heads[indices[i]][0].occurrence,
-                          "resid": int(universe.atoms[heads[indices[i]][0].start].resid),
-                          "p_position_angstrom": [round(float(v), 3) for v in positions[indices[i]]]}
-                         for i in chosen]
-        anchors[side + "_min_separation_angstrom"] = round(spacing, 3)
-        counts[side] = Counter(heads[i][0].name for i in np.flatnonzero(on_side))
-    for mol in others:
-        whole = _unwrap_sequential(universe.atoms[mol.start:mol.stop].positions.astype(float),
-                                   universe.dimensions[:3].astype(float))
-        centre = np.mod(whole[:, 2].mean() + shift, height)
-        counts["upper" if centre > height / 2 else "lower"][mol.name] += 1
-    midplane_centred = (planes["upper"]["mean_z"] + planes["lower"]["mean_z"]) / 2 + shift
-    if cfg.membrane_center_z is not None:
-        midplane_centred = cfg.membrane_center_z + shift
-    thickness = planes["upper"]["mean_z"] - planes["lower"]["mean_z"]
-    if not 20.0 <= thickness <= 70.0:
-        raise ConfigError(f"Headgroup planes are {thickness:.1f} A apart; expected a flat bilayer normal to z")
-    return HostMembrane(shift, height, float(np.mod(midplane_centred - shift, height)), planes, anchors, counts)
-
-
-# ---------------------------------------------------------------------------
-# Reference bilayer
-# ---------------------------------------------------------------------------
-
-@dataclass
-class ReferenceBilayer:
-    path: str
-    positions: list       # per lipid: whole positions (n_atoms, 3), midplane at z = 0, ITP atom order
-    leaflets: list        # per lipid: "upper" | "lower"
-    heads: np.ndarray     # per lipid: P position, inside the reference cell
-    waters: np.ndarray    # (n, 3, 3) whole waters, O first, O inside the reference cell
-    cell: np.ndarray
-    height: float
-    report: dict
-
-
-def _reference_waters(universe, lengths, shift, cell, height):
-    """Three-site waters, O then H H, whole, wrapped by their O like the lipids."""
-    from charmm_environment import environment_name
-    waters = []
-    for residue in universe.residues:
-        known = environment_name(str(residue.resname))
-        if not known or known[0] != "water":
-            continue
-        names = [str(n) for n in residue.atoms.names]
-        oxygen = [i for i, n in enumerate(names) if n.upper().startswith("O")]
-        hydrogen = [i for i, n in enumerate(names) if n.upper().startswith("H")]
-        if len(names) != 3 or len(oxygen) != 1 or len(hydrogen) != 2:
-            raise ConfigError(f"Reference water {residue.resname} {residue.resid} is not a three-site water")
-        waters.append(_unwrap_sequential(residue.atoms.positions.astype(float)[oxygen + hydrogen], lengths))
-    if not waters:
-        return np.zeros((0, 3, 3))
-    waters = np.array(waters)
-    waters[:, :, 2] += shift
-    waters[:, :, 2] -= (height * np.floor(waters[:, 0, 2] / height) + height / 2)[:, None]
-    whole = np.floor(waters[:, 0, :2] @ np.linalg.inv(cell))
-    waters[:, :, :2] -= (whole @ cell)[:, None, :]
-    return waters
-
-
-def load_reference(path, definition):
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        universe = mda.Universe(str(path))
-    if universe.dimensions is None:
-        raise ConfigError(f"The reference {path} has no box")
-    if np.any(np.abs(universe.dimensions[3:] - 90) > 1e-3):
-        raise ConfigError("The reference bilayer needs a rectangular box")
-    cell, height = _cell(universe.dimensions)
-    lengths = universe.dimensions[:3].astype(float)
-    expected = [a.atom_name for a in definition.atoms]
-    residues = [r for r in universe.residues if str(r.resname).upper() == LIPID]
-    if len(residues) < 20:
-        raise ConfigError(f"The reference {path} holds {len(residues)} {LIPID} residues; expected a bilayer")
-    lipids, reordered = [], 0
-    for residue in residues:
-        names = [str(n) for n in residue.atoms.names]
-        order = slice(None)
-        if names != expected:
-            if sorted(names) != sorted(expected) or len(set(names)) != len(names):
-                raise ConfigError(f"Reference {LIPID} {residue.resid} atoms do not match the host {LIPID}.itp")
-            order = [names.index(n) for n in expected]
-            reordered += 1
-        lipids.append(_unwrap_sequential(residue.atoms.positions.astype(float)[order], lengths))
-    p_index = expected.index("P")
-    shift = _midplane_shift(np.array([_tail_end(lipid, p_index) for lipid in lipids]), height)
-    # Whole lipids move by box vectors only: P z into [-height/2, height/2) about the
-    # midplane, P xy into the reference cell.
-    out, leaflets = [], []
-    inverse = np.linalg.inv(cell)
-    for lipid in lipids:
-        lipid = lipid.copy()
-        lipid[:, 2] += shift - height * np.floor((lipid[p_index, 2] + shift) / height) - height / 2
-        lipid[:, :2] -= np.floor(lipid[p_index, :2] @ inverse) @ cell
-        out.append(lipid)
-        leaflets.append("upper" if lipid[p_index, 2] > 0 else "lower")
-    heads = np.array([lipid[p_index] for lipid in out])
-    planes = {}
-    for side in ("upper", "lower"):
-        mask = np.array(leaflets) == side
-        _, tilt, spread = _plane(heads[mask, :2], heads[mask, 2])
-        if tilt > 5.0:
-            raise ConfigError(f"The reference {side} leaflet is tilted {tilt:.1f} degrees; expected a flat bilayer")
-        planes[side] = {"lipids": int(mask.sum()), "mean_z": round(float(heads[mask, 2].mean()), 3),
-                        "spread_angstrom": round(spread, 3)}
-    waters = _reference_waters(universe, lengths, shift, cell, height)
-    area = abs(np.linalg.det(cell))
-    report = {"path": str(path), "lipids": len(out), "waters": len(waters),
-              "box_angstrom": [round(float(v), 3) for v in lengths],
-              "phosphate_thickness_angstrom": round(planes["upper"]["mean_z"] - planes["lower"]["mean_z"], 3),
-              "area_per_lipid_angstrom2": {side: round(area / planes[side]["lipids"], 2) for side in planes},
-              "leaflets": planes, "residues_reordered_to_itp": reordered}
-    return ReferenceBilayer(str(path), out, leaflets, heads, waters, cell, height, report)
-
-
 def tile(points, ref_cell, host_cell, origin):
     """Periodic copies of reference points that fall inside the host cell: [(index, xy shift)]."""
     inverse = np.linalg.inv(host_cell)
@@ -434,10 +206,6 @@ def tile(points, ref_cell, host_cell, origin):
             placed += [(int(k), offset) for k in np.flatnonzero(inside)]
     return placed
 
-
-# ---------------------------------------------------------------------------
-# Assembly
-# ---------------------------------------------------------------------------
 
 def _heavy_mask(definition):
     # CHARMM hydrogen types start with H; lone pairs (LP*) are massless sites.
@@ -481,48 +249,6 @@ def _resolve_contacts(blocks, cutoff, box):
     return dropped
 
 
-def _lipids_at(cfg, reference, host_cell, frame, origin, heavy, protected_heavy, box):
-    candidates = []
-    for k, offset in tile(reference.heads[:, :2], reference.cell, host_cell, origin):
-        lipid = reference.positions[k].copy()
-        lipid[:, :2] += offset
-        lipid[:, 2] += frame.midplane
-        candidates.append((k, reference.leaflets[k], lipid))
-    clash = _touching([lipid[heavy] for _, _, lipid in candidates], protected_heavy,
-                      cfg.protein_clash_distance, box)
-    keep = [c for i, c in enumerate(candidates) if i not in clash]
-    edge = _resolve_contacts([lipid[heavy] for _, _, lipid in keep], cfg.reference_contact_distance, box)
-    kept = [c for i, c in enumerate(keep) if i not in edge]
-    report = {"tiled": dict(Counter(side for _, side, _ in candidates)),
-              "removed_protein_overlap": dict(Counter(candidates[i][1] for i in clash)),
-              "removed_box_edge_overlap": dict(Counter(keep[i][1] for i in edge))}
-    return kept, report
-
-
-def place_popc(cfg, host, frame, reference, definition, protected):
-    """Reference POPC on the host midplane, cut to the host box; drop overlaps. Returns lipids and a report."""
-    box = host.universe.dimensions
-    host_cell, _ = _cell(box)
-    heavy = _heavy_mask(definition)
-    protected_heavy = _heavy(host.universe.atoms[_indices(protected)]).positions
-    # Registrations on a square grid spanning one reference cell; ties keep the earliest.
-    side = int(np.ceil(np.sqrt(cfg.lateral_search)))
-    origins = [(i / side) * reference.cell[0] + (j / side) * reference.cell[1]
-               for i in range(side) for j in range(side)][:cfg.lateral_search]
-    best = None
-    for number, origin in enumerate(origins):
-        kept, report = _lipids_at(cfg, reference, host_cell, frame, origin, heavy, protected_heavy, box)
-        if best is None or len(kept) > len(best[0]):
-            best = (kept, report, origin, number)
-    kept, report, origin, number = best
-    # Upper leaflet first, each in reference order: a tidy, reproducible POPC block.
-    kept.sort(key=lambda item: (item[1] != "upper", item[0]))
-    report["placed"] = dict(Counter(side for _, side, _ in kept))
-    report["lateral_search"] = {"registrations_tried": len(origins), "chosen": number,
-                                "origin_angstrom": [round(float(v), 3) for v in origin]}
-    return kept, origin, report
-
-
 def _wrapped_dz(z, midplane, height):
     dz = z - midplane
     return dz - height * np.round(dz / height)
@@ -537,6 +263,30 @@ def _lipid_heavy(lipids, definition):
     return np.concatenate([item[2][item[3] if len(item) > 3 else heavy] for item in lipids])
 
 
+def _reference_waters(universe, lengths, shift, cell, height):
+    """Three-site waters, O then H H, whole, wrapped by their O like the lipids."""
+    from charmm_environment import environment_name
+    waters = []
+    for residue in universe.residues:
+        known = environment_name(str(residue.resname))
+        if not known or known[0] != "water":
+            continue
+        names = [str(n) for n in residue.atoms.names]
+        oxygen = [i for i, n in enumerate(names) if n.upper().startswith("O")]
+        hydrogen = [i for i, n in enumerate(names) if n.upper().startswith("H")]
+        if len(names) != 3 or len(oxygen) != 1 or len(hydrogen) != 2:
+            raise ConfigError(f"Reference water {residue.resname} {residue.resid} is not a three-site water")
+        waters.append(_unwrap_sequential(residue.atoms.positions.astype(float)[oxygen + hydrogen], lengths))
+    if not waters:
+        return np.zeros((0, 3, 3))
+    waters = np.array(waters)
+    waters[:, :, 2] += shift
+    waters[:, :, 2] -= (height * np.floor(waters[:, 0, 2] / height) + height / 2)[:, None]
+    whole = np.floor(waters[:, 0, :2] @ np.linalg.inv(cell))
+    waters[:, :, :2] -= (whole @ cell)[:, None, :]
+    return waters
+
+
 def place_water(cfg, host, frame, reference, lipids, definition, protected, origin):
     """Reference water on the new bilayer and the host solvent kept around it.
 
@@ -549,7 +299,7 @@ def place_water(cfg, host, frame, reference, lipids, definition, protected, orig
     protected_heavy = _heavy(universe.atoms[_indices(protected)]).positions
     solvent = [m for m in host.molecules if m.category in SOLVENT_CATEGORIES]
     solvent_heavy = [_heavy(universe.atoms[m.start:m.stop]).positions.astype(float) for m in solvent]
-    removed = {"replaced_by_reference_water": [], "overlap_with_popc": [], "overlap_with_reference_water": []}
+    removed = {"replaced_by_reference_water": [], "overlap_with_new_lipids": [], "overlap_with_reference_water": []}
 
     reach = float(np.mean(np.abs([reference.report["leaflets"][s]["mean_z"] for s in ("upper", "lower")])))
     half = min(reach + cfg.water_layer, height / 2 - 3.0)
@@ -576,8 +326,8 @@ def place_water(cfg, host, frame, reference, lipids, definition, protected, orig
     gone = set(removed["replaced_by_reference_water"])
     remaining = [i for i in range(len(solvent)) if i not in gone]
     for j in _touching([solvent_heavy[i] for i in remaining], lipid_heavy, cfg.water_clash_distance, box):
-        removed["overlap_with_popc"].append(remaining[j])
-    gone |= set(removed["overlap_with_popc"])
+        removed["overlap_with_new_lipids"].append(remaining[j])
+    gone |= set(removed["overlap_with_new_lipids"])
 
     waters = np.zeros((0, 3, 3))
     if use_water:
@@ -617,43 +367,6 @@ def place_water(cfg, host, frame, reference, lipids, definition, protected, orig
     kept = [m for i, m in enumerate(solvent) if i not in gone]
     removed = {reason: [solvent[i] for i in sorted(set(items))] for reason, items in removed.items()}
     return waters, water_definition, kept, removed, report
-
-
-def neutralize(cfg, host, kept_solvent, protected, lipids, definition):
-    universe = host.universe
-    net = sum(m.definition.charge for m in protected + kept_solvent) + len(lipids) * definition.charge
-    report = {"before": round(net, 6), "target": cfg.target_net_charge, "enabled": cfg.neutralize,
-              "removed_ions": []}
-    if not cfg.neutralize or abs(net - cfg.target_net_charge) <= 0.01:
-        report["after"] = round(net, 6)
-        return kept_solvent, report
-    excess = net - cfg.target_net_charge
-    groups = []
-    if protected:
-        groups.append((_heavy(universe.atoms[_indices(protected)]).positions, cfg.ion_exclusion_distance))
-    if lipids:
-        heavy = _heavy_mask(definition)
-        groups.append((np.concatenate([lipid[heavy] for _, _, lipid in lipids]), cfg.lipid_ion_exclusion_distance))
-    candidates = []
-    for i, mol in enumerate(kept_solvent):
-        if mol.category != "ion" or mol.definition.charge * excess <= 0:
-            continue
-        atoms = universe.atoms[mol.start:mol.stop]
-        if all(not len(capped_distance(atoms.positions, positions, distance, box=universe.dimensions,
-                                       return_distances=False)) for positions, distance in groups):
-            candidates.append((i, mol.name, mol.definition.charge))
-    removed, residual = select_counterions(candidates, excess, 0.01, 42)
-    if abs(residual) > 0.01:
-        raise ConfigError(f"Cannot reach net charge {cfg.target_net_charge:g} by removing counterions far from "
-                          f"the protein and lipids: net charge {net:+.3f}, residual {residual:+.3f}")
-    ids = {item["resindex"] for item in removed}
-    report["removed_ions"] = [{"moleculetype": kept_solvent[i].name, "occurrence": kept_solvent[i].occurrence,
-                               "charge": kept_solvent[i].definition.charge} for i in sorted(ids)]
-    report["after"] = round(net - sum(item["charge"] for item in removed), 6)
-    return [m for i, m in enumerate(kept_solvent) if i not in ids], report
-
-
-ION_MIN_SPACING = 5.0    # A between an added ion and any other ion
 
 
 def restore_salt(cfg, host, kept_solvent, n_reference_waters, frame, half, protected):
@@ -722,361 +435,387 @@ def restore_salt(cfg, host, kept_solvent, n_reference_waters, frame, half, prote
         report["note"] = f"Only {report['added_pairs']} of {needed} salt pairs found room in the bulk water"
     return [m for i, m in enumerate(kept_solvent) if i not in chosen], added, report
 
+# ---------------------------------------------------------------------------
+# Host midplane and reference bilayer
+# ---------------------------------------------------------------------------
 
-def _placed_universe(definition, blocks, workdir):
-    """New molecules of one moleculetype as a GRO-read universe, one residue each."""
-    n_atoms, count = definition.atom_count, len(blocks)
-    universe = mda.Universe.empty(n_atoms * count, n_residues=count,
-                                  atom_resindex=np.repeat(np.arange(count), n_atoms), trajectory=True)
-    universe.add_TopologyAttr("names", [a.atom_name for a in definition.atoms] * count)
-    universe.add_TopologyAttr("resnames", [definition.atoms[0].resname] * count)
-    universe.add_TopologyAttr("resids", np.arange(1, count + 1))
-    universe.atoms.positions = np.concatenate(blocks)
-    universe.dimensions = [100.0, 100.0, 100.0, 90.0, 90.0, 90.0]
-    path = Path(workdir) / f"placed_{definition.name}.gro"
+def _head_index(definition):
+    """The headgroup atom: P for phospholipids, else the first oxygen (sterol O3), else atom 0."""
+    names = [a.atom_name for a in definition.atoms]
+    if "P" in names:
+        return names.index("P")
+    return next((i for i, a in enumerate(definition.atoms) if a.atom_name.upper().startswith("O")), 0)
+
+
+@dataclass
+class HostMembrane:
+    shift: float          # added to z to put the midplane at height / 2
+    height: float
+    midplane: float       # GRO frame, A
+    planes: dict          # leaflet -> report (phosphorus planes), or {} without phospholipids
+    counts: dict          # leaflet -> Counter of host lipid moleculetypes
+    source: str
+
+
+def measure_host(host, cfg):
+    """The host bilayer's midplane (tail ends of the phospholipids) and its leaflets."""
+    universe = host.universe
+    _, height = _cell(universe.dimensions)
+    lengths = universe.dimensions[:3].astype(float)
+    membrane = [m for m in host.molecules if m.category in REMOVED_CATEGORIES]
+    if not membrane:
+        raise ConfigError("The host has no lipids or sterols: there is no membrane to replace")
+    heads, tails, others = [], [], []
+    for mol in membrane:
+        names = [a.atom_name for a in mol.definition.atoms]
+        whole = _unwrap_sequential(universe.atoms[mol.start:mol.stop].positions.astype(float), lengths)
+        if "P" in names:
+            p = names.index("P")
+            heads.append((mol, whole[p]))
+            tails.append(_tail_end(whole, p))
+        else:
+            others.append((mol, whole))
+    if len(heads) >= 6:
+        shift = float(_midplane_shift(np.array(tails), height))
+        source = "tail ends of the phospholipids"
+    else:
+        # No phospholipids to speak of: the circular mean of every membrane heavy atom.
+        z = np.concatenate([_heavy(universe.atoms[m.start:m.stop]).positions[:, 2] for m in membrane])
+        shift = float(_midplane_shift(z.astype(float), height))
+        source = "membrane heavy atoms (fewer than six phospholipids)"
+    planes, counts = {}, {"upper": Counter(), "lower": Counter()}
+    if heads:
+        positions = np.array([p for _, p in heads])
+        zc = np.mod(positions[:, 2] + shift, height)
+        for side, on in (("upper", zc > height / 2), ("lower", zc <= height / 2)):
+            counts[side].update(heads[i][0].name for i in np.flatnonzero(on))
+            if on.sum() >= 3:
+                _, tilt, spread = _plane(positions[on, :2], zc[on])
+                if tilt > cfg.max_tilt:
+                    raise ConfigError(f"The {side} leaflet's P plane is tilted {tilt:.1f} degrees from the xy plane "
+                                      f"(max_tilt {cfg.max_tilt:g}); the membrane must be flat and normal to z")
+                planes[side] = {"mean_z": round(float(np.mean(zc[on]) - shift), 3), "tilt_degrees": round(tilt, 3),
+                                "spread_angstrom": round(spread, 3), "phosphorus_atoms": int(on.sum())}
+    for mol, whole in others:
+        centre = np.mod(whole[:, 2].mean() + shift, height)
+        counts["upper" if centre > height / 2 else "lower"][mol.name] += 1
+    if len(planes) == 2:
+        thickness = planes["upper"]["mean_z"] - planes["lower"]["mean_z"]
+        if not 20.0 <= thickness <= 70.0:
+            raise ConfigError(f"Headgroup planes are {thickness:.1f} A apart; expected a flat bilayer normal to z")
+    midplane = float(np.mod(height / 2 - shift, height))
+    if cfg.membrane_center_z is not None:
+        midplane, source = float(cfg.membrane_center_z), "membrane_center_z"
+    return HostMembrane(shift, height, midplane, planes, counts, source)
+
+
+def _definitions(host, cfg):
+    """Moleculetypes the reference may use: every host definition plus lipid_itps."""
+    found = dict(host.definitions)
+    extra = {}
+    for path in cfg.lipid_itps:
+        for name, definition in parse_itp(path).items():
+            if name in found and Path(found[name].source_path).read_bytes() != Path(path).read_bytes():
+                raise ConfigError(f"lipid_itps defines {name}, which the host defines differently; rename one")
+            extra[name] = definition
+    return {**found, **extra}, extra
+
+
+def _match(resname, names, definitions, membrane_names, cfg):
+    """The moleculetype for a reference residue: resname_map, same name, or a membrane
+    moleculetype (host lipid or sterol, or lipid_itps) with exactly the same atom names."""
+    if resname in cfg.resname_map:
+        return cfg.resname_map[resname], "resname_map"
+    if resname in definitions:
+        return resname, "same name"
+    candidates = [name for name in membrane_names
+                  if sorted(a.atom_name for a in definitions[name].atoms) == sorted(names)]
+    if len(candidates) == 1:
+        return candidates[0], "same atom names"
+    return None, None
+
+
+@dataclass
+class ReferenceBilayer:
+    path: str
+    lipids: list      # per lipid: (definition, whole positions, midplane at z = 0, ITP order)
+    leaflets: list
+    heads: np.ndarray
+    waters: np.ndarray
+    cell: np.ndarray
+    height: float
+    report: dict
+
+
+def load_reference(path, definitions, cfg, membrane_names=()):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        universe.atoms.write(str(path))
-        reread = mda.Universe(str(path))
-    path.unlink()
-    return reread
-
-
-class _Placed:
-    """The placed POPC block: a universe and its molecules, like a BuildSystem."""
-
-    def __init__(self, universe, molecules):
-        self.universe, self.molecules = universe, molecules
-
-
-def _salt(molecules):
-    waters = sum(m.category == "water" for m in molecules)
-    ions = Counter(m.name for m in molecules if m.category == "ion")
-    cations = sum(n for name, n in ions.items()
-                  if next(m.definition.charge for m in molecules if m.name == name) > 0)
-    anions = sum(ions.values()) - cations
-    pairs = min(cations, anions)
-    return {"waters": waters, "ions": dict(ions),
-            "concentration_molar": round(pairs / waters * WATER_MOLARITY, 4) if waters else None}
-
-
-def _write_index(path, ordered, leaflet_of):
-    groups = {name: [] for name in ("System", "Protein", "Ligand", "Water", "Ion", "Membrane",
-                                    "POPC_upper", "POPC_lower", "Environment",
-                                    "SOLU", "MEMB", "SOLV", "SOLU_MEMB", "SYSTEM")}
-    # CHARMM-GUI groups, so CHARMM-GUI mdp files run unchanged.
-    charmm_gui = {"protein": ("SOLU", "SOLU_MEMB"), "ligand": ("SOLU", "SOLU_MEMB"),
-                  "lipid": ("MEMB", "SOLU_MEMB"), "water": ("SOLV",), "ion": ("SOLV",), "solvent": ("SOLV",)}
-    labels = {"protein": "Protein", "ligand": "Ligand", "water": "Water", "ion": "Ion", "lipid": "Membrane"}
-    offset = 0
-    for _, mol in ordered:
-        ids = list(range(offset + 1, offset + 1 + mol.stop - mol.start))
-        groups["System"].extend(ids)
-        groups["SYSTEM"].extend(ids)
-        for name in charmm_gui.get(mol.category, ("SOLU", "SOLU_MEMB")):
-            groups[name].extend(ids)
-        if mol.category in labels:
-            groups[labels[mol.category]].extend(ids)
-        if id(mol) in leaflet_of:
-            groups[f"POPC_{leaflet_of[id(mol)]}"].extend(ids)
-        if mol.category not in ("protein", "ligand"):
-            groups["Environment"].extend(ids)
-        offset += len(ids)
-    Path(path).write_text("\n".join(
-        f"[ {name} ]\n" + "\n".join(" ".join(map(str, ids[i:i + 15])) for i in range(0, len(ids), 15))
-        for name, ids in groups.items() if ids) + "\n")
-    return groups
+        universe = mda.Universe(str(path))
+    if universe.dimensions is None or np.any(np.abs(universe.dimensions[3:] - 90) > 1e-3):
+        raise ConfigError(f"The reference {path} needs a rectangular box")
+    cell, height = _cell(universe.dimensions)
+    lengths = universe.dimensions[:3].astype(float)
+    lipids, ignored, reordered, mapped = [], Counter(), 0, {}
+    for residue in universe.residues:
+        resname = str(residue.resname)
+        names = [str(n) for n in residue.atoms.names]
+        known = environment_name(resname)
+        if known and known[0] in ("water", "ion", "solvent"):
+            ignored[resname] += 1      # water is read separately; ions and solvent are not used
+            continue
+        name, how = _match(resname, names, definitions, membrane_names, cfg)
+        if name is None:
+            if known and known[0] in LIPID_CATEGORIES or len(names) > 20:
+                raise ConfigError(f"Reference residue {resname} matches no moleculetype: add its ITP to lipid_itps "
+                                  "or map it with resname_map")
+            ignored[resname] += 1
+            continue
+        definition = definitions[name]
+        if how != "same name":
+            mapped[resname] = f"{name} ({how})"
+        expected = [a.atom_name for a in definition.atoms]
+        order_ = slice(None)
+        if names != expected:
+            if sorted(names) != sorted(expected) or len(set(names)) != len(names):
+                raise ConfigError(f"Reference {resname} {residue.resid} atoms do not match the {name} ITP")
+            order_ = [names.index(n) for n in expected]
+            reordered += 1
+        lipids.append((definition, _unwrap_sequential(residue.atoms.positions.astype(float)[order_], lengths)))
+    if len(lipids) < 20:
+        raise ConfigError(f"The reference {path} holds {len(lipids)} lipids; expected a bilayer")
+    phospholipids = [(d, x) for d, x in lipids if "P" in [a.atom_name for a in d.atoms]]
+    if len(phospholipids) < 6:
+        raise ConfigError("The reference has fewer than six phospholipids; cannot find its midplane")
+    shift = _midplane_shift(np.array([_tail_end(x, _head_index(d)) for d, x in phospholipids]), height)
+    inverse = np.linalg.inv(cell)
+    out, leaflets = [], []
+    for definition, whole in lipids:
+        h = _head_index(definition)
+        whole = whole.copy()
+        whole[:, 2] += shift - height * np.floor((whole[h, 2] + shift) / height) - height / 2
+        whole[:, :2] -= np.floor(whole[h, :2] @ inverse) @ cell
+        out.append((definition, whole))
+        leaflets.append("upper" if whole[h, 2] > 0 else "lower")
+    heads = np.array([x[_head_index(d)] for d, x in out])
+    planes = {}
+    for side in ("upper", "lower"):
+        on = [i for i, (d, _) in enumerate(out) if leaflets[i] == side and "P" in [a.atom_name for a in d.atoms]]
+        _, tilt, spread = _plane(heads[on, :2], heads[on, 2])
+        if tilt > 5.0:
+            raise ConfigError(f"The reference {side} leaflet is tilted {tilt:.1f} degrees; expected a flat bilayer")
+        composition = Counter(d.name for i, (d, _) in enumerate(out) if leaflets[i] == side)
+        planes[side] = {"lipids": int(sum(composition.values())), "composition": dict(composition),
+                        "mean_z": round(float(heads[on, 2].mean()), 3), "spread_angstrom": round(spread, 3)}
+    waters = _reference_waters(universe, lengths, shift, cell, height)
+    area = abs(np.linalg.det(cell))
+    report = {"path": str(path), "lipids": len(out), "waters": len(waters),
+              "box_angstrom": [round(float(v), 3) for v in lengths],
+              "phosphate_thickness_angstrom": round(planes["upper"]["mean_z"] - planes["lower"]["mean_z"], 3),
+              "area_per_lipid_angstrom2": {s: round(area / planes[s]["lipids"], 2) for s in planes},
+              "leaflets": planes, "residues_reordered_to_itp": reordered, "residues_matched": mapped,
+              "ignored_residues": dict(ignored)}
+    return ReferenceBilayer(str(path), out, leaflets, heads, waters, cell, height, report)
 
 
 # ---------------------------------------------------------------------------
-# Equilibration
+# Placement
 # ---------------------------------------------------------------------------
 
+def _lipids_at(cfg, reference, host_cell, frame, origin, protected_heavy, box):
+    candidates = []
+    for k, offset in tile(reference.heads[:, :2], reference.cell, host_cell, origin):
+        definition, whole = reference.lipids[k]
+        coords = whole.copy()
+        coords[:, :2] += offset
+        coords[:, 2] += frame.midplane
+        candidates.append((k, reference.leaflets[k], coords, _heavy_mask(definition)))
+    clash = _touching([c[2][c[3]] for c in candidates], protected_heavy, cfg.protein_clash_distance, box)
+    keep = [c for i, c in enumerate(candidates) if i not in clash]
+    edge = _resolve_contacts([c[2][c[3]] for c in keep], cfg.reference_contact_distance, box)
+    kept = [c for i, c in enumerate(keep) if i not in edge]
+
+    def by_type(items):
+        return dict(Counter(f"{side} {reference.lipids[k][0].name}" for k, side, _, _ in items))
+    report = {"tiled": by_type(candidates), "removed_protein_overlap": by_type([candidates[i] for i in clash]),
+              "removed_box_edge_overlap": by_type([keep[i] for i in edge])}
+    return kept, report
+
+
+def place_lipids(cfg, host, frame, reference, protected):
+    """Reference lipids on the host midplane, cut to the host box; the best of lateral_search registrations."""
+    box = host.universe.dimensions
+    host_cell, _ = _cell(box)
+    protected_heavy = _heavy(host.universe.atoms[_indices(protected)]).positions
+    side = int(np.ceil(np.sqrt(cfg.lateral_search)))
+    origins = [(i / side) * reference.cell[0] + (j / side) * reference.cell[1]
+               for i in range(side) for j in range(side)][:cfg.lateral_search]
+    best = None
+    for number, origin in enumerate(origins):
+        kept, report = _lipids_at(cfg, reference, host_cell, frame, origin, protected_heavy, box)
+        if best is None or len(kept) > len(best[0]):
+            best = (kept, report, origin, number)
+    kept, report, origin, number = best
+    kept.sort(key=lambda item: (reference.lipids[item[0]][0].name, item[1] != "upper", item[0]))
+    report["placed"] = dict(Counter(f"{s} {reference.lipids[k][0].name}" for k, s, _, _ in kept))
+    report["lateral_search"] = {"registrations_tried": len(origins), "chosen": number,
+                                "origin_angstrom": [round(float(v), 3) for v in origin]}
+    return kept, origin, report
+
+
 # ---------------------------------------------------------------------------
-# Report and run
+# Run
 # ---------------------------------------------------------------------------
-
-def _write_report(folder, report):
-    (folder / "popc_report.json").write_text(json.dumps(report, indent=2) + "\n")
-    lines = ["GMXtransplant: replace the membrane with equilibrated POPC", f"Status: {report['status']}"]
-    if "error" in report:
-        lines += ["", f"Error: {report['error']}"]
-    host = report.get("host_membrane")
-    if host:
-        lines += ["", "HOST MEMBRANE (protein and ligands are not moved: OPM placement kept)",
-                  f"  midplane z {host['midplane_z']:.2f} A ({host['midplane_source']}); "
-                  f"P-P thickness {host['phosphate_thickness_angstrom']:.2f} A"]
-        for side in ("upper", "lower"):
-            plane = host["planes"][side]
-            lines.append(f"  {side}: P plane z {plane['mean_z']:.2f} A, tilt {plane['tilt_degrees']:.2f} deg, "
-                         f"spread {plane['spread_angstrom']:.2f} A; lipids {host['lipids_removed'][side]}")
-            anchors = host["anchors"][side]
-            lines.append(f"    {len(anchors)} POPC anchors at least "
-                         f"{host['anchors'][side + '_min_separation_angstrom']:.1f} A apart: "
-                         + ", ".join(f"POPC {a['resid']}" for a in anchors))
-    ref = report.get("reference")
-    if ref:
-        lines += ["", "REFERENCE BILAYER", f"  {ref['path']}", f"  {ref.get('source', 'user supplied')}",
-                  f"  {ref['lipids']} POPC, box {ref['box_angstrom'][0]:.2f} x {ref['box_angstrom'][1]:.2f} A, "
-                  f"P-P thickness {ref['phosphate_thickness_angstrom']:.2f} A, area per lipid "
-                  f"{ref['area_per_lipid_angstrom2']['upper']:.1f} / {ref['area_per_lipid_angstrom2']['lower']:.1f} A^2"]
-    placement = report.get("placement")
-    if placement:
-        lines += ["", "POPC PLACEMENT (upper / lower)"]
-        for key, label in (("tiled", "cut to the host box"), ("removed_protein_overlap", "removed, protein/ligand overlap"),
-                           ("removed_box_edge_overlap", "removed, overlap at the box edge"), ("placed", "placed")):
-            values = placement[key]
-            lines.append(f"  {label:<36} {values.get('upper', 0):>5} / {values.get('lower', 0):<5}")
-    water = report.get("water")
-    if water:
-        lines += ["", "WATER"]
-        if water.get("reference_waters"):
-            lines.append(f"  {water['reference_waters']} reference waters within "
-                         f"{water['slab_half_thickness_angstrom']:.1f} A of the midplane hydrate the new bilayer; "
-                         f"{water['host_solvent_kept_near_protein_in_slab']} host water/ion molecules near the "
-                         "protein kept there")
-        if water.get("note"):
-            lines.append(f"  {water['note']}")
-    for reason, counts in report.get("solvent_removed", {}).items():
-        lines.append(f"  host solvent removed, {reason.replace('_', ' ')}: "
-                     + (", ".join(f"{k} {v}" for k, v in counts.items()) or "none"))
-    if "charge" in report:
-        charge = report["charge"]
-        lines += ["", f"CHARGE: {charge['before']:+.3f} e -> {charge['after']:+.3f} e; "
-                      f"{len(charge['removed_ions'])} counterion(s) removed"]
-    if "salt" in report:
-        lines += [f"SALT: host {report['salt']['host']['concentration_molar']} M, "
-                  f"final {report['salt']['final']['concentration_molar']} M"]
-    if "final_molecules" in report:
-        lines += ["", "FINAL MOLECULES"] + [f"  {name:<10} {count}" for name, count in report["final_molecules"]]
-    eq = report.get("equilibration")
-    if eq:
-        lines += ["", f"EQUILIBRATION: {eq['directory']}/ ({eq['md_length_ps'] / 1000:g} ns of MD, "
-                      f"{len(eq['stages'])} stages); run sample_run.sh"]
-        lines += [f"  WARNING: {w}" for w in eq["warnings"]]
-    if report.get("warnings"):
-        lines += ["", "WARNINGS"] + [f"  {w}" for w in report["warnings"]]
-    (folder / "popc_report.txt").write_text("\n".join(lines) + "\n")
-
-
-def _write_scene(stage, final, ordered):
-    from visualization import safe_scene
-    roles, offset = {}, 0
-    for system, mol in ordered:
-        if isinstance(system, _Placed):
-            role = "inserted_popc"
-        else:
-            role = "retained_" + {"solvent": "other", "detergent": "lipid"}.get(mol.category, mol.category)
-        roles.setdefault(role, []).extend(range(offset, offset + mol.stop - mol.start))
-        offset += mol.stop - mol.start
-    groups = {role: final.atoms[ids] for role, ids in roles.items()}
-    safe_scene(stage, groups, "popc", palette={"inserted_popc": ("Equilibrated POPC", [.95, .68, .12], True)},
-               alignment="Protein and ligands keep their input coordinates; the POPC bilayer is new.")
-
 
 def run_popc(config_path, dry_run=False, output_root=None):
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", UserWarning)
-        return _run_popc(config_path, dry_run, output_root)
-
-
-def _run_popc(config_path, dry_run=False, output_root=None):
     cfg = load_popc_config(config_path, check_paths=not dry_run, output_root=output_root)
     reference_path = cfg.reference_gro or str(default_reference_path())
-    if dry_run:
-        print(f"popc configuration validated; no inputs opened. Reference: {reference_path}; "
-              f"output: {cfg.output_dir}")
-        return 0
-    destination = Path(cfg.output_dir)
-    if destination.exists() and not destination.is_dir():
-        raise ConfigError(f"output_dir exists and is not a directory: {destination}")
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    print("=" * 78)
-    print("REPLACE THE MEMBRANE WITH EQUILIBRATED POPC")
-    print("=" * 78)
-    report = {"mode": "popc", "status": "running", "generated_at": datetime.now(timezone.utc).isoformat(),
-              "host": cfg.host, "settings": {k: v for k, v in asdict(cfg).items() if k != "equilibration"},
-              "warnings": []}
-    with tempfile.TemporaryDirectory(prefix=".popc-", dir=destination.parent) as temporary:
-        stage = Path(temporary) / "result"
-        stage.mkdir()
-        try:
-            host = inspect_system(cfg.host, gro=cfg.host_gro, overrides=cfg.environment_overrides)
-            print(f"[host] {host.gro}: proteins={host.report['selected_proteins']}, "
-                  f"ligands={host.report['selected_ligands']}")
-            frame = measure_host(host, cfg)
-            removed_lipids = [m for m in host.molecules if m.category in REMOVED_CATEGORIES]
-            report["host_membrane"] = {
-                "midplane_z": round(frame.midplane, 3),
-                "midplane_source": "membrane_center_z" if cfg.membrane_center_z is not None
-                                   else "midway between the P planes",
-                "phosphate_thickness_angstrom": round(frame.planes["upper"]["mean_z"]
-                                                      - frame.planes["lower"]["mean_z"], 3),
-                "planes": frame.planes, "anchors": frame.anchors,
-                "lipids_removed": {side: dict(frame.leaflet_counts[side]) for side in ("upper", "lower")},
-                "molecules_removed": dict(Counter(m.name for m in removed_lipids))}
+
+    def build(stage, host, report):
+        work = stage.parent / "work"
+        work.mkdir()
+        for key in cfg.retired_settings:
+            report["warnings"].append(f"popc.{key} is no longer used and was ignored (the midplane is found from "
+                                      "the host lipids)")
+        frame = measure_host(host, cfg)
+        removed = [m for m in host.molecules if m.category in REMOVED_CATEGORIES]
+        thickness = (round(frame.planes["upper"]["mean_z"] - frame.planes["lower"]["mean_z"], 3)
+                     if len(frame.planes) == 2 else None)
+        report["host_membrane"] = {"midplane_z": round(frame.midplane, 3), "midplane_source": frame.source,
+                                   "phosphate_thickness_angstrom": thickness, "planes": frame.planes,
+                                   "lipids_removed": {s: dict(frame.counts[s]) for s in ("upper", "lower")},
+                                   "molecules_removed": dict(Counter(m.name for m in removed))}
+        print(f"[host] midplane z {frame.midplane:.2f} A; removing "
+              + ", ".join(f"{n} {k}" for k, n in Counter(m.name for m in removed).items()))
+        definitions, extra = _definitions(host, cfg)
+        if extra:
+            forcefields = [str(p) for p in host.files]
+            if cfg.lipid_forcefield:
+                forcefields += [str(p) for p in _included_files(Path(cfg.lipid_forcefield).resolve(),
+                                                                Path(cfg.lipid_forcefield).resolve().parent)]
+            try:
+                check_parameters([d.source_path for d in extra.values()], forcefields,
+                                 "Set lipid_forcefield to a file with the missing lipid parameters.")
+            except TopologyError as exc:
+                raise ConfigError(str(exc)) from exc
+        membrane_names = sorted({m.name for m in removed} | set(extra))
+        reference = load_reference(reference_path, definitions, cfg, membrane_names)
+        report["reference"] = dict(reference.report)
+        if not cfg.reference_gro:
+            report["reference"]["source"] = REFERENCE_SOURCE
+        print(f"[reference] {reference.report['lipids']} lipids: "
+              + "; ".join(f"{side} " + ", ".join(f"{n} {k}" for k, n in reference.report["leaflets"][side]["composition"].items())
+                          for side in ("upper", "lower"))
+              + f"; P-P {reference.report['phosphate_thickness_angstrom']:.1f} A"
+              + (f" (host {thickness:.1f} A)" if thickness else ""))
+        for resname, how in reference.report["residues_matched"].items():
+            print(f"[reference] {resname} -> {how}")
+        if thickness and abs(reference.report["phosphate_thickness_angstrom"] - thickness) > 3.0:
+            report["warnings"].append(
+                f"The reference bilayer is {reference.report['phosphate_thickness_angstrom'] - thickness:+.1f} A thicker "
+                "than the host's; the water layers adjust during the NPT equilibration")
+        protected = [m for m in host.molecules if m.category not in REMOVED_CATEGORIES + SOLVENT_CATEGORIES]
+        lipids, origin, report["placement"] = place_lipids(cfg, host, frame, reference, protected)
+        print("[popc] placed " + ", ".join(f"{k} {n}" for k, n in report["placement"]["placed"].items())
+              + f" (best of {report['placement']['lateral_search']['registrations_tried']} lateral registrations)")
+        waters, water_definition, kept_solvent, removed_solvent, report["water"] = place_water(
+            cfg, host, frame, reference, lipids, None, protected, origin)
+        report["solvent_removed"] = {reason: dict(Counter(m.name for m in items))
+                                     for reason, items in removed_solvent.items()}
+        if report["water"].get("reference_waters"):
+            print(f"[water] {report['water']['reference_waters']} reference waters hydrate the bilayer")
+        elif report["water"].get("note"):
+            report["warnings"].append(report["water"]["note"])
+        box = host.universe.dimensions
+        lipid_heavy = np.concatenate([c[2][c[3]] for c in lipids]) if lipids else np.zeros((0, 3))
+        protected_heavy = _heavy(host.universe.atoms[_indices(protected)]).positions
+        net = net_charge([(host, m) for m in protected + kept_solvent]) \
+            + sum(reference.lipids[k][0].charge for k, _, _, _ in lipids)
+        added = []
+        report["charge"] = {"before": round(net, 6), "after": round(net, 6), "removed_ions": [], "added_ions": {}}
+        if cfg.neutralize:
+            cation, anion = monovalent_ions(host)
+            if cation is None or anion is None:
+                raise ConfigError("The host has no monovalent cation and anion to neutralize with")
+            avoid = [(protected_heavy, cfg.ion_exclusion_distance), (lipid_heavy, cfg.lipid_ion_exclusion_distance)]
+            kept_solvent, added, report["charge"] = balance_charge(host, kept_solvent, net, cfg.target_net_charge,
+                                                                   cation, anion, avoid, box)
+            print(f"[charge] {report['charge']['before']:+.3f} e -> {report['charge']['after']:+.3f} e")
+        half = report["water"]["slab_half_thickness_angstrom"]
+        kept_solvent, salt_ions, salt_report = restore_salt(cfg, host, kept_solvent, len(waters), frame, half,
+                                                            protected)
+        if salt_report.get("note"):
+            report["warnings"].append(salt_report["note"])
+        added += salt_ions
+
+        def category(definition):
+            known = environment_name(definition.name)
+            return known[0] if known and known[0] in LIPID_CATEGORIES else "lipid"
+        items = [(reference.lipids[k][0], category(reference.lipids[k][0]), coords) for k, _, coords, _ in lipids]
+        lipid_block = place(items, work, label="lipids")
+        leaflet_of = {id(m): (side, m.name) for m, (_, side, _, _) in zip(lipid_block.molecules, lipids)}
+        new = [(lipid_block, m) for m in lipid_block.molecules]
+        if len(waters):
+            water_block = place([(water_definition, "water", w) for w in waters], work, label="water")
+            new += [(water_block, m) for m in water_block.molecules]
+        new += ion_block(added, work)
+        ordered = order(host, protected + kept_solvent, new=new)
+        report["salt"] = {"host": salt_summary([(host, m) for m in host.molecules]), "final": salt_summary(ordered),
+                          "restore": salt_report}
+        print(f"[salt] host {report['salt']['host']['concentration_molar']} M -> final "
+              f"{report['salt']['final']['concentration_molar']} M")
+        groups = {"Upper_leaflet": set(), "Lower_leaflet": set()}
+        for key, (side, name) in leaflet_of.items():
+            groups["Upper_leaflet" if side == "upper" else "Lower_leaflet"].add(key)
+            groups.setdefault(f"{name}_{side}", set()).add(key)
+        parameter_files = []
+        if cfg.lipid_forcefield:
+            parameter_files = list(_included_files(Path(cfg.lipid_forcefield).resolve(),
+                                                   Path(cfg.lipid_forcefield).resolve().parent))
+        report.update(write_system(
+            stage, host, ordered, "popc", parameter_files=parameter_files, equilibration=cfg.equilibration,
+            purpose="Equilibration of the new bilayer", extra_index=groups,
+            scene=({"inserted_popc": set(leaflet_of)},
+                   {"inserted_popc": ("Equilibrated bilayer", [.95, .68, .12], True)},
+                   "Protein and ligands keep their input coordinates; the bilayer is new."),
+            restrained=[m.definition for m in protected]))
+
+    def lines(report):
+        out = []
+        host = report.get("host_membrane")
+        if host:
+            out += ["", "HOST MEMBRANE (protein and ligands are not moved: OPM placement kept)",
+                    f"  midplane z {host['midplane_z']:.2f} A, from the {host['midplane_source']}"
+                    + (f"; P-P thickness {host['phosphate_thickness_angstrom']:.2f} A"
+                       if host["phosphate_thickness_angstrom"] else ""),
+                    "  removed: " + ", ".join(f"{k} {n}" for k, n in host["molecules_removed"].items())]
+        ref = report.get("reference")
+        if ref:
+            out += ["", "REFERENCE BILAYER", f"  {ref['path']}", f"  {ref.get('source', 'user supplied')}",
+                    f"  {ref['lipids']} lipids, box {ref['box_angstrom'][0]:.2f} x {ref['box_angstrom'][1]:.2f} A, "
+                    f"P-P thickness {ref['phosphate_thickness_angstrom']:.2f} A, area per lipid "
+                    f"{ref['area_per_lipid_angstrom2']['upper']:.1f} / {ref['area_per_lipid_angstrom2']['lower']:.1f} A^2"]
             for side in ("upper", "lower"):
-                plane = frame.planes[side]
-                print(f"[host] {side} leaflet: P plane z {plane['mean_z']:.1f} A, tilt {plane['tilt_degrees']:.1f} deg; "
-                      f"{cfg.anchor_count} POPC anchors >= {frame.anchors[side + '_min_separation_angstrom']:.1f} A apart")
-            print(f"[host] midplane z {frame.midplane:.2f} A; removing "
-                  + ", ".join(f"{n} {name}" for name, n in report["host_membrane"]["molecules_removed"].items()))
-            definition = host.definitions[LIPID]
-            reference = load_reference(reference_path, definition)
-            report["reference"] = dict(reference.report)
-            if not cfg.reference_gro:
-                report["reference"]["source"] = REFERENCE_SOURCE
-            print(f"[reference] {reference.report['lipids']} POPC, P-P "
-                  f"{reference.report['phosphate_thickness_angstrom']:.1f} A (host "
-                  f"{report['host_membrane']['phosphate_thickness_angstrom']:.1f} A)")
-            difference = (reference.report["phosphate_thickness_angstrom"]
-                          - report["host_membrane"]["phosphate_thickness_angstrom"])
-            if abs(difference) > 3.0:
-                report["warnings"].append(
-                    f"The reference bilayer is {difference:+.1f} A thicker than the host's; the water layers "
-                    "adjust during the NPT equilibration")
+                out.append(f"  {side}: " + ", ".join(f"{k} {n}" for k, n in ref["leaflets"][side]["composition"].items()))
+            for resname, how in ref.get("residues_matched", {}).items():
+                out.append(f"  {resname} -> {how}")
+        placement = report.get("placement")
+        if placement:
+            out += ["", "PLACED: " + ", ".join(f"{k} {n}" for k, n in placement["placed"].items()),
+                    "  removed for protein overlap: " + (", ".join(
+                        f"{k} {n}" for k, n in placement["removed_protein_overlap"].items()) or "none"),
+                    "  removed at the box edge: " + (", ".join(
+                        f"{k} {n}" for k, n in placement["removed_box_edge_overlap"].items()) or "none")]
+        water = report.get("water")
+        if water and water.get("reference_waters"):
+            out += [f"WATER: {water['reference_waters']} reference waters hydrate the new bilayer"]
+        for reason, counts in report.get("solvent_removed", {}).items():
+            out.append(f"  host solvent removed, {reason.replace('_', ' ')}: "
+                       + (", ".join(f"{k} {v}" for k, v in counts.items()) or "none"))
+        return out
 
-            protected = [m for m in host.molecules if m.category not in REMOVED_CATEGORIES + SOLVENT_CATEGORIES]
-            lipids, origin, report["placement"] = place_popc(cfg, host, frame, reference, definition, protected)
-            search = report["placement"]["lateral_search"]
-            print(f"[popc] {report['placement']['placed'].get('upper', 0)} upper / "
-                  f"{report['placement']['placed'].get('lower', 0)} lower placed (best of "
-                  f"{search['registrations_tried']} lateral registrations); removed for protein overlap "
-                  f"{sum(report['placement']['removed_protein_overlap'].values())}, at the box edge "
-                  f"{sum(report['placement']['removed_box_edge_overlap'].values())}")
-            waters, water_definition, kept_solvent, removed, report["water"] = place_water(
-                cfg, host, frame, reference, lipids, definition, protected, origin)
-            report["solvent_removed"] = {reason: dict(Counter(m.name for m in items))
-                                         for reason, items in removed.items()}
-            if report["water"]["reference_waters"]:
-                print(f"[water] {report['water']['reference_waters']} reference waters hydrate the bilayer "
-                      f"(within {report['water']['slab_half_thickness_angstrom']:.1f} A of the midplane); host "
-                      f"solvent near the protein kept: {report['water']['host_solvent_kept_near_protein_in_slab']}")
-            elif "note" in report["water"]:
-                report["warnings"].append(report["water"]["note"])
-            for reason, counts in report["solvent_removed"].items():
-                if counts:
-                    print(f"[water] host solvent removed, {reason.replace('_', ' ')}: "
-                          + ", ".join(f"{n} {name}" for name, n in counts.items()))
-            kept_solvent, report["charge"] = neutralize(cfg, host, kept_solvent, protected, lipids, definition)
-            print(f"[charge] {report['charge']['before']:+.3f} e -> {report['charge']['after']:+.3f} e; "
-                  f"{len(report['charge']['removed_ions'])} counterion(s) removed")
-            kept_solvent, added_ions, salt_report = restore_salt(
-                cfg, host, kept_solvent, len(waters), frame, report["water"]["slab_half_thickness_angstrom"],
-                protected)
-            final_ions = Counter(m.name for m in kept_solvent if m.category == "ion")
-            final_ions.update(d.name for d, _ in added_ions)
-            final_waters = sum(m.category == "water" for m in kept_solvent) + len(waters)
-            pairs = min(final_ions[salt_report["cation"]], final_ions[salt_report["anion"]]) \
-                if "cation" in salt_report else 0
-            report["salt"] = {"host": _salt([m for m in host.molecules if m.category in SOLVENT_CATEGORIES]),
-                              "final": {"waters": final_waters, "ions": dict(final_ions),
-                                        "concentration_molar": round(pairs / final_waters * WATER_MOLARITY, 4)
-                                        if final_waters else None},
-                              "restore": salt_report}
-            print(f"[salt] host {report['salt']['host']['concentration_molar']} M -> final "
-                  f"{report['salt']['final']['concentration_molar']} M"
-                  + (f"; {salt_report['added_pairs']} pair(s) added in the bulk water"
-                     if salt_report["added_pairs"] else ""))
-            if salt_report.get("note"):
-                report["warnings"].append(salt_report["note"])
+    return run_edit("popc", cfg, "REPLACE THE MEMBRANE WITH AN EQUILIBRATED BILAYER", build,
+                    "replace the membrane with an equilibrated bilayer", lines, dry_run=dry_run,
+                    dry_run_note=f"Reference: {reference_path}; ")
 
-            size = definition.atom_count
-            placed_molecules = [Molecule(LIPID, n + 1, n * size, (n + 1) * size, "lipid", True, definition)
-                                for n in range(len(lipids))]
-            placed = _Placed(_placed_universe(definition, [lipid for _, _, lipid in lipids], stage),
-                             placed_molecules)
-            leaflet_of = {id(mol): side for mol, (_, side, _) in zip(placed_molecules, lipids)}
-            water_block = None
-            if len(waters):
-                water_molecules = [Molecule(water_definition.name, n + 1, 3 * n, 3 * n + 3, "water", True,
-                                            water_definition) for n in range(len(waters))]
-                water_block = _Placed(_placed_universe(water_definition, list(waters), stage), water_molecules)
-            # New molecules join the end of their type's block in the host order: added
-            # ions after the host's last kept ion of that type, reference water after its water.
-            appended = {}
-            if water_block is not None:
-                appended[water_definition.name] = [water_block]
-            for ion_definition in {d.name: d for d, _ in added_ions}.values():
-                positions = [p[None, :] for d, p in added_ions if d.name == ion_definition.name]
-                block = _Placed(_placed_universe(ion_definition, positions, stage),
-                                [Molecule(ion_definition.name, n + 1, n, n + 1, "ion", True, ion_definition)
-                                 for n in range(len(positions))])
-                appended.setdefault(ion_definition.name, []).append(block)
-            kept_ids = {id(m) for m in protected + kept_solvent}
-            last = {}
-            for i, mol in enumerate(host.molecules):
-                if id(mol) in kept_ids:
-                    last[mol.name] = i
-            ordered, inserted = [], False
-            for i, mol in enumerate(host.molecules):
-                if mol.category in REMOVED_CATEGORIES:
-                    if not inserted:
-                        ordered += [(placed, m) for m in placed_molecules]
-                        inserted = True
-                elif id(mol) in kept_ids:
-                    ordered.append((host, mol))
-                if last.get(mol.name) == i:
-                    for block in appended.pop(mol.name, []):
-                        ordered += [(block, m) for m in block.molecules]
-            for blocks in appended.values():
-                for block in blocks:
-                    ordered += [(block, m) for m in block.molecules]
-            groups, current, blocks = [], None, []
-            for system, mol in ordered:
-                if current is not None and system is not current:
-                    groups.append(current.universe.atoms[_indices(blocks)])
-                    blocks = []
-                current = system
-                blocks.append(mol)
-            groups.append(current.universe.atoms[_indices(blocks)])
-            final = mda.Merge(*groups)
-            final.dimensions = host.universe.dimensions.copy()
 
-            print("[topology] Writing and auditing topol.top, toppar/ and the coordinates")
-            topology = write_topology(stage, host, host, ordered)
-            top = Path(topology.top_path)
-            top.write_text(top.read_text().replace("CHARMM-GUI protein transplant", "GMXtransplant popc"))
-            audit = audit_final_topology(final, topology)
-            if abs(audit["net_charge"] - report["charge"]["after"]) > 0.01:
-                raise ConfigError("Final topology charge disagrees with molecule charge accounting")
-            protein_counts = [m.stop - m.start for _, m in ordered if m.category == "protein"]
-
-            def validate_written(_pdb, gro):
-                return audit_final_topology(mda.Universe(gro), topology)
-
-            write_outputs(final, str(stage / "step5_input.pdb"), str(stage / "step5_input.gro"),
-                          protein_chain_atom_counts=protein_counts, staged_validator=validate_written)
-            index_groups = _write_index(stage / "index.ndx", ordered, leaflet_of)
-            report["final_molecules"] = topology.molecules_written
-            report["final_net_charge"] = round(audit["net_charge"], 6)
-            if cfg.equilibration.enabled:
-                solute = {mol.name: mol.definition for mol in protected}
-                report["equilibration"] = _write_equilibration(
-                    cfg.equilibration, stage, topology, list(solute.values()), index_groups,
-                    purpose="Equilibration of the new POPC bilayer")
-                print(f"[equilibration] {cfg.equilibration.output_dir}/: "
-                      f"{report['equilibration']['md_length_ps'] / 1000:g} ns in {len(cfg.equilibration.stages)} "
-                      "stages; run sample_run.sh")
-                for warning in report["equilibration"]["warnings"]:
-                    print(f"      WARNING: {warning}")
-            _write_scene(stage, final, ordered)
-            if (stage / "view.pml").is_file():
-                pml = stage / "view.pml"
-                pml.write_text(pml.read_text().replace(repr(str(stage)), repr(str(destination))))
-            report["status"] = "complete"
-            _write_report(stage, report)
-            _publish_directory(stage, destination, GENERATED)
-        except (ConfigError, TopologyError) as exc:
-            report["status"], report["error"] = "failed", str(exc)
-            failure = Path(temporary) / "failure"
-            failure.mkdir()
-            _write_report(failure, report)
-            _publish_directory(failure, destination, GENERATED)
-            raise ConfigError(str(exc)) from exc
-    for warning in report["warnings"]:
-        print(f"WARNING: {warning}")
-    print(f"[complete] {destination}")
-    from run_pipeline import _announce_output_location
-    _announce_output_location(destination)
-    return 0
+run = run_popc

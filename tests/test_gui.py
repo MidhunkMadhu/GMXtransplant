@@ -398,7 +398,18 @@ class PopcGuiTests(unittest.TestCase):
             self.assertEqual(cfg.equilibration.output_dir, 'equilibration')
 
     def test_popc_template_and_defaults(self):
-        self.assertEqual(defaults('popc')['popc']['protein_clash_distance'], 3.0)
+        self.assertEqual(defaults('popc')['popc']['protein_clash_distance'], 2.0)
+        self.assertEqual(defaults('popc')['popc']['water_clash_distance'], 2.0)
+        self.assertNotIn('anchor_count', defaults('popc')['popc'])
+        from gmxtransplant.gui.model import EXAMPLE_KEYS, MORE_EXAMPLE_KEYS
+        self.assertIn('popc_cholesterol', EXAMPLE_KEYS)
+        self.assertIn('popc_cholesterol', MORE_EXAMPLE_KEYS)
+        path = example_path('popc_cholesterol')
+        with tempfile.TemporaryDirectory() as tmp:
+            job = build_job(load_yaml(path), tmp, 'popc', example_base=path.parent,
+                            example_folder='popc_cholesterol')
+            self.assertTrue(Path(job['config']['popc']['reference_gro']).is_file())
+            validate_job(job, check_paths=True)
         raw = template_document('popc')
         self.assertIn('popc', raw)
         with tempfile.TemporaryDirectory() as tmp:
@@ -410,9 +421,9 @@ class PopcGuiTests(unittest.TestCase):
         from gmxtransplant.gui.window import MODE_DESCRIPTIONS
         progress = RunProgress('popc')
         progress.feed('[host] midplane z 122.99 A; removing 105 CHL1, 261 POPC, 156 POPE\n'
-                      '[popc] 228 upper / 229 lower placed (best of 16 lateral registrations)\n'
+                      '[popc] placed upper POPC 228, lower POPC 229 (best of 16 lateral registrations)\n'
                       '[salt] host 0.1537 M -> final 0.1537 M; 30 pair(s) added in the bulk water\n')
-        self.assertEqual(progress.facts['POPC'], '228 upper / 229 lower leaflet placed.')
+        self.assertEqual(progress.facts['Bilayer'], 'Placed upper POPC 228, lower POPC 229.')
         self.assertIn('105 CHL1', progress.facts['Host membrane'])
         self.assertIn('0.1537 M', progress.facts['Salt'])
         self.assertIn('equilibration/', MODE_DESCRIPTIONS['popc'])

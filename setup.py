@@ -28,7 +28,7 @@ root = Path(__file__).parent
 entries = [('share/gmxtransplant/examples', [
     'configs/charmprot.yaml', 'configs/addbinder.yaml', 'configs/protein_replace.yaml',
     'configs/ligand_replace.yaml', 'configs/cholesterol_restore.yaml', 'configs/minimization.yaml',
-    'configs/popc.yaml', 'configs/membrane.yaml', 'configs/salt.yaml', 'configs/protonate.yaml',
+    'configs/popc.yaml', 'configs/salt.yaml', 'configs/protonate.yaml',
     'configs/mutate.yaml', 'configs/hmr.yaml', 'configs/resize.yaml', 'configs/flood.yaml',
     'configs/oligomer.yaml'])]
 # The documentation the GUI's Documentation button opens, resolved relative to
@@ -38,7 +38,7 @@ if (root / 'docs' / 'GMXtransplant.pdf').is_file():
 for name, config in [('charmprot', 'charmprot.yaml'),
                      ('addbinder', 'addbinder.yaml'),
                      ('popc', 'popc.yaml'),
-                     ('membrane', 'membrane.yaml'), ('salt', 'salt.yaml'), ('protonate', 'protonate.yaml'),
+                     ('salt', 'salt.yaml'), ('protonate', 'protonate.yaml'),
                      ('mutate', 'mutate.yaml'), ('hmr', 'hmr.yaml'), ('resize', 'resize.yaml'),
                      ('flood', 'flood.yaml'), ('oligomer', 'oligomer.yaml'),
                      ('protein_insertion', 'protein_replace.yaml'),

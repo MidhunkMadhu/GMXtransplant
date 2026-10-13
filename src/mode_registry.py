@@ -60,35 +60,6 @@ def _help(**extra):
 
 
 EDIT_MODES = {
-    "membrane": EditMode(
-        key="membrane", title="Replace the membrane with an equilibrated bilayer", module="membrane_replace",
-        spec="MembraneSpec",
-        summary="Replace the membrane with any equilibrated bilayer (mixed lipids, cholesterol), keeping the "
-                "OPM placement",
-        description="Replace every lipid and sterol of a prepared membrane system with the lipids of any "
-                    "equilibrated bilayer: mixed compositions, cholesterol and asymmetric leaflets. The protein "
-                    "and ligands keep their coordinates, so the OPM placement is kept. Writes the system and a "
-                    "GROMACS equilibration folder.",
-        example_dir="membrane", example_yaml="membrane.yaml",
-        example_title="Equilibrated POPC/cholesterol membrane: D1R",
-        example_description="Replace the membrane of the apo D1 receptor build with an equilibrated "
-                            "POPC/cholesterol bilayer; the receptor keeps its OPM placement.",
-        progress={"[membrane]": "Placing the equilibrated bilayer"},
-        files=("host_gro", "reference_gro"), file_lists=("lipid_itps",),
-        primary=("host", "reference_gro", "lipid_itps", "host_gro", "membrane_center_z"),
-        required=("host", "reference_gro"),
-        labels=_labels(reference_gro="Equilibrated bilayer (GRO)", lipid_itps="Extra lipid ITPs",
-                       membrane_center_z="Membrane midplane z (Å, host GRO frame)",
-                       protein_clash_distance="Lipid removal distance from protein and ligands (Å)",
-                       lateral_search="Lateral positions of the bilayer to try",
-                       water_layer="Reference water beyond each phosphate plane (Å)",
-                       restore_salt="Restore the host salt concentration"),
-        help=_help(reference_gro="An equilibrated bilayer GRO (lipids, sterols and optionally water) in CHARMM36 "
-                                 "names. Each lipid's atoms must match its ITP; ions in it are ignored.",
-                   lipid_itps="ITPs of reference lipids the host does not have (e.g. POPS.itp from CHARMM-GUI). "
-                              "Their parameters must be in the host forcefield.itp or added from the bundled "
-                              "CHARMM36 library."),
-        section_title="Host membrane and bilayer"),
     "salt": EditMode(
         key="salt", title="Change the salt", module="salt", spec="SaltSpec",
         summary="Set the salt concentration and ion types (NaCl, KCl, CaCl2, MgCl2) of a prepared system",

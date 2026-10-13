@@ -70,7 +70,7 @@ TITLES = {
     'upper': 'Upper leaflet', 'lower': 'Lower leaflet',
     'forcefield_path': 'Force field (forcefield.itp)', 'coord_path': 'Coordinates',
     'addbinder': 'Host and binder',
-    'popc': 'Host membrane and POPC',
+    'popc': 'Host membrane and bilayer',
 }
 # Label of the one checkbox that switches a section on.
 TOGGLES = {
@@ -87,11 +87,11 @@ HELP = {
                  'the given distance beyond the protein\'s outermost heavy atom on the chosen side, checks it '
                  'against the protein, the membrane and every periodic image, and writes one system per pose. '
                  'Distances are in Å.',
-    'popc': 'Choose the prepared membrane system (host folder with topol.top, toppar/ and the step5 GRO); its '
-            'membrane must contain POPC. The protein and ligands keep their coordinates, so the OPM '
-            'placement is kept; every lipid and sterol is replaced by POPC from a 500 ns equilibrated CHARMM36 '
-            'bilayer (Zenodo 10.5281/zenodo.1010083), cut to the host box, with its own hydration water. '
-            'Distances are in Å.',
+    'popc': 'Choose the prepared membrane system (host folder with topol.top, toppar/ and the step5 GRO). '
+            'The protein and ligands keep their coordinates, so the OPM placement is kept; every lipid and '
+            'sterol is replaced by the lipids of an equilibrated bilayer placed on the host\'s midplane: by '
+            'default pure POPC from a 500 ns CHARMM36 bilayer (Zenodo 10.5281/zenodo.1010083), or any bilayer '
+            'GRO you give, with its own hydration water. Distances are in Å.',
     'paths': 'Give each input as a complete path, or browse for it. Other sections refer to these files.',
     'alignment': 'Fit matching protein regions. Masks use sequential residue positions, not printed residue IDs. Distances are in Å.',
     'output': 'Filenames of the generated files.',
@@ -210,12 +210,13 @@ PATH_TITLES = {
     ('cholesterol', 'composition', 'lipid_targets'): 'Lipids per leaflet',
     ('popc', 'host'): 'Host system folder',
     ('popc', 'host_gro'): 'Host coordinates (GRO)',
-    ('popc', 'reference_gro'): 'Equilibrated POPC bilayer (GRO)',
+    ('popc', 'reference_gro'): 'Other equilibrated bilayer (GRO)',
+    ('popc', 'lipid_itps'): 'Extra lipid ITPs',
+    ('popc', 'lipid_forcefield'): 'Extra lipid parameters (forcefield.itp)',
+    ('popc', 'resname_map'): 'Residue names to moleculetypes',
     ('popc', 'membrane_center_z'): 'Membrane midplane z (Å, host GRO frame)',
-    ('popc', 'anchor_count'): 'POPC anchors needed per leaflet',
-    ('popc', 'anchor_separation'): 'Smallest distance between anchors (Å)',
     ('popc', 'max_tilt'): 'Largest leaflet tilt (degrees)',
-    ('popc', 'protein_clash_distance'): 'POPC removal distance from protein and ligands (Å)',
+    ('popc', 'protein_clash_distance'): 'Lipid removal distance from protein and ligands (Å)',
     ('popc', 'lateral_search'): 'Lateral positions of the bilayer to try',
     ('popc', 'water_layer'): 'Reference water beyond each phosphate plane (Å)',
     ('popc', 'protein_hydration_distance'): 'Keep host water/ions this close to the protein (Å)',
@@ -408,19 +409,20 @@ DESCRIPTIONS = {
     ('cholesterol', 'aligned_reference_pdb_path'): 'Written only when diagnostics are on.',
     ('cholesterol', 'reference_placed_pdb_path'): 'Written only when diagnostics are on.',
     ('cholesterol', 'merged_pdb_path'): 'Written only when diagnostics are on.',
-    ('popc', 'host'): 'The prepared membrane system, e.g. a CHARMM-GUI build: a folder with topol.top, toppar/ and step5_input.gro. Its membrane must contain POPC and lie flat, normal to z. Its POPC.itp is used for the new lipids.',
+    ('popc', 'host'): 'The prepared membrane system, e.g. a CHARMM-GUI build: a folder with topol.top, toppar/ and step5_input.gro. Its membrane must lie flat, normal to z; its midplane is found from its lipids. Its own lipid ITPs (POPC.itp …) are used for the new lipids.',
+    ('popc', 'lipid_itps'): 'Only for a bilayer GRO with lipids the host does not have, e.g. POPS.itp from CHARMM-GUI.',
+    ('popc', 'lipid_forcefield'): 'Only when the extra lipid ITPs use parameters the host forcefield.itp lacks.',
+    ('popc', 'resname_map'): 'Usually not needed: a reference residue is matched by name, else to the host lipid or sterol with the same atom names (CLOL → CHL1). Use this to force a match.',
     ('popc', 'host_gro'): "Tick to use a coordinate file other than the host folder's own step5 GRO, e.g. an MD frame.",
-    ('popc', 'reference_gro'): 'Untick to use the bundled bilayer: 512 POPC + water, CHARMM36, 150 mM NaCl, 310 K, the frame at 500 ns of Zenodo 10.5281/zenodo.1010083 (CC BY 4.0). Tick to use your own equilibrated bilayer GRO; its POPC atoms must match the host POPC.itp, and three-site water in it hydrates the new bilayer.',
-    ('popc', 'membrane_center_z'): 'Untick to place the new bilayer midway between the host\'s phosphate planes, which is the OPM-derived centre CHARMM-GUI built. Tick to give the midplane yourself.',
-    ('popc', 'anchor_count'): 'Each leaflet must hold at least this many POPC whose P atoms are the distance below apart; three define the plane.',
-    ('popc', 'anchor_separation'): 'Lateral distance between the P atoms of the anchor POPC in each leaflet.',
+    ('popc', 'reference_gro'): 'Untick to use the bundled bilayer: 512 POPC + water, CHARMM36, 150 mM NaCl, 310 K, the frame at 500 ns of Zenodo 10.5281/zenodo.1010083 (CC BY 4.0). Tick to give any other equilibrated bilayer GRO (mixed lipids, cholesterol, asymmetric leaflets) in CHARMM36 names; three-site water in it hydrates the new bilayer, ions are ignored.',
+    ('popc', 'membrane_center_z'): 'Untick to place the new bilayer on the host membrane\'s midplane (from its lipid tail ends), the OPM-derived centre CHARMM-GUI built. Tick to give the midplane yourself.',
     ('popc', 'max_tilt'): 'The plane fitted through each leaflet\'s P atoms must be within this angle of the xy plane.',
-    ('popc', 'protein_clash_distance'): 'A POPC with a heavy atom closer than this to a protein or ligand heavy atom is removed whole. 3 Å also rules out lipid tails threaded through aromatic rings.',
+    ('popc', 'protein_clash_distance'): 'A new lipid with a heavy atom closer than this to a protein or ligand heavy atom is removed whole. Raise it to 3 Å to rule out lipid tails threaded through aromatic rings.',
     ('popc', 'lateral_search'): 'The bilayer is shifted to this many lateral positions; the one that keeps the most POPC around the protein is used.',
     ('popc', 'water_layer'): 'The reference water, equilibrated with the bilayer, hydrates the new POPC up to this far beyond each phosphate plane and replaces the host water there. 0 keeps only host water.',
     ('popc', 'protein_hydration_distance'): 'Inside the hydration layer, host water and ions this close to the protein (including internal waters) are kept; reference water yields to them.',
     ('popc', 'reference_contact_distance'): 'The reference bilayer repeats with its own box length, so copies can meet at the host box edge; the fewest are removed so none are closer than this.',
-    ('popc', 'water_clash_distance'): 'Host water and ions with a heavy atom closer than this to a new POPC heavy atom or to reference water are removed.',
+    ('popc', 'water_clash_distance'): 'Host water and ions with a heavy atom closer than this to a new lipid heavy atom or to reference water are removed.',
     ('popc', 'restore_salt'): 'The reference water brings no ions. Bulk waters outside the hydration layer and away from the protein become salt pairs until the host concentration is reached again.',
     ('popc', 'neutralize'): 'Remove counterions to bring the system to the target charge, e.g. after anionic lipids are replaced.',
     ('popc', 'equilibration'): 'A GROMACS folder with the CHARMM-GUI step6 schedule: the protein is held and released step by step, so it keeps its OPM placement while the POPC packs around it. A sample run script is saved; it is not run here.',
@@ -548,7 +550,7 @@ class Context:
 # Settings shown first in a mode's own section; the rest go under Advanced settings.
 PRIMARY = {
     ('charmprot',): ['reference', 'transplant'],
-    ('popc',): ['host', 'reference_gro', 'host_gro', 'membrane_center_z'],
+    ('popc',): ['host', 'reference_gro', 'host_gro', 'membrane_center_z', 'lipid_itps'],
     ('addbinder',): ['host', 'binder_coordinates', 'binder_itp', 'binder_forcefield', 'side',
                      'distance', 'min_image_gap', 'same_orientation', 'poses',
                      'random_poses', 'random_distance'],

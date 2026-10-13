@@ -128,7 +128,7 @@ def path_kind(path):
         return "file"
     if path[:1] in (("addbinder",), ("popc",)) and key == "host":
         return "directory"
-    if path[:1] == ("popc",) and key in {"host_gro", "reference_gro"}:
+    if path[:1] == ("popc",) and key in {"host_gro", "reference_gro", "lipid_itps", "lipid_forcefield"}:
         return "file"
     if path[:1] == ("addbinder",) and key in {
             "host_gro", "binder_coordinates", "binder_itp", "binder_forcefield"}:

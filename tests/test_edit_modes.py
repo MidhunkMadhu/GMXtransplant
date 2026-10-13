@@ -1,4 +1,4 @@
-"""Tests of the system-edit modes (membrane, salt, protonate, mutate, hmr, resize, flood, oligomer).
+"""Tests of the system-edit modes (salt, protonate, mutate, hmr, resize, flood, oligomer) and popc with a user bilayer.
 
 The end-to-end classes build each bundled D1R example (about 10-40 s each); they are
 marked slow and skipped with GMXT_FAST=1 (tools/run_tests.py --fast).
@@ -84,8 +84,7 @@ class RegistryTests(unittest.TestCase):
         cases = {"salt": {"concentration": -1.0}, "hmr": {"hydrogen_mass": 9.0}, "resize": {"add_water": 0.0},
                  "flood": {"side": "middle"}, "oligomer": {"copies": []}, "protonate": {"residues": [
                      {"molecule": "PROA", "resid": 70, "state": "XYZ"}]},
-                 "mutate": {"mutations": [{"molecule": "PROA", "resid": 103, "to": "UNK"}]},
-                 "membrane": {"max_tilt": 60.0}}
+                 "mutate": {"mutations": [{"molecule": "PROA", "resid": 103, "to": "UNK"}]}}
         for mode, edit in cases.items():
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as tmp:
                 path = Path(tmp) / "c.yaml"
@@ -310,10 +309,17 @@ class OligomerRunTests(unittest.TestCase):
 
 
 @slow
-class MembraneRunTests(unittest.TestCase):
+class PopcCholesterolRunTests(unittest.TestCase):
+    """The popc mode with a user bilayer GRO (POPC/cholesterol 70:30; CLOL matched to CHL1 by atom names)."""
+
     def test_popc_cholesterol(self):
+        from popc_membrane import run_popc
         with tempfile.TemporaryDirectory() as tmp:
-            code, folder, report = _build("membrane", tmp)
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = run_popc(str(ROOT / "examples" / "popc" / "popc_cholesterol.yaml"), output_root=tmp)
+            folder = Path(tmp) / "popc_output"
+            report = json.loads((folder / "popc_report.json").read_text())
+            self.assertEqual(code, 0)
             universe, counts = _check_common(self, folder, report)
             self.assertNotIn("POPE", counts)
             self.assertAlmostEqual(counts["CHL1"] / (counts["CHL1"] + counts["POPC"]), 0.3, delta=0.05)

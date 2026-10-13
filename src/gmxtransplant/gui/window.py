@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, Q
 from viewers import find_viewer, launch as launch_viewer
 from mode_registry import EDIT_MODES
 from .editor import ConfigEditor, choose_path
-from .model import (MODES, FOLDERS, EXAMPLE_KEYS, build_job, load_yaml, example_mode, example_folder,
+from .model import (MODES, FOLDERS, EXAMPLE_KEYS, MORE_EXAMPLE_KEYS, build_job, load_yaml, example_mode, example_folder,
                     example_path, destination, example_document,
                     template_document, open_documentation, open_with_default_app)
 from .progress import RunProgress
@@ -48,9 +48,9 @@ MODE_DESCRIPTIONS = {
     'addbinder': 'Place a ligand or protein in the water above or below a membrane protein, a set distance from '
                  'its outermost atom, and build one complete system per pose.',
     'popc': 'Replace the membrane of a prepared system with a well-equilibrated pure POPC bilayer (500 ns, '
-            'CHARMM36). The protein keeps its OPM placement; overlapping lipids, water and ions are removed, '
-            'and the run writes equilibration/, a GROMACS system set up for the CHARMM-GUI step6 equilibration '
-            'with a sample run script.',
+            'CHARMM36), or with any equilibrated bilayer you give as a GRO file. The protein keeps its OPM '
+            'placement; overlapping lipids, water and ions are removed, and the run writes equilibration/, a '
+            'GROMACS system set up for the CHARMM-GUI step6 equilibration with a sample run script.',
     **{key: mode.description for key, mode in EDIT_MODES.items()},
     'minimize': 'Prepare a restrained OpenMM minimization folder for a system you have already assembled.',
 }
@@ -290,6 +290,7 @@ def repolish(widget):
 
 # Example cards: the original titles and descriptions.
 EXAMPLE_TITLES = {'popc': 'Equilibrated POPC membrane: D1R',
+                  'popc_cholesterol': 'Equilibrated POPC/cholesterol membrane: D1R',
                   'addbinder': 'Add binder: dopamine (extracellular)',
                   'addbinder_gprotein': 'Add binder: G protein (intracellular)',
                   **{key: mode.example_title for key, mode in EDIT_MODES.items()}}
@@ -299,6 +300,7 @@ EXAMPLE_DETAILS = {
     'lig': 'Replace one bound ligand (LI1) with another (LI2) using explicit heavy-atom correspondence, its ITP and its force field.',
     'chl': 'Restore five experimental cholesterol molecules into the prepared D1R system. Uses Open Babel, installed with GMXtransplant.',
     'popc': 'Replace the POPC/POPE/cholesterol membrane of the apo D1 receptor build with equilibrated pure POPC; the receptor keeps its OPM placement. Writes the system and a GROMACS equilibration folder.',
+    'popc_cholesterol': 'Your own bilayer GRO: replace the membrane of the apo D1 receptor build with an equilibrated POPC/cholesterol 70:30 bilayer; the receptor keeps its OPM placement.',
     'addbinder': 'Extracellular ligand: place dopamine above the apo D1 receptor, once straight above at 20 Å and three times from random directions at 20–25 Å; one run-ready folder each.',
     **{key: mode.example_description for key, mode in EDIT_MODES.items()},
     'addbinder_gprotein': 'Intracellular protein: place the Gs heterotrimer below the apo D1 receptor in its receptor-bound arrangement: pulled straight out to 20 Å (shorter if the box needs it) and towards two random sides at 15 Å, one of them also randomly rotated; one run-ready folder each.',
@@ -673,7 +675,7 @@ class MainWindow(QMainWindow):
             self.example_buttons.append(run)
             row.addWidget(run)
             box.addLayout(row)
-            (more_cards if mode in EDIT_MODES else cards).append(card)
+            (more_cards if mode in EDIT_MODES or key in MORE_EXAMPLE_KEYS else cards).append(card)
         layout.addWidget(ResponsiveGrid(cards, 235, 4, viewport=scroll.viewport()))
         # Examples of the system-edit modes, under "More examples".
         self.more_examples = ResponsiveGrid(more_cards, 235, 4, viewport=scroll.viewport())

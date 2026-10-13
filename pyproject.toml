@@ -85,7 +85,6 @@ py-modules = [
   "resize",
   "flood",
   "oligomer",
-  "membrane_replace",
   "charmm36_library",
   "protein_edit",
   "residue_edit",

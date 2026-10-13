@@ -58,14 +58,6 @@ PICTOGRAMS = {
               for x in range(6, 46, 6)) + '''
 </g>
 ''' + _HEADS.replace('{y}', '8') + _HEADS.replace('{y}', '40'),
-    # Membrane: a bilayer of mixed lipids with cholesterol rings among them.
-    'membrane': '''
-<rect x="2" y="12" width="44" height="24" rx="2" fill="{f}"/>
-''' + ''.join(f'<circle cx="{x}" cy="9" r="2.6" fill="{"{a}" if n % 2 else "{b}"}"/>'
-              f'<circle cx="{x}" cy="39" r="2.6" fill="{"{b}" if n % 2 else "{a}"}"/>'
-              for n, x in enumerate(range(6, 46, 6))) + '''
-<path d="M17 15 L21 17 L21 21 L17 23 L13 21 L13 17 Z" fill="none" stroke="{a}" stroke-width="1.6"/>
-<path d="M33 25 L37 27 L37 31 L33 33 L29 31 L29 27 Z" fill="none" stroke="{a}" stroke-width="1.6"/>''',
     # Salt: cations and anions in water.
     'salt': '''
 <circle cx="13" cy="14" r="7" fill="{a}"/>

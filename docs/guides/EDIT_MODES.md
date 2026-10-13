@@ -1,6 +1,6 @@
-# System-edit modes: membrane, salt, protonate, mutate, hmr, resize, flood, oligomer
+# System-edit modes: salt, protonate, mutate, hmr, resize, flood, oligomer
 
-These eight modes each change one prepared system (the host) and write a
+These seven modes each change one prepared system (the host) and write a
 run-ready folder: `step5_input.gro/.pdb`, `topol.top`, `toppar/`, `index.ndx`
 with the CHARMM-GUI groups, a report, PyMOL/VMD scenes and, when asked, a
 GROMACS equilibration folder. The host is a CHARMM-GUI-style folder
@@ -14,7 +14,6 @@ apo D1R host of the addbinder example.
 
 | Mode | What it does | Example |
 |---|---|---|
-| `membrane` | Replaces the membrane with any equilibrated bilayer (mixed lipids, cholesterol), keeping the OPM placement | POPC/cholesterol 70:30 |
 | `salt` | Sets the salt type and concentration (NaCl, KCl, CaCl₂, MgCl₂ …) | 150 mM KCl instead of NaCl |
 | `protonate` | Changes protonation states (HSD/HSE/HSP, ASP/ASPP, GLU/GLUP, LYS/LSN, CYS/CYM) | D2.50 charged, H164 → HSP |
 | `mutate` | Point mutations with a CHARMM36 topology and a clash-free rotamer | D3.32A, S5.42A |
@@ -41,29 +40,11 @@ is set.
 | `host_gro` | Optional coordinates instead of the folder's `step5_input.gro`. |
 | `environment_overrides` | Molecule types the automatic classifier does not know, e.g. `{MYLIP: lipid}`. |
 | `neutralize`, `target_net_charge` | After the change, counterions far from the protein are removed or added (replacing bulk waters) to reach the target charge (default 0). The host's own monovalent ions are used. |
-| `equilibration` | `enabled: true` writes `equilibration/` (below). On by default for `membrane`, off for the others; the examples turn it on. |
+| `equilibration` | `enabled: true` writes `equilibration/` (below). Off by default; the examples turn it on. |
 | `output_dir` | Output folder name or path. |
 
-## membrane
-
-The generalisation of the [popc mode](POPC.md). Give `reference_gro`, an
-equilibrated bilayer GRO in CHARMM36 names; every lipid and sterol in it is
-matched to a moleculetype by residue name: the host's own ITPs (e.g. `POPC`,
-`CHL1`) or ITPs listed in `lipid_itps` (with `lipid_forcefield` for parameters
-the host forcefield.itp lacks). `resname_map` renames reference residues first,
-e.g. `{CLOL: CHL1}`. Atom names must match the ITP; a different atom order is
-fixed by name. Ions in the reference are ignored; three-site water hydrates the
-new bilayer.
-
-The host bilayer is measured from its phosphorus atoms (any phospholipid): the
-midplane from the lipid tail ends, each leaflet's P plane must be flat (within
-`max_tilt`, 5°) and normal to z, with `anchor_count` P atoms `anchor_separation`
-apart. The reference is tiled to the host box on the host midplane, tried at
-`lateral_search` lateral positions; lipids within `protein_clash_distance` (3 Å)
-of the protein or ligands, and duplicate copies at the box edge, are removed
-whole. Water placement, salt restoration and the reports follow the popc mode
-(`water_layer`, `protein_hydration_distance`, `restore_salt` …). Index groups
-`Upper_leaflet` and `Lower_leaflet` hold the new lipids.
+To replace the membrane (pure POPC, or any equilibrated bilayer from a GRO
+file), use the [popc mode](POPC.md).
 
 ## salt
 
@@ -223,7 +204,7 @@ gmxtransplant check-gromacs results/salt_output results/mutate_output
 
 ## Validation
 
-All eight examples (and popc) were built on Dardel (GROMACS 2026.1) with
+All seven examples (and both popc examples) were built on Dardel (GROMACS 2026.1) with
 `--gromacs-check always`: grompp passed each with 0 warnings and 0 notes; the
 step6.0 minimization and 5 ps of the first restrained NVT stage ran without
 LINCS warnings, and the HMR system ran 10 ps at 4 fs without LINCS warnings.

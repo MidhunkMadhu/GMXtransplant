@@ -1,22 +1,24 @@
-# Replace the membrane of a prepared system with a well-equilibrated pure POPC
-# bilayer. The protein and ligands keep their coordinates (the OPM placement);
-# every lipid and sterol is replaced by POPC from an equilibrated reference.
+# Replace the membrane of a prepared system with a well-equilibrated bilayer:
+# pure POPC by default, or any equilibrated bilayer GRO you give. The protein
+# and ligands keep their coordinates (the OPM placement): the host membrane's
+# midplane is found from its lipids and the new bilayer is centred on it.
 popc:
-  host: /path/to/membrane_system        # folder with topol.top, toppar/ and step5_input.gro; its membrane contains POPC
+  host: /path/to/membrane_system        # folder with topol.top, toppar/ and step5_input.gro
   # reference_gro: /path/to/bilayer.gro # default: the bundled 500 ns CHARMM36 POPC bilayer (Zenodo 10.5281/zenodo.1010083)
-  # membrane_center_z: 123.0            # A, host GRO frame; default: midway between the host's P planes
-  anchor_count: 3              # POPC per leaflet whose P atoms are ...
-  anchor_separation: 20.0      # ... at least this far apart laterally (A)
-  max_tilt: 5.0                # degrees; each leaflet's P plane must be this flat
-  protein_clash_distance: 3.0  # A, POPC heavy atom to protein/ligand heavy atom: the POPC is removed
+  # membrane_center_z: 123.0            # A, host GRO frame; default: the host membrane's midplane
+  protein_clash_distance: 2.0  # A, new lipid heavy atom to protein/ligand heavy atom: the lipid is removed
+  water_clash_distance: 2.0    # A, host water/ion heavy atom to new lipid or reference water: removed
   water_layer: 10.0            # A beyond each P plane hydrated by the reference water
   restore_salt: true           # add salt pairs in the bulk water back to the host concentration
   equilibration:
     enabled: true              # write equilibration/: GROMACS CHARMM-GUI step6 schedule + sample_run.sh
     temperature: 310.0
+# A reference_gro with lipids the host lacks also needs lipid_itps (and lipid_forcefield
+# when their parameters are missing). Reference residues are matched to moleculetypes by
+# name or by their atom names (CLOL -> CHL1); resname_map forces a match.
 # Replace each /path/to/ placeholder with a full path; none is resolved against the
 # working directory. Generated files use the --output folder, or the directory you
-# run the command from. Optional: host_gro, lateral_search, protein_hydration_distance,
-# reference_contact_distance, water_clash_distance, neutralize, target_net_charge,
+# run the command from. Optional: host_gro, max_tilt, lateral_search,
+# protein_hydration_distance, reference_contact_distance, neutralize, target_net_charge,
 # ion_exclusion_distance, lipid_ion_exclusion_distance, environment_overrides,
 # output_dir, equilibration.output_dir, equilibration.stages.

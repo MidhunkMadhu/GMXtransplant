@@ -30,7 +30,10 @@ EXAMPLES = {'charmprot': ('charmprot', 'charmprot.yaml'), 'protein': ('protein_i
             'addbinder': ('addbinder', 'addbinder.yaml'), 'popc': ('popc', 'popc.yaml'),
             **{key: (mode.example_dir, mode.example_yaml) for key, mode in EDIT_MODES.items()}}
 # Further examples of a mode: key -> (mode, example directory, YAML, output folder).
-EXTRA_EXAMPLES = {'addbinder_gprotein': ('addbinder', 'addbinder', 'addbinder_gprotein.yaml', 'addbinder_gprotein')}
+EXTRA_EXAMPLES = {'addbinder_gprotein': ('addbinder', 'addbinder', 'addbinder_gprotein.yaml', 'addbinder_gprotein'),
+                  'popc_cholesterol': ('popc', 'popc', 'popc_cholesterol.yaml', 'popc_cholesterol')}
+# Example cards shown under "More examples" besides those of the system-edit modes.
+MORE_EXAMPLE_KEYS = ('popc_cholesterol',)
 # Every example card, in display order.
 EXAMPLE_KEYS = [k for mode in EXAMPLES
                 for k in (mode, *(key for key, extra in EXTRA_EXAMPLES.items() if extra[0] == mode))]
