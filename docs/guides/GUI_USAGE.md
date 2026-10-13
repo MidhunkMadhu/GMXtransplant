@@ -133,12 +133,11 @@ whether the run completed, failed, or was cancelled. `run.yaml` saves the
 settings and input locations used for that run, so you can keep a record of
 how the system was built.
 
-**Running the same task again in the same output folder replaces files from
-the previous GUI run.** Choose a different output folder if you want to keep
-both sets of results. Your source inputs are left in place. If an existing
-file has a name GMXtransplant needs but was not made by an earlier GUI run,
-the application stops before replacing it. Move that file or choose another
-output folder.
+**Every run gets its own folder; nothing is replaced.** When the task's
+subfolder already has files (an earlier run, or anything else), the run goes
+to the next free folder instead: `membrane_1`, `membrane_2`, and so on (for
+examples, `examples/membrane_1`, ...). The run log names the folder used.
+Your source inputs are left in place.
 
 Click **Cancel run** to stop a run. A failed or cancelled run may leave partial
 results in its folder; check the status and log before using those files.

@@ -686,7 +686,7 @@ class MainWindow(QMainWindow):
         self.more_examples_toggle = disclosure('More examples', self.more_examples)
         layout.addWidget(self.more_examples_toggle, 0, Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self.more_examples)
-        layout.addWidget(label('Rerunning replaces generated files in that example’s folder. Source inputs stay unchanged.', 'muted'))
+        layout.addWidget(label('Each run gets its own folder: when it already has results, a new one is made (_1, _2, …). Inputs are never changed.', 'muted'))
         layout.addStretch()
         self.tabs.addWidget(self.examples_tab)
 

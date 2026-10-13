@@ -92,3 +92,5 @@ Log
             objects by kind (removed_membrane, removed_water, removed_ion, removed_protein for
             edited residues, removed_ligand), host_input when a mode moves molecules (resize);
             salt, hmr and resize now write views too. Guide: docs/guides/VISUALIZATION.md.
+2026-10-13  GUI: a run never fails on an existing output folder; when the mode folder has files,
+            the run goes to the next free folder (membrane_1, membrane_2, ...). Nothing is replaced.

@@ -112,7 +112,7 @@ def execute(job, action='run'):
                         status = 'completed' if code == 0 else 'failed'
                     except KeyboardInterrupt:
                         code, status = 130, 'cancelled'
-                        print('\nRun cancelled. Partial products may remain; rerunning replaces them.')
+                        print('\nRun cancelled. Partial products may remain in this folder; the next run writes a new folder.')
                     except Exception:
                         traceback.print_exc()
         finally:

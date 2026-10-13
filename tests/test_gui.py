@@ -43,6 +43,17 @@ class GuiModelTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             destination('', 'protein')
 
+    def test_a_used_folder_gets_a_numbered_sibling(self):
+        first = destination(self.root, 'protein')
+        first.mkdir(parents=True)
+        self.assertEqual(destination(self.root, 'protein'), first)        # empty: reused
+        (first / 'view.pse').write_text('from another run')
+        self.assertEqual(destination(self.root, 'protein'), self.root / 'protein_1')
+        (self.root / 'protein_1').mkdir()
+        (self.root / 'protein_1' / 'run.log').write_text('x')
+        self.assertEqual(destination(self.root, 'protein'), self.root / 'protein_2')
+        self.assertEqual(destination(self.root, 'protein', True), self.root / 'examples' / 'protein')
+
     def test_addbinder_example_writes_pose_folders_in_its_mode_folder(self):
         p = example_path('addbinder')
         job = build_job(load_yaml(p), self.root, 'addbinder', example_base=p.parent)

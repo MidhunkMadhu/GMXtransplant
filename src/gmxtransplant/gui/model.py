@@ -326,7 +326,18 @@ def destination(output_root, mode, example=False):
     # A symlink must never redirect a mode folder outside the selected root.
     if result.resolve() != root.resolve().joinpath(*result.relative_to(root).parts):
         raise ValueError('The output mode folder must not be a symbolic link.')
-    return result.resolve()
+    return fresh_folder(result.resolve())
+
+
+def fresh_folder(folder):
+    """The folder itself when it does not exist or is empty, else the first free
+    folder_1, folder_2, ...: a run never writes into, or replaces, existing results."""
+    folder = Path(folder)
+    candidate, number = folder, 0
+    while candidate.is_symlink() or (candidate.exists() and (not candidate.is_dir() or any(candidate.iterdir()))):
+        number += 1
+        candidate = folder.with_name(f'{folder.name}_{number}')
+    return candidate
 
 
 def _filename(value, fallback):
