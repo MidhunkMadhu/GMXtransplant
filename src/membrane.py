@@ -713,9 +713,10 @@ def run_membrane(config_path, dry_run=False, output_root=None):
               + (f" (host {thickness:.1f} A)" if thickness else ""))
         for resname, how in reference.report["residues_matched"].items():
             print(f"[reference] {resname} -> {how}")
-        if thickness and abs(reference.report["phosphate_thickness_angstrom"] - thickness) > 3.0:
+        difference = reference.report["phosphate_thickness_angstrom"] - thickness if thickness else 0.0
+        if abs(difference) > 3.0:
             report["warnings"].append(
-                f"The reference bilayer is {reference.report['phosphate_thickness_angstrom'] - thickness:+.1f} A thicker "
+                f"The reference bilayer is {abs(difference):.1f} A {'thicker' if difference > 0 else 'thinner'} "
                 "than the host's; the water layers adjust during the NPT equilibration")
         protected = [m for m in host.molecules if m.category not in REMOVED_CATEGORIES + SOLVENT_CATEGORIES]
         lipids, origin, report["placement"] = place_lipids(cfg, host, frame, reference, protected)
