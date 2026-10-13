@@ -279,6 +279,10 @@ class ExampleTests(unittest.TestCase):
         names = {o["name"] for o in scene["objects"]}
         self.assertLessEqual({"retained_protein", "host_tip", "binder_binderpose1", "binder_binderpose2",
                               "binder_binderpose3", "binder_binderpose4"}, names)
+        # The host water the first pose removed is there, hidden.
+        removed = {o["name"]: o for o in scene["objects"] if o["name"].startswith("removed_")}
+        self.assertIn("removed_water", removed)
+        self.assertFalse(any(o["visible"] for o in removed.values()))
 
     def test_rejected_pose_writes_only_report_and_centroid_pose_is_exact(self):
         raw = yaml.safe_load((EXAMPLE / "addbinder.yaml").read_text())["addbinder"]

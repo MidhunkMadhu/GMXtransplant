@@ -554,7 +554,8 @@ def find_clashes(positions, sizes, box, cutoff=CLASH_DISTANCE, limit=20):
 
 
 def write_system(stage, host, ordered, mode, parameter_files=(), equilibration=None, purpose="",
-                 extra_index=None, scene=None, extra_mdp="", restrained=None, more_equilibrations=()):
+                 extra_index=None, scene=None, extra_mdp="", restrained=None, more_equilibrations=(),
+                 moved=False):
     """Write the run-ready folder into `stage`; returns a report fragment.
 
     parameter_files: extra force-field files (atom types, bonded types) for new molecules.
@@ -607,8 +608,10 @@ def write_system(stage, host, ordered, mode, parameter_files=(), equilibration=N
               f"in {len(spec.stages)} stages; run sample_run.sh")
         for warning in result[key]["warnings"]:
             print(f"      WARNING: {warning}")
-    if scene is not None:
-        _write_scene(stage, final, ordered, mode, *scene)
+    # Every mode writes a scene; what it removed or changed, and its input, are hidden objects.
+    # moved: the mode moved host molecules (resize), so changed coordinates do not mean removed.
+    _write_scene(stage, final, ordered, mode, *(scene or ({}, {}, "The output in the input's frame.")),
+                 source=host.universe, moved=moved)
     return result
 
 
@@ -660,8 +663,12 @@ def write_host_protocol(stage, host, folder="host_protocol"):
             "other_files": [p.name for p in extras], "dropped_defines": dropped}
 
 
-def _write_scene(stage, final, ordered, mode, roles, palette, alignment):
-    from visualization import safe_scene
+def _write_scene(stage, final, ordered, mode, roles, palette, alignment, source=None, moved=False):
+    """The PyMOL/VMD scene: the final system by role, plus, hidden, what the run removed
+    or changed (removed_membrane, removed_water, removed_protein for edited residues, ...),
+    or the whole input (host_input) when the coordinates moved,
+    so the change can be switched on and seen."""
+    from visualization import removed_groups, safe_scene
     role_of = {member: role for role, members in roles.items() for member in members}
     groups, offset = {}, 0
     for _, mol in ordered:
@@ -669,8 +676,19 @@ def _write_scene(stage, final, ordered, mode, roles, palette, alignment):
                                                         "sterol": "lipid"}.get(mol.category, mol.category))
         groups.setdefault(role, []).extend(range(offset, offset + mol.stop - mol.start))
         offset += mol.stop - mol.start
-    safe_scene(stage, {role: final.atoms[ids] for role, ids in groups.items()}, mode, palette=palette,
-               alignment=alignment)
+    groups = {role: final.atoms[ids] for role, ids in groups.items()}
+    if source is not None:
+        try:
+            removed = None if moved else removed_groups(source, final.atoms)
+        except Exception as exc:  # the comparison is a convenience; the system is already written
+            print(f"[VISUALIZATION WARNING] removed molecules not shown: {exc}")
+            removed = {}
+        if removed is None:
+            # The coordinates moved (resize): the input itself is the comparison.
+            groups["host_input"] = source.atoms
+        else:
+            groups.update(removed)
+    safe_scene(stage, groups, mode, palette=palette, alignment=alignment)
 
 
 def write_report(folder, mode, report, heading, lines):

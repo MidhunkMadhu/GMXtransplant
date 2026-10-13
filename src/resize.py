@@ -169,7 +169,7 @@ def run(config_path, dry_run=False, output_root=None):
         print(f"[resize] box z {height:.2f} -> {new_height:.2f} A: {copies} cop{'y' if copies == 1 else 'ies'} of a "
               f"{slab:.1f} A bulk slab; {waters_added} waters (bulk density: {expected}), "
               f"{sum(1 for _, c, _ in accepted if c == 'ion')} ions added")
-        report.update(write_system(stage, host, ordered, "resize", equilibration=cfg.equilibration,
+        report.update(write_system(stage, host, ordered, "resize", equilibration=cfg.equilibration, moved=True,
                                    purpose="Equilibration of the taller box"))
 
     def lines(report):

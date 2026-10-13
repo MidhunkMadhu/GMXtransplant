@@ -15,6 +15,10 @@ assembled system can be reopened later without rerunning the pipeline. `view.pse
 is written during the run when PyMOL is on `PATH`; when it is not, the run says
 so and opening `view.pml` saves `view.pse`. The PSE is self-contained. When moving a scripted scene, copy the entire output folder, including `visualization/`, and launch from that folder. VMD locates its assets relative to the `.vmd` file. For Python-script loading in PyMOL, use `run visualization/load.py, module`.
 
+Every view also contains **what the run changed**, as objects that start
+hidden: switch one on to see what was removed or replaced. Nothing hidden is
+part of the final system.
+
 | Component | Color | Initially visible |
 |---|---|---|
 | Incoming protein | Blue | Yes |
@@ -24,14 +28,22 @@ so and opening `view.pml` saves `view.pse`. The PSE is self-contained. When movi
 | Incoming cholesterol | Gold | Yes |
 | Retained cholesterol | Teal | Yes |
 | Retained membrane | Pale gray | Yes |
-| Original replaced protein | Orange | No |
-| Original replaced ligand | Orange | Yes |
-| Removed environment | Red | No |
+| New molecules of the mode (new bilayer, flood copies, protein copies, edited protein) | Mode colour | Yes |
+| Water / ions | Pale blue | No |
+| `removed_protein`: original protein replaced, or the original atoms of edited residues (mutate, protonate) | Orange | No |
+| `removed_ligand`: original ligand replaced | Orange | No |
+| `removed_membrane`: original lipids and sterols removed or replaced (e.g. the host membrane in the membrane mode, lipids under oligomer copies) | Red-orange | No |
+| `removed_water`, `removed_ion`: water and ions removed (salt, flood, membrane, addbinder's first pose, ...) | Light red / red | No |
+| `removed_environment`: other removed molecules | Red | No |
+| `host_input`: the whole input, when the mode moves molecules (resize) | Gray | No |
 | Reference input | Amber | No |
 | Aligned transplant input | Cyan | No |
-| Water / ions | Pale blue | No |
 
-Toggle named objects in PyMOL or molecules in VMD. The old ligand is a comparison overlay, **not part of the final molecular system**. Full input overlays and removed environment are initially hidden to avoid obscuring the result. `visualization/LEGEND.txt` and `scene.json` list the roles and atom counts actually present in that run.
+How to show them: in PyMOL, click an object's name in the panel on the right
+(or `enable removed_membrane`); in VMD, double-click the **D** column of the
+molecule in the Main window (or `mol on <id>`). In PyMOL they are drawn semi-transparent,
+so the final system stays readable. `visualization/LEGEND.txt` and `scene.json`
+list the objects and atom counts actually present in that run.
 
 Source overlays use the same rigid transformation as assembly, in the final protein's coordinate frame. Ligand mode shows the positioned incoming ligand; cholesterol mode shows the converted, aligned experimental structure. Box repair, when enabled, is already reflected in the reference overlay. These views do not apply a second fit, wrap molecules, or change scientific coordinates.
 

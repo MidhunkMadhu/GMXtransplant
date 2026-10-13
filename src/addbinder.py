@@ -1377,9 +1377,10 @@ POSE_COLOURS = [[.84, .22, .67], [.95, .55, .10], [.20, .70, .30], [.55, .30, .8
                 [.10, .60, .80], [.75, .65, .10], [.40, .40, .40]]
 
 
-def _write_scene(destination, built):
-    """One PyMOL/VMD scene: host and membrane from the first pose, every pose's binder."""
-    from visualization import safe_scene
+def _write_scene(destination, built, host=None):
+    """One PyMOL/VMD scene: host and membrane from the first pose, every pose's binder, and,
+    hidden, the host water and ions the first pose removed to make room."""
+    from visualization import removed_groups, safe_scene
     first_universe, first_groups = built[0][1]
 
     def atoms(universe, ids):
@@ -1397,8 +1398,27 @@ def _write_scene(destination, built):
         role = f"binder_{name}"
         groups[role] = atoms(universe, index_groups["Binder"])
         palette[role] = (f"Binder, pose {name}", POSE_COLOURS[number % len(POSE_COLOURS)], True)
+    if host is not None:
+        try:
+            removed = removed_groups(host.universe, first_universe.atoms)
+        except Exception as exc:  # the comparison is a convenience; the systems are already written
+            print(f"[VISUALIZATION WARNING] removed molecules not shown: {exc}")
+            removed = None
+        for role, atoms in (removed or {}).items():
+            groups[role] = atoms
+            palette[role] = (PALETTE_REMOVED_FIRST_POSE.get(role, role), REMOVED_COLOURS.get(role, [.9, .3, .3]), False)
     safe_scene(destination, groups, "addbinder", palette=palette,
-               alignment="All poses share the host frame; each binder is a separate object.")
+               alignment="All poses share the host frame; each binder is a separate object. "
+                         "Removed molecules (hidden) are those of the first pose.")
+
+
+PALETTE_REMOVED_FIRST_POSE = {"removed_water": "Host water removed (first pose)",
+                              "removed_ion": "Host ions removed (first pose)",
+                              "removed_membrane": "Host lipids removed (first pose)",
+                              "removed_ligand": "Host molecules removed (first pose)",
+                              "removed_environment": "Host molecules removed (first pose)"}
+REMOVED_COLOURS = {"removed_water": [.95, .55, .55], "removed_ion": [.85, .30, .30],
+                   "removed_membrane": [.91, .36, .24]}
 
 
 class _Skip(Exception):
@@ -1562,7 +1582,7 @@ def _run_addbinder(config_path, dry_run=False, output_root=None):
         rows += [f"    {reason}" for reason in s["reasons"]]
     (destination / "summary.txt").write_text("Distances in Angstrom (heavy atoms)\n" + "\n".join(rows) + "\n")
     if built:
-        _write_scene(destination, built)
+        _write_scene(destination, built, host)
     accepted = sum(s["status"] == "accepted" for s in summary)
     print(f"[complete] {accepted}/{len(summary)} pose(s) built; see {destination / 'summary.txt'}")
     from run_pipeline import _announce_output_location

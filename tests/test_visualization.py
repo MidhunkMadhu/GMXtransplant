@@ -30,16 +30,33 @@ class VisualizationTests(unittest.TestCase):
         # Outside cholesterol mode, cholesterol is drawn as an ordinary lipid.
         self.assertNotIn('retained_cholesterol', groups)
         self.assertEqual(len(groups['retained_lipid']), 1)
-        self.assertEqual(len(groups['removed_environment']), 1)
+        # The removed water is its own hidden object.
+        self.assertEqual(len(groups['removed_water']), 1)
         np.testing.assert_array_equal(reference.atoms.positions, before)
         with tempfile.TemporaryDirectory(prefix='views with spaces ') as temp, patch('visualization.shutil.which', return_value=None):
             scene = write_scene(temp, groups, 'lig')
             by_name = {o['name']: o for o in scene['objects']}
             self.assertNotEqual(by_name['inserted_ligand']['color'], by_name['removed_ligand']['color'])
             self.assertFalse(by_name['reference_input']['visible'])
+            # Everything removed or replaced starts hidden.
+            self.assertFalse(by_name['removed_ligand']['visible'])
+            self.assertFalse(by_name['removed_water']['visible'])
             self.assertTrue((Path(temp)/'view.pml').is_file())
             self.assertIn('[info script]', (Path(temp)/'view.vmd').read_text())
             self.assertEqual(json.loads((Path(temp)/'visualization/scene.json').read_text())['mode'], 'lig')
+
+    def test_removed_groups_by_kind_and_moved_coordinates(self):
+        from visualization import removed_groups
+        names = ['ALA', 'POPC', 'TIP3', 'SOD', 'LI1'] + ['TIP3'] * 10
+        host = atoms(names, [[i, i, i] for i in range(len(names))])
+        changed = atoms(['ALA'], [[0, 0, 0.5]])   # an edited residue: its atom moved
+        final = mda.Merge(host.atoms[[2, 4] + list(range(5, 15))], changed.atoms)
+        groups = removed_groups(host, final.atoms)
+        self.assertEqual({k: len(v) for k, v in groups.items()},
+                         {'removed_protein': 1, 'removed_membrane': 1, 'removed_ion': 1})
+        self.assertEqual(removed_groups(host, mda.Merge(host.atoms).atoms), {})
+        moved = atoms(names, host.atoms.positions + 5.0)   # resize: everything shifted
+        self.assertIsNone(removed_groups(host, moved.atoms))
 
     def test_cholesterol_is_only_a_separate_group_in_cholesterol_mode(self):
         reference = atoms(['ALA', 'CHL1', 'POPC'], [[0, 0, 0], [3, 3, 3], [5, 5, 5]])

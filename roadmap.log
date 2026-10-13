@@ -88,3 +88,7 @@ Log
             lipid atoms within 4 A of the receptor, now 145). Refill search rewritten with
             KD-trees (minutes -> seconds). New molecules get their own residue numbers
             (CHARMM-GUI style), so viewers no longer join the whole membrane into one residue.
+2026-10-13  Views show what changed, in every mode: removed/replaced input molecules as hidden
+            objects by kind (removed_membrane, removed_water, removed_ion, removed_protein for
+            edited residues, removed_ligand), host_input when a mode moves molecules (resize);
+            salt, hmr and resize now write views too. Guide: docs/guides/VISUALIZATION.md.

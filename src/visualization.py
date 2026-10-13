@@ -21,9 +21,14 @@ PALETTE = {
     'retained_water': ('Water', [.55, .75, .94], False),
     'retained_ion': ('Ions', [.36, .65, .85], False),
     'retained_other': ('Other retained molecules', [.60, .65, .70], True),
-    'removed_protein': ('Original protein replaced', [.97, .50, .16], False),
-    'removed_ligand': ('Original ligand replaced', [.97, .50, .16], True),
+    # What the run removed or replaced from its input: hidden, switch on to see the change.
+    'removed_protein': ('Original protein (removed or changed part)', [.97, .50, .16], False),
+    'removed_ligand': ('Original ligand replaced', [.97, .50, .16], False),
+    'removed_membrane': ('Original membrane removed or replaced', [.91, .36, .24], False),
+    'removed_water': ('Original water removed', [.95, .55, .55], False),
+    'removed_ion': ('Original ions removed', [.85, .30, .30], False),
     'removed_environment': ('Removed environment molecules', [.91, .24, .24], False),
+    'host_input': ('Input system, unchanged (its own frame)', [.70, .70, .70], False),
     'reference_input': ('Reference input in final frame', [.97, .60, .25], False),
     'transplant_input': ('Transplant input aligned to final frame', [.22, .77, .87], False),
 }
@@ -84,17 +89,49 @@ def comparison_groups(final, reference=None, inserted=None, replaced=None, trans
                 replaced_keys[key] -= 1
             else:
                 removed.append(index)
-        groups['removed_environment'] = ref[removed]
+        removed_atoms = ref[removed]
+        roles = np.array([REMOVED_ROLE.get(c, 'removed_environment') if c not in ('protein', 'ligand', 'other')
+                          else 'removed_environment' for c in categories(removed_atoms)])
+        for role in dict.fromkeys(roles):
+            groups[role] = removed_atoms[roles == role]
     if transplant is not None:
         groups['transplant_input'] = transplant.atoms
     return groups
+
+
+REMOVED_ROLE = {'protein': 'removed_protein', 'ligand': 'removed_ligand', 'other': 'removed_ligand',
+                'lipid': 'removed_membrane', 'cholesterol': 'removed_membrane', 'water': 'removed_water',
+                'ion': 'removed_ion'}
+
+
+def removed_groups(source, final_atoms):
+    """What the run took out of its input: the input atoms with no identical atom
+    (name, residue, exact coordinates) left in the final system, by kind
+    (removed_protein for a changed residue, removed_membrane, removed_water, ...).
+
+    Returns None when the coordinates were moved (fewer than half the input atoms
+    found unchanged, e.g. resize): the whole input is then the comparison.
+    """
+    source_atoms = source.atoms if hasattr(source, 'atoms') else source
+    retained = Counter(atom_keys(final_atoms))
+    missing = []
+    for index, key in enumerate(atom_keys(source_atoms)):
+        if retained[key]:
+            retained[key] -= 1
+        else:
+            missing.append(index)
+    if len(missing) > len(source_atoms) / 2:
+        return None
+    removed = source_atoms[missing]
+    roles = np.array([REMOVED_ROLE.get(c, 'removed_environment') for c in categories(removed)])
+    return {role: removed[roles == role] for role in dict.fromkeys(roles)}
 
 
 # Proteins and peptides of at least this many residues are drawn as cartoon;
 # shorter peptides, ligands and other small molecules as licorice.
 MIN_CARTOON_RESIDUES = 3
 # Lines for the membrane, removed molecules and whole-system overlays, so they do not crowd the view.
-LINE_ROLES = {'retained_lipid', 'retained_cholesterol', 'removed_environment'}
+LINE_ROLES = {'retained_lipid', 'retained_cholesterol', 'removed_environment', 'removed_membrane'}
 
 
 def _style(role, atoms):
@@ -158,7 +195,7 @@ def write_scene(directory, groups, mode, alignment='Inputs use the assembly alig
                 _write_object(atoms, assets / (role + '.pdb'), style)
             objects.append(dict(name=role, label=label, color=rgb, visible=visible, atoms=len(atoms), style=style))
         manifest = dict(mode=mode, alignment=alignment, objects=objects,
-                        note='Source overlays and removed molecules are comparisons, not part of the final system. Water and ions are initially hidden.')
+                        note='Objects named removed_* show what the run took out of its input, and host_input / *_input the inputs themselves; they are not part of the final system and start hidden: switch them on to see what changed. Water and ions also start hidden.')
         (assets / 'scene.json').write_text(json.dumps(manifest, indent=2) + '\n')
         (assets / 'LEGEND.txt').write_text(alignment + '\n\n' + manifest['note'] + '\n\n' + '\n'.join(
             f"{o['name']}: {o['label']}; {o['atoms']} atoms; {'shown' if o['visible'] else 'hidden'}; RGB {o['color']}" for o in objects))

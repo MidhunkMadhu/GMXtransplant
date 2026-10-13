@@ -245,6 +245,15 @@ class EndToEndTests(unittest.TestCase):
             self.assertGreaterEqual(placed[f"{side} POPC"], 0.97 * fits)
         self.assertLessEqual(abs(placed["upper POPC"] - placed["lower POPC"]), 2)
 
+    def test_scene_shows_the_replaced_membrane_hidden(self):
+        scene = json.loads((self.out / "visualization" / "scene.json").read_text())
+        by_name = {o["name"]: o for o in scene["objects"]}
+        host_membrane = self.host.select_atoms("resname POPC POPE CHL1")
+        self.assertEqual(by_name["removed_membrane"]["atoms"], len(host_membrane))
+        self.assertFalse(by_name["removed_membrane"]["visible"])
+        self.assertTrue(by_name["inserted_membrane"]["visible"])
+        self.assertIn("removed_membrane", (self.out / "view.vmd").read_text())
+
     def test_protein_interface_is_refilled(self):
         placement = self.report["placement"]
         refilled = sum(placement["refilled_at_protein"].values())

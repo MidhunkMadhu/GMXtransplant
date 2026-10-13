@@ -264,6 +264,8 @@ class SaltRunTests(unittest.TestCase):
             _, counts = _check_common(self, folder, report)
             self.assertNotIn("SOD", counts)
             self.assertGreater(counts["POT"], 250)
+            scene = {o["name"]: o for o in json.loads((folder / "visualization" / "scene.json").read_text())["objects"]}
+            self.assertFalse(scene["removed_ion"]["visible"])   # the host NaCl, hidden
             self.assertAlmostEqual(report["salt"]["final"]["concentration_molar"], 0.15, delta=0.005)
             self.assertIn("POT", (folder / "toppar" / "forcefield.itp").read_text())
 
@@ -282,6 +284,9 @@ class ResizeRunTests(unittest.TestCase):
                                     return_distances=False)
             # No two waters on top of each other at the seams.
             self.assertEqual([(a, b) for a, b in pairs if a != b], [])
+            # Coordinates moved: the input itself is the hidden comparison.
+            scene = {o["name"]: o for o in json.loads((folder / "visualization" / "scene.json").read_text())["objects"]}
+            self.assertFalse(scene["host_input"]["visible"])
 
 
 @slow
@@ -361,6 +366,11 @@ class MutateRunTests(unittest.TestCase):
                            for n, d in parse_itp(str(p)).items() if n == "PROA")
             self.assertEqual({a.resname for a in protein.atoms if a.resnr in (103, 198)}, {"ALA"})
             self.assertAlmostEqual(protein.charge, parse_itp(str(PROA))["PROA"].charge + 1, places=3)
+            # The original side chains of the two mutated residues: a hidden object in the scene.
+            scene = json.loads((folder / "visualization" / "scene.json").read_text())
+            removed = {o["name"]: o for o in scene["objects"]}["removed_protein"]
+            self.assertFalse(removed["visible"])
+            self.assertLess(removed["atoms"], 40)
         with tempfile.TemporaryDirectory() as tmp:
             code, folder, report = _build("mutate", tmp, {"mutations": [
                 {"molecule": "PROA", "resid": 198, "to": "PHE"}]})
